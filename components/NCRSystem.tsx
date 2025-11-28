@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useData, NCRRecord, NCRItem } from '../DataContext';
-import { Save, Printer, Image as ImageIcon, AlertTriangle, Plus, Trash2, X } from 'lucide-react';
+import { Save, Printer, Image as ImageIcon, AlertTriangle, Plus, Trash2, X, Loader, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 
-const WAREHOUSE_BRANCHES = ['สาย 3', 'นครสวรรค์', 'กำแพงเพชร', 'แม่สอด', 'พิษณุโลก', 'เชียงใหม่', 'EKP ลำปาง', 'คลอง13', 'ประดู่'];
+const WAREHOUSE_BRANCHES = ['สาย 3', 'นครสวรรค์', 'กำแพงเพชร', 'แม่สอด', 'พิษณโลก', 'เชียงใหม่', 'EKP ลำปาง', 'คลอง13', 'ประดู่'];
 const WAREHOUSE_CAUSES = ['เช็คเกอร์', 'พนักงานลงสินค้า', 'อื่นๆ'];
-const REPORTING_BRANCHES = ['สาย 3', 'นครสวรรค์', 'กำแพงเพชร', 'แม่สอด', 'พิษณุโลก', 'เชียงใหม่', 'EKP ลำปาง', 'คลอง13', 'ประดู่'];
+const REPORTING_BRANCHES = ['สาย 3', 'นครสวรรค์', 'กำแพงเพชร', 'แม่สอด', 'พิษณโลก', 'เชียงใหม่', 'EKP ลำปาง', 'คลอง13', 'ประดู่'];
 
 const NCRSystem: React.FC = () => {
   const { addNCRReport, getNextNCRNumber } = useData();
@@ -26,6 +26,13 @@ const NCRSystem: React.FC = () => {
   const [newItem, setNewItem] = useState<Partial<NCRItem>>({ branch: '', refNo: '', neoRefNo: '', productCode: '', productName: '', customerName: '', destinationCustomer: '', quantity: 0, unit: '', priceBill: 0, expiryDate: '', hasCost: false, costAmount: 0, costResponsible: '', problemSource: '' });
   const [isCustomReportBranch, setIsCustomReportBranch] = useState(false);
   const [sourceSelection, setSourceSelection] = useState({ category: '', whBranch: '', whCause: '', whOtherText: '', transType: '', transName: '', transPlate: '', transVehicleType: '', transAffiliation: '', transCompany: '', otherText: '' });
+  
+  // States for Modals
+  const [isSaving, setIsSaving] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [saveResult, setSaveResult] = useState<{ success: boolean; message: string; ncrNo?: string } | null>(null);
+
 
   useEffect(() => {
     if (showItemModal) {
@@ -66,71 +73,90 @@ const NCRSystem: React.FC = () => {
   const handleDeleteItem = (id: string) => { setNcrItems(ncrItems.filter(i => i.id !== id)); };
   const handlePrint = () => { window.print(); };
 
-  const handleSaveRecord = async () => {
-      // 1. Validation Logic
-      const errors = [];
-      if (!formData.founder.trim()) errors.push("ผู้พบปัญหา");
-      
-      const isProblemChecked = 
-        formData.problemDamaged || formData.problemLost || formData.problemMixed || formData.problemWrongInv ||
-        formData.problemLate || formData.problemDuplicate || formData.problemWrong || formData.problemIncomplete ||
-        formData.problemOver || formData.problemWrongInfo || formData.problemShortExpiry || formData.problemTransportDamage ||
-        formData.problemAccident || (formData.problemOther && formData.problemOtherText.trim());
+  const handleSaveRecord = () => {
+    // 1. Validation Logic
+    const errors = [];
+    if (!formData.founder.trim()) errors.push("ผู้พบปัญหา");
+    
+    const isProblemChecked = 
+      formData.problemDamaged || formData.problemLost || formData.problemMixed || formData.problemWrongInv ||
+      formData.problemLate || formData.problemDuplicate || formData.problemWrong || formData.problemIncomplete ||
+      formData.problemOver || formData.problemWrongInfo || formData.problemShortExpiry || formData.problemTransportDamage ||
+      formData.problemAccident || (formData.problemOther && formData.problemOtherText.trim());
 
-      if (!isProblemChecked && !formData.problemDetail.trim()) {
-          errors.push("ระบุปัญหาที่พบ (ติ๊กเลือกหัวข้อ หรือ กรอกรายละเอียด)");
-      }
+    if (!isProblemChecked && !formData.problemDetail.trim()) {
+        errors.push("ระบุปัญหาที่พบ (ติ๊กเลือกหัวข้อ หรือ กรอกรายละเอียด)");
+    }
 
-      if (ncrItems.length === 0) {
-          errors.push("รายการสินค้า (กรุณากดปุ่ม '+ เพิ่มรายการ' สีน้ำเงิน)");
-      }
+    if (ncrItems.length === 0) {
+        errors.push("รายการสินค้า (กรุณากดปุ่ม '+ เพิ่มรายการ' สีน้ำเงิน)");
+    }
 
-      if (errors.length > 0) {
-          alert("กรุณากรอกข้อมูลต่อไปนี้ให้ครบถ้วนก่อนบันทึก:\n\n" + errors.map(e => "- " + e).join("\n"));
-          return;
-      }
-      
-      // 2. Save Logic
-      const newNcrNo = await getNextNCRNumber();
-      if (newNcrNo.includes('ERR')) {
-          alert("ไม่สามารถสร้างเลขที่ NCR อัตโนมัติได้ กรุณาลองใหม่อีกครั้ง");
-          return;
-      }
-
-      let successCount = 0;
-
-      // Save each item in the list as a separate NCR Record
-      for (const item of ncrItems) {
-          const record: NCRRecord = {
-              ...formData,
-              id: `${newNcrNo}-${item.id}`, // Composite unique ID
-              ncrNo: newNcrNo,
-              item: item, // Embed the full item object
-              status: formData.qaAccept ? 'Closed' : 'Open',
-          };
-          
-          const success = await addNCRReport(record);
-          if (success) {
-              successCount++;
-          } else {
-              break; 
-          }
-      }
-
-      if (successCount === ncrItems.length) {
-          alert(`บันทึกข้อมูล NCR เลขที่ ${newNcrNo} เข้าระบบเรียบร้อย (Saved Successfully)`);
-          setNcrItems([]);
-          setFormData(initialFormData);
-      } else {
-          alert(`บันทึกข้อมูลไม่สำเร็จ! กรุณาตรวจสอบการเชื่อมต่อหรือสิทธิ์การใช้งาน\n(สำเร็จ: ${successCount}, ล้มเหลว: ${ncrItems.length - successCount})`);
-      }
+    if (errors.length > 0) {
+        alert("กรุณากรอกข้อมูลต่อไปนี้ให้ครบถ้วนก่อนบันทึก:\n\n" + errors.map(e => "- " + e).join("\n"));
+        return;
+    }
+    
+    // 2. Show Confirmation Modal
+    setShowConfirmModal(true);
   };
+  
+  const executeSave = async () => {
+    setShowConfirmModal(false);
+    setIsSaving(true);
+    
+    const newNcrNo = await getNextNCRNumber();
+    if (newNcrNo.includes('ERR')) {
+        setSaveResult({ success: false, message: "ไม่สามารถสร้างเลขที่ NCR อัตโนมัติได้ กรุณาลองใหม่อีกครั้ง" });
+        setShowResultModal(true);
+        setIsSaving(false);
+        return;
+    }
+
+    let successCount = 0;
+
+    for (const item of ncrItems) {
+        const record: NCRRecord = {
+            ...formData,
+            id: `${newNcrNo}-${item.id}`,
+            ncrNo: newNcrNo,
+            item: item,
+            status: formData.qaAccept ? 'Closed' : 'Open',
+        };
+        
+        const success = await addNCRReport(record);
+        if (success) {
+            successCount++;
+        } else {
+            break; 
+        }
+    }
+
+    setIsSaving(false);
+
+    if (successCount === ncrItems.length) {
+        setSaveResult({ success: true, message: `บันทึกข้อมูลสำเร็จ`, ncrNo: newNcrNo });
+    } else {
+        setSaveResult({ success: false, message: `บันทึกข้อมูลไม่สำเร็จ!\nกรุณาตรวจสอบสิทธิ์การใช้งาน (Permission Denied)` });
+    }
+    setShowResultModal(true);
+  };
+  
+  const handleCloseResultModal = () => {
+    setShowResultModal(false);
+    if (saveResult?.success) {
+        setNcrItems([]);
+        setFormData(initialFormData);
+    }
+    setSaveResult(null);
+  };
+
 
   return (
     <div className="p-8 h-full overflow-auto bg-slate-100 flex flex-col items-center print:p-0 print:m-0 print:bg-white print:h-auto print:overflow-visible print:block">
       <div className="w-full max-w-5xl flex justify-end gap-2 mb-6 print:hidden">
             <button onClick={handlePrint} className="bg-slate-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm hover:bg-slate-700 transition-colors"><Printer className="w-4 h-4" /> Print Form / Save as PDF</button>
-            <button onClick={handleSaveRecord} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm hover:bg-blue-700 transition-colors"><Save className="w-4 h-4" /> Save Record</button>
+            <button onClick={handleSaveRecord} disabled={isSaving} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-wait"><Save className="w-4 h-4" /> Save Record</button>
       </div>
       <div className="w-full max-w-5xl bg-white shadow-xl border border-slate-200 min-h-[1100px] relative print:shadow-none print:border-none print:w-full print:max-w-none p-10">
         {/* HEADER */}
@@ -191,20 +217,20 @@ const NCRSystem: React.FC = () => {
             <thead><tr className="bg-slate-50 print:bg-transparent border-b-2 border-black"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">การดำเนินการ</th></tr></thead>
             <tbody className="divide-y divide-black border-b-2 border-black">
                 <tr>
-                    <td className="p-2 border-r border-black w-1/2"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionReject} onChange={e => setFormData({...formData, actionReject: e.target.checked})} /> <span className="font-bold">ส่งคืน (Reject)</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionRejectQty} onChange={e => setFormData({...formData, actionRejectQty: parseInt(e.target.value)})} /></div></td>
-                    <td className="p-2 w-1/2"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionRejectSort} onChange={e => setFormData({...formData, actionRejectSort: e.target.checked})} /> <span className="font-bold">คัดแยกของเสียเพื่อส่งคืน</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionRejectSortQty} onChange={e => setFormData({...formData, actionRejectSortQty: parseInt(e.target.value)})} /></div></td>
+                    <td className="p-2 border-r border-black w-1/2"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionReject} onChange={e => setFormData({...formData, actionReject: e.target.checked})} /> <span className="font-bold">ส่งคืน (Reject)</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionRejectQty || ''} onChange={e => setFormData({...formData, actionRejectQty: parseInt(e.target.value) || 0})} /></div></td>
+                    <td className="p-2 w-1/2"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionRejectSort} onChange={e => setFormData({...formData, actionRejectSort: e.target.checked})} /> <span className="font-bold">คัดแยกของเสียเพื่อส่งคืน</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionRejectSortQty || ''} onChange={e => setFormData({...formData, actionRejectSortQty: parseInt(e.target.value) || 0})} /></div></td>
                 </tr>
                 <tr>
-                    <td className="p-2 border-r border-black"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionRework} onChange={e => setFormData({...formData, actionRework: e.target.checked})} /> <span className="font-bold">แก้ไข (Rework)</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionReworkQty} onChange={e => setFormData({...formData, actionReworkQty: parseInt(e.target.value)})} /></div></td>
+                    <td className="p-2 border-r border-black"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionRework} onChange={e => setFormData({...formData, actionRework: e.target.checked})} /> <span className="font-bold">แก้ไข (Rework)</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionReworkQty || ''} onChange={e => setFormData({...formData, actionReworkQty: parseInt(e.target.value) || 0})} /></div></td>
                     <td className="p-2"><div className="flex items-center gap-2"><span className="font-bold">วิธีการแก้ไข</span><input type="text" className="flex-1 border-b border-dotted border-black bg-transparent print:border-none outline-none" value={formData.actionReworkMethod} onChange={e => setFormData({...formData, actionReworkMethod: e.target.value})} /></div></td>
                 </tr>
                 <tr>
-                    <td className="p-2 border-r border-black"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionSpecialAccept} onChange={e => setFormData({...formData, actionSpecialAccept: e.target.checked})} /> <span className="font-bold">ยอมรับกรณีพิเศษ</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionSpecialAcceptQty} onChange={e => setFormData({...formData, actionSpecialAcceptQty: parseInt(e.target.value)})} /></div></td>
-                    <td className="p-2"><div className="flex items-center gap-2"><span className="font-bold">เหตุผลในการยอมรับ</span><input type="text" className="flex-1 border-b border-dotted border-black bg-transparent print:border-none outline-none" value={formData.actionSpecialAcceptReason} onChange={e => setFormData({...formData, actionSpecialAcceptReason: e.target.value})} /></div></td>
+                    <td className="p-2 border-r border-black"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionSpecialAcceptance} onChange={e => setFormData({...formData, actionSpecialAcceptance: e.target.checked})} /> <span className="font-bold">ยอมรับกรณีพิเศษ</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionSpecialAcceptanceQty || ''} onChange={e => setFormData({...formData, actionSpecialAcceptanceQty: parseInt(e.target.value) || 0})} /></div></td>
+                    <td className="p-2"><div className="flex items-center gap-2"><span className="font-bold">เหตุผลในการยอมรับ</span><input type="text" className="flex-1 border-b border-dotted border-black bg-transparent print:border-none outline-none" value={formData.actionSpecialAcceptanceReason} onChange={e => setFormData({...formData, actionSpecialAcceptanceReason: e.target.value})} /></div></td>
                 </tr>
                 <tr>
-                    <td className="p-2 border-r border-black"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionScrap} onChange={e => setFormData({...formData, actionScrap: e.target.checked})} /> <span className="font-bold">ทำลาย (Scrap)</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionScrapQty} onChange={e => setFormData({...formData, actionScrapQty: parseInt(e.target.value)})} /></div></td>
-                    <td className="p-2"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionReplace} onChange={e => setFormData({...formData, actionReplace: e.target.checked})} /> <span className="font-bold">เปลี่ยนสินค้าใหม่</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionReplaceQty} onChange={e => setFormData({...formData, actionReplaceQty: parseInt(e.target.value)})} /></div></td>
+                    <td className="p-2 border-r border-black"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionScrap} onChange={e => setFormData({...formData, actionScrap: e.target.checked})} /> <span className="font-bold">ทำลาย (Scrap)</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionScrapQty || ''} onChange={e => setFormData({...formData, actionScrapQty: parseInt(e.target.value) || 0})} /></div></td>
+                    <td className="p-2"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionReplace} onChange={e => setFormData({...formData, actionReplace: e.target.checked})} /> <span className="font-bold">เปลี่ยนสินค้าใหม่</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionReplaceQty || ''} onChange={e => setFormData({...formData, actionReplaceQty: parseInt(e.target.value) || 0})} /></div></td>
                 </tr>
             </tbody>
             <tfoot>
@@ -314,17 +340,14 @@ const NCRSystem: React.FC = () => {
                           <div><label className="block text-xs font-bold text-slate-500 mb-1">เลขที่เอกสารอ้างอิง</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.refNo} onChange={e => setNewItem({...newItem, refNo: e.target.value})} /></div>
                           <div><label className="block text-xs font-bold text-slate-500 mb-1">เลขที่เอกสาร Neo Siam</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.neoRefNo} onChange={e => setNewItem({...newItem, neoRefNo: e.target.value})} /></div>
                           <div className="grid grid-cols-3 gap-2 col-span-2">
-{/* FIX: Parse input value to number for quantity */}
                               <div><label className="block text-xs font-bold text-slate-500 mb-1">จำนวน</label><input type="number" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.quantity || ''} onChange={e => setNewItem({...newItem, quantity: parseInt(e.target.value, 10) || 0})} /></div>
                               <div><label className="block text-xs font-bold text-slate-500 mb-1">หน่วย</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})} /></div>
                               <div><label className="block text-xs font-bold text-slate-500 mb-1">วันหมดอายุ</label><input type="date" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.expiryDate} onChange={e => setNewItem({...newItem, expiryDate: e.target.value})} /></div>
                           </div>
-{/* FIX: Parse input value to number for priceBill */}
                           <div><label className="block text-xs font-bold text-slate-500 mb-1">ราคาหน้าบิล</label><input type="number" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.priceBill || ''} onChange={e => setNewItem({...newItem, priceBill: parseFloat(e.target.value) || 0})} /></div>
                           <div className="flex items-center pt-6"><label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-red-600"><input type="checkbox" checked={newItem.hasCost} onChange={e => setNewItem({...newItem, hasCost: e.target.checked})} /> มีค่าใช้จ่าย (Has Cost)</label></div>
                           {newItem.hasCost && (
                               <>
-{/* FIX: Parse input value to number for costAmount */}
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">ค่าใช้จ่าย (บาท)</label><input type="number" className="w-full border border-red-300 bg-red-50 rounded p-2 text-sm" value={newItem.costAmount || ''} onChange={e => setNewItem({...newItem, costAmount: parseFloat(e.target.value) || 0})} /></div>
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">ผู้รับผิดชอบค่าใช้จ่าย</label><input type="text" className="w-full border border-red-300 bg-red-50 rounded p-2 text-sm" value={newItem.costResponsible} onChange={e => setNewItem({...newItem, costResponsible: e.target.value})} /></div>
                               </>
@@ -394,6 +417,44 @@ const NCRSystem: React.FC = () => {
                   <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 shrink-0"><button onClick={() => setShowItemModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">ยกเลิก</button><button onClick={handleAddItem} className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">บันทึกรายการ</button></div>
               </div>
           </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                    <HelpCircle className="w-8 h-8 text-blue-600" />
+                </div>
+            </div>
+            <h3 className="text-lg font-bold mb-2 text-slate-800">ยืนยันการบันทึกข้อมูล</h3>
+            <p className="text-sm text-slate-500 mb-6">คุณต้องการบันทึกข้อมูล NCR นี้เข้าระบบใช่หรือไม่?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowConfirmModal(false)} className="flex-1 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">ยกเลิก</button>
+              <button onClick={executeSave} disabled={isSaving} className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-sm disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-2">
+                {isSaving && <Loader className="w-4 h-4 animate-spin" />}
+                ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Result Modal */}
+      {showResultModal && saveResult && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+             <div className="flex justify-center mb-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${saveResult.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                    {saveResult.success ? <CheckCircle className="w-8 h-8 text-green-600" /> : <XCircle className="w-8 h-8 text-red-600" />}
+                </div>
+            </div>
+            <h3 className="text-lg font-bold mb-2 text-slate-800">{saveResult.success ? 'บันทึกสำเร็จ!' : 'เกิดข้อผิดพลาด'}</h3>
+            <p className="text-sm text-slate-500 mb-6 whitespace-pre-wrap">{saveResult.message}{saveResult.success && saveResult.ncrNo && `\n(NCR No: ${saveResult.ncrNo})`}</p>
+            <button onClick={handleCloseResultModal} className={`w-full py-2 text-white rounded-lg font-bold shadow-sm ${saveResult.success ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>ตกลง</button>
+          </div>
+        </div>
       )}
     </div>
   );
