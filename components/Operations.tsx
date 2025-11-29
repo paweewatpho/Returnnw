@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useData } from '../DataContext';
 import { BRANCH_LIST, RETURN_ROUTES } from '../constants';
 import { ReturnRecord, ItemCondition, DispositionAction } from '../types';
-import { Scan, Box, Truck, RotateCcw, Trash2, Home, CheckCircle, ArrowRight, ClipboardList, PlusCircle, Save, Clock, Search, AlertCircle, XCircle, Edit3, ShieldCheck, User, Phone, Briefcase, Building2, Printer, FileText, X, PenTool, CheckSquare, Square, AlertTriangle, HelpCircle, Settings, Wrench, Package, Filter, LayoutGrid, FileInput, Check } from 'lucide-react';
+import { Scan, Box, Truck, RotateCcw, Trash2, Home, CheckCircle, ArrowRight, ClipboardList, PlusCircle, Save, Clock, Search, AlertCircle, XCircle, Edit3, ShieldCheck, User, Phone, Briefcase, Building2, Printer, FileText, X, PenTool, CheckSquare, Square, AlertTriangle, HelpCircle, Settings, Wrench, Package, Filter, LayoutGrid, FileInput, Check, MapPin, Activity, Inbox } from 'lucide-react';
 
 const PROBLEM_TYPES = ['ชำรุด', 'สูญหาย', 'สินค้าสลับ', 'สินค้าไม่ตรง INV.'];
 const ROOT_CAUSES = ['บรรจุภัณฑ์', 'การขนส่ง', 'ปฏิบัติงาน', 'สิ่งแวดล้อม'];
@@ -80,6 +79,10 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
     problemType: '',
     rootCause: '',
     ncrNumber: '',
+    refNo: '',
+    neoRefNo: '',
+    customerName: '',
+    destinationCustomer: '',
     actionReject: false,
     actionRejectQty: 0,
     actionRejectSort: false,
@@ -155,7 +158,9 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
       category: 'General',
       problemType: finalProblemType,
       rootCause: finalRootCause,
-      ncrNumber: formData.ncrNumber
+      ncrNumber: formData.ncrNumber,
+      neoRefNo: formData.neoRefNo,
+      destinationCustomer: formData.destinationCustomer,
     };
     
     const success = await addReturnRecord(newItem);
@@ -167,8 +172,7 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
         setCustomRootCause('');
         setIsCustomBranch(false);
     } else {
-        alert(`บันทึกไม่สำเร็จ! กรุณาตรวจสอบสิทธิ์การใช้งาน (Permission Denied)`);
-        // Do not clear form on failure
+        // Error alert is handled in DataContext
     }
   };
 
@@ -281,11 +285,92 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
       }
   };
 
+  const getDispositionBadge = (disp?: DispositionAction) => {
+      if (!disp || disp === 'Pending') return <span className="text-slate-400">-</span>;
+      const config: any = {
+          'RTV': { color: 'bg-amber-50 text-amber-700 border-amber-200', icon: Truck, label: 'ส่งคืน (Return)' },
+          'Restock': { color: 'bg-green-50 text-green-700 border-green-200', icon: RotateCcw, label: 'ขาย (Sell)' },
+          'Recycle': { color: 'bg-red-50 text-red-700 border-red-200', icon: Trash2, label: 'ทิ้ง (Scrap)' },
+          'InternalUse': { color: 'bg-purple-50 text-purple-700 border-purple-200', icon: Home, label: 'ใช้ภายใน' },
+          'Claim': { color: 'bg-blue-50 text-blue-700 border-blue-200', icon: ShieldCheck, label: 'เคลมประกัน' }
+      }[disp];
+      if (!config) return <span>{disp}</span>;
+      const Icon = config.icon;
+      return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${config.color}`}><Icon className="w-3 h-3" /> {config.label}</span>;
+  };
+
   const calculateTotal = (items: ReturnRecord[], hasVat: boolean) => {
       const subtotal = items.reduce((acc, item) => acc + ((item.priceBill || 0) * item.quantity), 0);
       const vat = hasVat ? subtotal * 0.07 : 0;
       const net = subtotal + vat;
       return { subtotal, vat, net };
+  };
+
+  const ThaiBahtText = (amount: number): string => {
+    const units = ["", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
+    const positions = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"];
+    
+    if (amount === 0) return "ศูนย์บาทถ้วน";
+    
+    let amountStr = amount.toFixed(2);
+    let parts = amountStr.split(".");
+    let integerPart = parts[0];
+    let decimalPart = parts[1];
+    
+    let result = "";
+    
+    // Process integer part
+    for (let i = 0; i < integerPart.length; i++) {
+        let digit = parseInt(integerPart.charAt(i));
+        let pos = integerPart.length - i - 1;
+        
+        if (digit !== 0) {
+            if (pos % 6 === 1 && digit === 1 && integerPart.length > 1) { // 1 in ten position
+                // Do nothing for 'sip'
+            } else if (pos % 6 === 1 && digit === 2) { // 2 in ten position
+                result += "ยี่";
+            } else if (pos % 6 === 0 && digit === 1 && integerPart.length > 1) { // 1 in unit position
+                result += "เอ็ด";
+            } else {
+                result += units[digit];
+            }
+            
+            result += positions[pos % 6];
+        }
+        
+        if (pos % 6 === 0 && pos > 0) { // Million position
+            result += "ล้าน";
+        }
+    }
+    
+    result += "บาท";
+    
+    // Process decimal part
+    if (parseInt(decimalPart) === 0) {
+        result += "ถ้วน";
+    } else {
+        for (let i = 0; i < decimalPart.length; i++) {
+            let digit = parseInt(decimalPart.charAt(i));
+            let pos = decimalPart.length - i - 1;
+            
+            if (digit !== 0) {
+                if (pos === 1 && digit === 1) {
+                    // Do nothing for 'sip'
+                } else if (pos === 1 && digit === 2) {
+                    result += "ยี่";
+                } else if (pos === 0 && digit === 1 && decimalPart.length > 1) {
+                    result += "เอ็ด";
+                } else {
+                    result += units[digit];
+                }
+                
+                if (pos === 1) result += "สิบ";
+            }
+        }
+        result += "สตางค์";
+    }
+    
+    return result;
   };
 
   // Filter Items from Context
@@ -405,7 +490,9 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div><label className="block text-sm font-medium text-slate-700 mb-1">เลขที่เอกสารอ้างอิง</label><input type="text" required value={formData.refNo} onChange={e => setFormData({...formData,refNo: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div>
-                        <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">ชื่อลูกค้า</label><input type="text" required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div>
+                        <div><label className="block text-sm font-medium text-slate-700 mb-1">เลขที่เอกสาร Neo Siam</label><input type="text" value={formData.neoRefNo} onChange={e => setFormData({...formData, neoRefNo: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div>
+                        <div className=""><label className="block text-sm font-medium text-slate-700 mb-1">ชื่อลูกค้า</label><input type="text" required value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div>
+                        <div className="md:col-span-3"><label className="block text-sm font-medium text-slate-700 mb-1">สถานที่ส่ง (ลูกค้าปลายทาง)</label><input type="text" value={formData.destinationCustomer} onChange={e => setFormData({...formData, destinationCustomer: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div>
                     </div>
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-4">
                         <h4 className="text-sm font-bold text-slate-600 flex items-center gap-2"><Box className="w-4 h-4" /> ข้อมูลสินค้า</h4>
@@ -431,210 +518,475 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
              </div>
           </div>
         )}
-
-        {/* STEP 2 */}
+        
+        {/* STEP 2: INTAKE */}
         {activeStep === 2 && (
           <div className="h-full overflow-auto p-6">
-             <div className="max-w-6xl mx-auto space-y-6">
-                <div className="flex justify-between items-center"><h2 className="text-2xl font-bold text-slate-800">2. รับสินค้าเข้า (Intake)</h2><span className="text-slate-500 text-sm">รายการที่สาขาแจ้งเข้ามา รอการตรวจรับจริง</span></div>
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-bold"><tr><th className="px-4 py-3">วันที่แจ้ง</th><th className="px-4 py-3">สาขา</th><th className="px-4 py-3">อ้างอิง/สินค้า</th><th className="px-4 py-3 text-right">จำนวน</th><th className="px-4 py-3 text-center">สถานะ</th><th className="px-4 py-3 text-center">Action</th></tr></thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {requestedItems.length === 0 ? (
-                                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">ไม่มีรายการรอนำเข้า</td></tr>
-                            ) : (
-                                requestedItems.map(item => (
-                                    <tr key={item.id} className="hover:bg-slate-50">
-                                        <td className="px-4 py-3 text-sm">{item.dateRequested || item.date}</td>
-                                        <td className="px-4 py-3 text-sm">{item.branch}</td>
-                                        <td className="px-4 py-3 text-sm"><div className="font-bold text-slate-800">{item.productName}</div><div className="text-xs text-slate-500">Ref: {item.refNo}</div></td>
-                                        <td className="px-4 py-3 text-sm text-right font-mono">{item.quantity} {item.unit}</td>
-                                        <td className="px-4 py-3 text-center"><span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">Requested</span></td>
-                                        <td className="px-4 py-3 text-center"><button onClick={() => handleIntakeReceive(item.id)} className="px-3 py-1.5 bg-green-600 text-white rounded shadow-sm hover:bg-green-700 text-xs font-bold flex items-center gap-1 mx-auto"><CheckCircle className="w-3 h-3" /> รับสินค้า (Receive)</button></td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Truck className="w-5 h-5 text-amber-500" /> สินค้าขาเข้า (Incoming Shipments)</h3>
+            {requestedItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-slate-400 bg-white rounded-xl border border-slate-200">
+                    <Inbox className="w-12 h-12 mb-2 opacity-50" />
+                    <p>ไม่มีรายการที่แจ้งเข้ามาใหม่</p>
                 </div>
+            ) : (
+                <div className="grid gap-4">
+                    {requestedItems.map(item => (
+                        <div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-blue-50 p-3 rounded-lg text-blue-600 font-bold font-mono text-xs">{item.id}</div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800">{item.productName}</h4>
+                                    <div className="text-sm text-slate-500 flex gap-3 mt-1">
+                                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.branch}</span>
+                                        <span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.customerName}</span>
+                                        <span className="font-mono bg-slate-100 px-1.5 rounded text-xs">Qty: {item.quantity} {item.unit}</span>
+                                    </div>
+                                    <div className="text-xs text-red-500 mt-1 italic">"{item.reason}"</div>
+                                </div>
+                            </div>
+                            <button onClick={() => handleIntakeReceive(item.id)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors">
+                                <CheckCircle className="w-4 h-4" /> รับของเข้าระบบ
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+          </div>
+        )}
+
+        {/* STEP 3: QC */}
+        {activeStep === 3 && (
+          <div className="h-full flex">
+             {/* Left: Queue */}
+             <div className="w-80 border-r border-slate-200 bg-white flex flex-col">
+                 <div className="p-4 border-b border-slate-100 font-bold text-slate-700 flex justify-between items-center">
+                     <span>คิวรอตรวจสอบ ({receivedItems.length})</span>
+                     <Activity className="w-4 h-4 text-blue-500" />
+                 </div>
+                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                     {receivedItems.map(item => (
+                         <div key={item.id} onClick={() => selectQCItem(item)} className={`p-3 rounded-lg border cursor-pointer transition-all ${qcSelectedItem?.id === item.id ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-200' : 'bg-white border-slate-100 hover:border-blue-100 hover:bg-slate-50'}`}>
+                             <div className="flex justify-between mb-1"><span className="text-xs font-bold text-slate-700">{item.productCode}</span><span className="text-[10px] text-slate-400">{item.dateReceived}</span></div>
+                             <div className="text-sm font-medium text-slate-800 truncate mb-1">{item.productName}</div>
+                             <div className="text-xs text-slate-500">{item.branch}</div>
+                         </div>
+                     ))}
+                     {receivedItems.length === 0 && <div className="p-4 text-center text-slate-400 text-xs italic">ไม่มีสินค้าที่ต้องตรวจสอบ</div>}
+                 </div>
+             </div>
+             
+             {/* Right: Workstation */}
+             <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+                 {qcSelectedItem ? (
+                     <div className="max-w-3xl mx-auto space-y-6">
+                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                             <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
+                                 <div>
+                                     <h3 className="text-2xl font-bold text-slate-800 mb-1">{qcSelectedItem.productName}</h3>
+                                     <div className="flex gap-4 text-sm text-slate-500">
+                                         <span>ID: {qcSelectedItem.id}</span>
+                                         <span>Ref: {qcSelectedItem.refNo}</span>
+                                         <span>Qty: <b>{qcSelectedItem.quantity} {qcSelectedItem.unit}</b></span>
+                                     </div>
+                                 </div>
+                                 <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold">In Progress</div>
+                             </div>
+                             
+                             {/* Grading */}
+                             <div className="mb-8">
+                                 <h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">1. ประเมินสภาพ (Grading)</h4>
+                                 <div className="grid grid-cols-2 gap-4">
+                                     <div className="space-y-2">
+                                         <div className="text-xs font-bold text-green-600 bg-green-50 p-1.5 rounded w-fit mb-2">Good (สภาพดี)</div>
+                                         <div className="grid grid-cols-2 gap-2">
+                                             {['New', 'BoxDamage', 'WetBox', 'LabelDefect', 'Other'].map((cond) => (
+                                                 <button 
+                                                     key={cond}
+                                                     onClick={() => handleConditionSelect(cond === 'Other' ? 'Other' : cond as ItemCondition, 'Good')}
+                                                     className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${qcSelectedItem.condition === cond || (cond === 'Other' && customInputType === 'Good') ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-green-300 hover:text-green-600'}`}
+                                                 >
+                                                     {cond === 'New' ? 'สภาพดี (Good)' : cond === 'BoxDamage' ? 'กล่องบุบ' : cond === 'WetBox' ? 'ลังเปียก' : cond === 'LabelDefect' ? 'ฉลากลอก' : 'อื่นๆ (ระบุ)'}
+                                                 </button>
+                                             ))}
+                                         </div>
+                                         {customInputType === 'Good' && (
+                                             <input type="text" placeholder="ระบุสภาพสินค้า..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-green-500 outline-none" value={qcSelectedItem.condition === 'New' || qcSelectedItem.condition === 'BoxDamage' || qcSelectedItem.condition === 'WetBox' || qcSelectedItem.condition === 'LabelDefect' ? '' : qcSelectedItem.condition} onChange={e => setQcSelectedItem({...qcSelectedItem, condition: e.target.value})} autoFocus />
+                                         )}
+                                     </div>
+                                     <div className="space-y-2">
+                                         <div className="text-xs font-bold text-red-600 bg-red-50 p-1.5 rounded w-fit mb-2">Bad (เสียหาย)</div>
+                                         <div className="grid grid-cols-2 gap-2">
+                                             {['Expired', 'Damaged', 'Defective', 'Other'].map((cond) => (
+                                                 <button 
+                                                     key={cond}
+                                                     onClick={() => handleConditionSelect(cond === 'Other' ? 'Other' : cond as ItemCondition, 'Bad')}
+                                                     className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${qcSelectedItem.condition === cond || (cond === 'Other' && customInputType === 'Bad') ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600'}`}
+                                                 >
+                                                     {cond === 'Expired' ? 'หมดอายุ' : cond === 'Damaged' ? 'ซาก (Scrap)' : cond === 'Defective' ? 'เสีย (Defective)' : 'อื่นๆ (ระบุ)'}
+                                                 </button>
+                                             ))}
+                                         </div>
+                                         {customInputType === 'Bad' && (
+                                             <input type="text" placeholder="ระบุความเสียหาย..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-red-500 outline-none" value={qcSelectedItem.condition === 'Expired' || qcSelectedItem.condition === 'Damaged' || qcSelectedItem.condition === 'Defective' ? '' : qcSelectedItem.condition} onChange={e => setQcSelectedItem({...qcSelectedItem, condition: e.target.value})} autoFocus />
+                                         )}
+                                     </div>
+                                 </div>
+                             </div>
+
+                             {/* Disposition */}
+                             <div>
+                                 <h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">2. ตัดสินใจ (Disposition)</h4>
+                                 <div className="grid grid-cols-5 gap-2 mb-4">
+                                     <button onClick={() => { setSelectedDisposition('RTV'); setIsCustomRoute(false); }} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'RTV' ? 'bg-amber-500 text-white border-amber-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Truck className="w-5 h-5 mb-1" /><span className="text-xs font-bold">ส่งคืน (Return)</span></button>
+                                     <button onClick={() => setSelectedDisposition('Restock')} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'Restock' ? 'bg-green-600 text-white border-green-700 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><RotateCcw className="w-5 h-5 mb-1" /><span className="text-xs font-bold">ขาย (Sell)</span></button>
+                                     <button onClick={() => setSelectedDisposition('Recycle')} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'Recycle' ? 'bg-red-500 text-white border-red-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Trash2 className="w-5 h-5 mb-1" /><span className="text-xs font-bold">ทิ้ง (Scrap)</span></button>
+                                     <button onClick={() => setSelectedDisposition('InternalUse')} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'InternalUse' ? 'bg-purple-500 text-white border-purple-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Home className="w-5 h-5 mb-1" /><span className="text-xs font-bold">ใช้ภายใน (Int)</span></button>
+                                     <button onClick={() => setSelectedDisposition('Claim')} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'Claim' ? 'bg-blue-500 text-white border-blue-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><ShieldCheck className="w-5 h-5 mb-1" /><span className="text-xs font-bold">เคลม (Claim)</span></button>
+                                 </div>
+                                 
+                                 {/* Dynamic Forms based on Disposition */}
+                                 {selectedDisposition === 'RTV' && (
+                                     <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 animate-fade-in">
+                                         <label className="block text-xs font-bold text-amber-800 mb-2">ระบุเส้นทางส่งคืน (Select Route)</label>
+                                         <div className="flex flex-wrap gap-3">
+                                             {RETURN_ROUTES.map(r => (
+                                                 <label key={r} className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-amber-200 text-sm text-slate-700 hover:border-amber-400">
+                                                     <input type="radio" name="route" value={r} checked={dispositionDetails.route === r} onChange={e => { setDispositionDetails({...dispositionDetails, route: e.target.value}); setIsCustomRoute(false); }} className="text-amber-500 focus:ring-amber-500" /> {r}
+                                                 </label>
+                                             ))}
+                                             <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-amber-200 text-sm text-slate-700 hover:border-amber-400">
+                                                 <input type="radio" name="route" checked={isCustomRoute} onChange={() => { setIsCustomRoute(true); setDispositionDetails({...dispositionDetails, route: ''}); }} className="text-amber-500 focus:ring-amber-500" /> อื่นๆ
+                                             </label>
+                                         </div>
+                                         {isCustomRoute && (
+                                             <input type="text" placeholder="ระบุเส้นทาง..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-amber-500 outline-none" value={dispositionDetails.route} onChange={e => setDispositionDetails({...dispositionDetails, route: e.target.value})} autoFocus />
+                                         )}
+                                     </div>
+                                 )}
+                                 
+                                 {selectedDisposition === 'Restock' && (
+                                     <div className="bg-green-50 p-4 rounded-lg border border-green-100 animate-fade-in grid grid-cols-2 gap-4">
+                                         <div><label className="block text-xs font-bold text-green-800 mb-1">ชื่อผู้ซื้อ (Buyer Name)</label><input type="text" className="w-full p-2 border border-green-200 rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" value={dispositionDetails.sellerName} onChange={e => setDispositionDetails({...dispositionDetails, sellerName: e.target.value})} /></div>
+                                         <div><label className="block text-xs font-bold text-green-800 mb-1">เบอร์โทรติดต่อ</label><input type="text" className="w-full p-2 border border-green-200 rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" value={dispositionDetails.contactPhone} onChange={e => setDispositionDetails({...dispositionDetails, contactPhone: e.target.value})} /></div>
+                                     </div>
+                                 )}
+
+                                 {selectedDisposition === 'InternalUse' && (
+                                     <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 animate-fade-in">
+                                         <label className="block text-xs font-bold text-purple-800 mb-1">หน่วยงาน/ผู้นำไปใช้ (Department/User)</label>
+                                         <input type="text" className="w-full p-2 border border-purple-200 rounded text-sm focus:ring-1 focus:ring-purple-500 outline-none" placeholder="เช่น แผนกบัญชี, คุณสมชาย" value={dispositionDetails.internalUseDetail} onChange={e => setDispositionDetails({...dispositionDetails, internalUseDetail: e.target.value})} />
+                                     </div>
+                                 )}
+
+                                 {selectedDisposition === 'Claim' && (
+                                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 animate-fade-in space-y-3">
+                                         <div><label className="block text-xs font-bold text-blue-800 mb-1">ชื่อบริษัทประกัน (Insurance Company)</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimCompany} onChange={e => setDispositionDetails({...dispositionDetails, claimCompany: e.target.value})} /></div>
+                                         <div className="grid grid-cols-2 gap-3">
+                                             <div><label className="block text-xs font-bold text-blue-800 mb-1">ผู้ประสานงาน</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimCoordinator} onChange={e => setDispositionDetails({...dispositionDetails, claimCoordinator: e.target.value})} /></div>
+                                             <div><label className="block text-xs font-bold text-blue-800 mb-1">เบอร์โทร</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimPhone} onChange={e => setDispositionDetails({...dispositionDetails, claimPhone: e.target.value})} /></div>
+                                         </div>
+                                     </div>
+                                 )}
+                             </div>
+                         </div>
+                         <div className="flex justify-end">
+                             <button onClick={handleQCSubmit} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 transform transition hover:-translate-y-1">ยืนยันผลการตรวจสอบ</button>
+                         </div>
+                     </div>
+                 ) : (
+                     <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                         <Search className="w-16 h-16 mb-4 opacity-20" />
+                         <p className="text-lg font-medium">เลือกรายการทางซ้ายเพื่อเริ่มตรวจสอบ</p>
+                     </div>
+                 )}
              </div>
           </div>
         )}
 
-        {/* STEP 3, 4, 5 are same structure but using dynamic items and async handlers */}
-        {activeStep === 3 && (
-            <div className="h-full flex flex-col md:flex-row p-6 gap-6">
-                <div className="w-full md:w-1/3 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center"><h3 className="font-bold text-slate-800 flex items-center gap-2"><Clock className="w-4 h-4 text-amber-500" /> รอตรวจสอบ (Received)</h3><span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full font-bold">{receivedItems.length}</span></div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                        {receivedItems.map(item => (
-                            <div key={item.id} onClick={() => selectQCItem(item)} className={`p-3 rounded-xl border cursor-pointer transition-all ${qcSelectedItem?.id === item.id ? 'bg-blue-50 border-blue-500' : 'bg-white border-slate-200 hover:border-blue-300'}`}>
-                                <div className="flex justify-between items-start mb-1"><span className="text-xs font-mono text-slate-500">{item.refNo}</span><span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 rounded">{item.branch}</span></div><h4 className="font-bold text-slate-800 text-sm mb-1">{item.productName}</h4><div className="text-xs text-slate-500">{item.quantity} {item.unit}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                    {qcSelectedItem ? (
-                        <div className="flex-1 flex flex-col h-full">
-                           <div className="p-6 border-b border-slate-100 bg-slate-50"><h2 className="text-2xl font-bold text-slate-800">{qcSelectedItem.productName}</h2><p className="text-sm text-slate-600">Ref: {qcSelectedItem.refNo} | Qty: {qcSelectedItem.quantity} {qcSelectedItem.unit}</p></div>
-                           <div className="p-8 flex-1 overflow-auto">
-                               <div className="grid grid-cols-2 gap-8">
-                                    <div className="space-y-4">
-                                        <h4 className="font-bold text-slate-500 uppercase text-xs">1. ประเมินสภาพ (Grading)</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {['New', 'BoxDamage', 'WetBox', 'LabelDefect'].map(c => <button key={c} onClick={() => handleConditionSelect(c as ItemCondition)} className={`px-3 py-2 border rounded text-xs ${qcSelectedItem.condition === c ? 'bg-green-600 text-white' : 'bg-white'}`}>{conditionLabels[c] || c}</button>)}
-                                            {['Expired', 'Damaged'].map(c => <button key={c} onClick={() => handleConditionSelect(c as ItemCondition)} className={`px-3 py-2 border rounded text-xs ${qcSelectedItem.condition === c ? 'bg-red-600 text-white' : 'bg-white'}`}>{conditionLabels[c] || c}</button>)}
-                                            <button onClick={() => handleConditionSelect('Other', 'Good')} className={`px-3 py-2 border rounded text-xs ${customInputType === 'Good' ? 'bg-blue-600 text-white' : 'bg-white'}`}>อื่นๆ (ดี)</button><button onClick={() => handleConditionSelect('Other', 'Bad')} className={`px-3 py-2 border rounded text-xs ${customInputType === 'Bad' ? 'bg-red-600 text-white' : 'bg-white'}`}>อื่นๆ (เสีย)</button>
-                                        </div>
-                                         {customInputType && <input type="text" placeholder="ระบุสภาพสินค้า..." className="w-full p-2 border rounded text-sm mt-2" value={qcSelectedItem.condition || ''} onChange={(e) => setQcSelectedItem({...qcSelectedItem, condition: e.target.value})} />}
-                                    </div>
-                                    <div className="space-y-4">
-                                        <h4 className="font-bold text-slate-500 uppercase text-xs">2. ตัดสินใจ (Disposition)</h4>
-                                        <div className="grid grid-cols-2 gap-2">{['RTV', 'Restock', 'Recycle', 'InternalUse', 'Claim'].map(d => (<button key={d} onClick={() => setSelectedDisposition(d as DispositionAction)} className={`px-3 py-2 border rounded text-xs ${selectedDisposition === d ? 'bg-blue-600 text-white' : 'bg-white'}`}>{dispositionLabels[d] || d}</button>))}</div>
-                                        {selectedDisposition === 'RTV' && <div className="mt-2 space-y-2"><label className="text-xs block mb-1">เลือกเส้นทาง:</label><select className="w-full border p-1 rounded text-sm" value={isCustomRoute ? 'Other' : dispositionDetails.route} onChange={e => { if(e.target.value === 'Other') { setIsCustomRoute(true); setDispositionDetails({...dispositionDetails, route: ''}); } else { setIsCustomRoute(false); setDispositionDetails({...dispositionDetails, route: e.target.value}); } }}><option value="">-- Select --</option>{RETURN_ROUTES.map(r => <option key={r} value={r}>{r}</option>)}<option value="Other">อื่นๆ</option></select>{isCustomRoute && <input type="text" placeholder="ระบุเส้นทาง..." className="w-full border p-1 rounded text-sm" value={dispositionDetails.route} onChange={e => setDispositionDetails({...dispositionDetails, route: e.target.value})} />}</div>}
-                                        {selectedDisposition === 'Restock' && <div className="mt-2 space-y-2 p-3 bg-slate-50 rounded border"><input type="text" placeholder="ชื่อผู้ซื้อ" className="w-full border p-1 rounded text-sm" value={dispositionDetails.sellerName} onChange={e => setDispositionDetails({...dispositionDetails, sellerName: e.target.value})} /><input type="text" placeholder="เบอร์โทรศัพท์" className="w-full border p-1 rounded text-sm" value={dispositionDetails.contactPhone} onChange={e => setDispositionDetails({...dispositionDetails, contactPhone: e.target.value})} /></div>}
-                                        {selectedDisposition === 'InternalUse' && <div className="mt-2 space-y-2 p-3 bg-slate-50 rounded border"><input type="text" placeholder="ระบุหน่วยงาน/ผู้เบิก" className="w-full border p-1 rounded text-sm" value={dispositionDetails.internalUseDetail} onChange={e => setDispositionDetails({...dispositionDetails, internalUseDetail: e.target.value})} /></div>}
-                                        {selectedDisposition === 'Claim' && <div className="mt-2 space-y-2 p-3 bg-slate-50 rounded border"><input type="text" placeholder="บริษัทประกัน" className="w-full border p-1 rounded text-sm" value={dispositionDetails.claimCompany} onChange={e => setDispositionDetails({...dispositionDetails, claimCompany: e.target.value})} /><input type="text" placeholder="ผู้ประสานงาน" className="w-full border p-1 rounded text-sm" value={dispositionDetails.claimCoordinator} onChange={e => setDispositionDetails({...dispositionDetails, claimCoordinator: e.target.value})} /></div>}
-                                    </div>
-                               </div>
-                               <button onClick={handleQCSubmit} disabled={!selectedDisposition || !qcSelectedItem.condition} className="mt-8 w-full py-3 bg-blue-600 text-white font-bold rounded-lg disabled:opacity-50">บันทึกผลการตรวจสอบ</button>
-                           </div>
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-slate-400">เลือกรายการด้านซ้ายเพื่อเริ่มงาน</div>
-                    )}
-                </div>
-            </div>
-        )}
-
+        {/* STEP 4: DOCS (KANBAN) */}
         {activeStep === 4 && (
-             <div className="h-full overflow-x-auto pb-2 p-6">
-                <div className="flex h-full gap-4 min-w-[1500px]">
-                   <KanbanColumn title="ส่งคืน (Return)" status="RTV" icon={Truck} color="bg-amber-500" />
-                   <KanbanColumn title="ขาย (Sell/Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" />
-                   <KanbanColumn title="เคลมประกัน (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" />
-                   <KanbanColumn title="ใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" />
-                   <KanbanColumn title="ทิ้ง/ทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" />
-                </div>
+          <div className="h-full overflow-x-auto p-6">
+             <div className="flex gap-4 h-full min-w-max pb-4">
+                <KanbanColumn title="ขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-100 text-green-700" />
+                <KanbanColumn title="ส่งคืน (Return)" status="RTV" icon={Truck} color="bg-amber-100 text-amber-700" />
+                <KanbanColumn title="เคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-100 text-blue-700" />
+                <KanbanColumn title="ใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-100 text-purple-700" />
+                <KanbanColumn title="ทิ้ง (Scrap)" status="Recycle" icon={Trash2} color="bg-red-100 text-red-700" />
              </div>
+          </div>
         )}
 
+        {/* STEP 5: DONE */}
         {activeStep === 5 && (
-            <div className="h-full overflow-auto p-6">
-                 <div className="max-w-6xl mx-auto space-y-6">
-                     <h2 className="text-2xl font-bold text-slate-800">5. ปิดงาน/ตรวจสอบผล (Completion)</h2>
-                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-bold"><tr><th className="px-4 py-3">วันที่เอกสาร</th><th className="px-4 py-3">สินค้า</th><th className="px-4 py-3 text-center">Disposition</th><th className="px-4 py-3">รายละเอียดปลายทาง</th><th className="px-4 py-3 text-center">สถานะปัจจุบัน</th><th className="px-4 py-3 text-center">Action</th></tr></thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {documentedItems.length === 0 ? (<tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">ไม่มีรายการรอปิดงาน</td></tr>) : (documentedItems.map(item => (<tr key={item.id} className="hover:bg-slate-50"><td className="px-4 py-3 text-sm">{item.dateDocumented || '-'} <br/><span className="text-xs text-slate-400">{item.branch}</span></td><td className="px-4 py-3 text-sm font-bold text-slate-800">{item.productName}</td><td className="px-4 py-3 text-center"><span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-bold">{item.disposition}</span></td><td className="px-4 py-3 text-sm text-slate-600">{item.disposition === 'RTV' && item.dispositionRoute}{item.disposition === 'Restock' && `Buyer: ${item.sellerName}`}{item.disposition === 'Claim' && item.claimCompany}</td><td className="px-4 py-3 text-center"><span className="text-blue-600 font-bold text-xs bg-blue-50 px-2 py-1 rounded">Documented</span></td><td className="px-4 py-3 text-center"><button onClick={() => handleCompleteJob(item.id)} className="px-3 py-1.5 bg-slate-800 text-white rounded shadow-sm hover:bg-slate-900 text-xs font-bold">ยืนยันจบงาน (Close)</button></td></tr>)))}
-                            </tbody>
-                        </table>
-                     </div>
-                     <div className="mt-8"><h3 className="font-bold text-slate-700 mb-2">ประวัติงานที่ปิดแล้ว (Completed History)</h3><div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden opacity-80"><table className="w-full text-left text-sm text-slate-500"><thead className="border-b border-slate-200"><tr><th className="px-4 py-2">Ref</th><th className="px-4 py-2">Product</th><th className="px-4 py-2">Date Completed</th><th className="px-4 py-2 text-center">Disposition</th><th className="px-4 py-2 text-center">Status</th></tr></thead><tbody>{completedItems.slice(0, 5).map(item => (<tr key={item.id}><td className="px-4 py-2">{item.refNo}</td><td className="px-4 py-2">{item.productName}</td><td className="px-4 py-2">{item.dateCompleted || '-'}</td><td className="px-4 py-2 text-center">{item.disposition}</td><td className="px-4 py-2 text-center text-green-600 font-bold">Completed</td></tr>))}</tbody></table></div></div>
+          <div className="h-full overflow-auto p-6">
+             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                 <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                     <h3 className="font-bold text-slate-700 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" /> รายการที่ออกเอกสารแล้ว (Documented)</h3>
+                     <span className="text-xs text-slate-500">รอการยืนยันปิดงานขั้นสุดท้าย</span>
                  </div>
-            </div>
-        )}
-
-        {/* Reusing Modal Logic - Code omitted for brevity but logic remains identical, just rendering `showSelectionModal` and `showDocModal` blocks as before */}
-        {showSelectionModal && selectionStatus && (
-            <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-                <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl flex flex-col max-h-[80vh]">
-                    <div className="p-4 border-b flex justify-between"><h3 className="font-bold">เลือกรายการสินค้า ({selectionStatus})</h3><button onClick={() => setShowSelectionModal(false)}><X className="w-5 h-5" /></button></div>
-                    <div className="flex-1 overflow-auto p-4">
-                        <table className="w-full text-sm"><thead><tr className="text-left bg-slate-50"><th className="p-2">Select</th><th className="p-2">Product</th><th className="p-2">Branch</th></tr></thead><tbody>{selectionItems.map(item => (<tr key={item.id} className="border-b"><td className="p-2"><input type="checkbox" checked={selectedItemIds.has(item.id)} onChange={() => toggleSelection(item.id)} /></td><td className="p-2">{item.productName}<div className="text-xs text-slate-400">{item.id}</div></td><td className="p-2">{item.branch}</td></tr>))}</tbody></table>
-                    </div>
-                    <div className="p-4 border-t flex justify-end gap-2"><button onClick={() => setShowSelectionModal(false)} className="px-4 py-2 border rounded">Cancel</button><button onClick={handleGenerateDoc} className="px-4 py-2 bg-blue-600 text-white rounded font-bold">สร้างเอกสาร</button></div>
-                </div>
-            </div>
-        )}
-
-        {showDocModal && docData && (
-             <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-                <div className="bg-white w-full max-w-5xl h-[95vh] rounded-xl flex flex-col shadow-2xl overflow-hidden">
-                    <div className="bg-slate-800 text-white p-4 flex justify-between items-center">
-                        <div className="flex items-center gap-3"><FileText className="w-5 h-5" /><h3 className="font-bold">ISO Document Generator</h3></div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => setIsDocEditable(!isDocEditable)} className={`px-3 py-1.5 rounded text-sm flex items-center gap-2 ${isDocEditable ? 'bg-yellow-500 text-white' : 'bg-slate-700 text-slate-300'}`}><Edit3 className="w-3 h-3" /> {isDocEditable ? 'Finish Editing' : 'Edit Mode'}</button>
-                            <label className="flex items-center gap-2 text-sm text-slate-300 px-2 cursor-pointer"><input type="checkbox" checked={includeVat} onChange={e => setIncludeVat(e.target.checked)} /> คิด VAT 7%</label>
-                             <button onClick={handleConfirmDocGeneration} className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-sm font-bold flex items-center gap-2 text-white"><Check className="w-4 h-4" /> ยืนยันเอกสาร</button>
-                             <button onClick={() => setShowDocModal(false)} className="p-2 text-slate-300 hover:text-white"><X className="w-5 h-5" /></button>
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-auto bg-slate-100 p-8 flex justify-center">
-                        <div className="bg-white shadow-lg w-[210mm] min-h-[297mm] p-[10mm] text-slate-900 relative">
-                             <table className="w-full border-collapse border border-black mb-4">
-                                <tbody>
-                                    <tr>
-                                        <td className="border border-black p-2 w-[150px] text-center align-middle"><img src="https://img2.pic.in.th/pic/logo-neo.png" alt="Company Logo" className="w-24 mx-auto" /></td>
-                                        <td className="border border-black p-2 align-middle">
-                                            {isDocEditable ? (
-                                                <div className="flex flex-col gap-1"><input className="font-bold text-sm w-full border border-blue-200 p-1" value={docConfig.companyNameTH} onChange={e => setDocConfig({...docConfig, companyNameTH: e.target.value})} /><input className="text-xs w-full border border-blue-200 p-1" value={docConfig.companyNameEN} onChange={e => setDocConfig({...docConfig, companyNameEN: e.target.value})} /><input className="text-[10px] w-full border border-blue-200 p-1" value={docConfig.address} onChange={e => setDocConfig({...docConfig, address: e.target.value})} /><input className="text-[10px] w-full border border-blue-200 p-1" value={docConfig.contact} onChange={e => setDocConfig({...docConfig, contact: e.target.value})} /></div>
-                                            ) : (
-                                                <div><h3 className="font-bold text-sm">{docConfig.companyNameTH}</h3><h4 className="text-xs">{docConfig.companyNameEN}</h4><p className="text-[10px]">{docConfig.address}</p><p className="text-[10px]">{docConfig.contact}</p></div>
-                                            )}
-                                        </td>
-                                        <td className="border border-black p-2 w-[150px] align-middle">
-                                            <div className="text-xs"><div className="flex justify-between border-b border-black border-dotted pb-1 mb-1"><span className="font-bold">Doc No:</span> <span>{getISODetails(docData.type).code}</span></div><div className="flex justify-between border-b border-black border-dotted pb-1 mb-1"><span className="font-bold">Rev No:</span> <span>{getISODetails(docData.type).rev}</span></div><div className="flex justify-between"><span className="font-bold">Date:</span> <span>{new Date().toISOString().split('T')[0]}</span></div></div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                             </table>
-                             <div className="text-center mb-6">
-                                 {isDocEditable ? (<><input className="text-center font-bold text-xl uppercase w-full border border-blue-200 p-1 mb-1" value={docConfig.titleTH} onChange={e => setDocConfig({...docConfig, titleTH: e.target.value})} /><input className="text-center font-bold text-sm uppercase w-full border border-blue-200 p-1" value={docConfig.titleEN} onChange={e => setDocConfig({...docConfig, titleEN: e.target.value})} /></>) : (<><h1 className="font-bold text-xl uppercase">{docConfig.titleTH}</h1><h2 className="font-bold text-sm uppercase text-slate-500">{docConfig.titleEN}</h2></>)}
-                             </div>
-                             <div className="flex border border-black mb-4">
-                                <div className="w-1/2 p-2 border-r border-black"><h4 className="font-bold text-xs underline mb-2">ผู้ส่ง / ผู้ขออนุมัติ (Sender / Requestor)</h4><p className="text-xs mb-1"><span className="font-bold w-20 inline-block">หน่วยงาน:</span> แผนกคืนสินค้า</p><p className="text-xs mb-1"><span className="font-bold w-20 inline-block">วันที่บันทึก:</span> {new Date().toISOString().split('T')[0]}</p></div>
-                                <div className="w-1/2 p-2"><h4 className="font-bold text-xs underline mb-2">ผู้รับ / ปลายทาง (Receiver / Destination)</h4><p className="text-xs mb-1"><span className="font-bold w-20 inline-block">ปลายทาง:</span> {docData.type === 'Restock' ? 'คลังสินค้า (Stock)' : docData.type === 'RTV' ? 'ผู้ผลิต/Supplier' : docData.type === 'Claim' ? 'บริษัทประกัน' : '-'}</p>{docData.type === 'Restock' && (<><p className="text-xs mb-1"><span className="font-bold w-20 inline-block">ชื่อผู้ซื้อ:</span> {docData.items[0]?.sellerName || '-'}</p><p className="text-xs mb-1"><span className="font-bold w-20 inline-block">เบอร์โทร:</span> {docData.items[0]?.contactPhone || '-'}</p></>)}</div>
-                             </div>
-                             <table className="w-full border-collapse border border-black text-sm mb-4">
-                                 <thead><tr className="bg-slate-100 font-bold text-center text-xs"><th className="border border-black p-1 w-10">ลำดับ</th><th className="border border-black p-1">รายการสินค้า / รายละเอียด</th><th className="border border-black p-1 w-20">จำนวน</th><th className="border border-black p-1 w-20">หน่วย</th><th className="border border-black p-1 w-24">ราคา/หน่วย</th><th className="border border-black p-1 w-24">จำนวนเงิน</th></tr></thead>
-                                 <tbody>{docData.items.map((item, idx) => (<tr key={idx} className="text-xs"><td className="border border-black p-1 text-center">{idx + 1}</td><td className="border border-black p-1"><div className="font-bold">{item.productName}</div><div className="text-[10px] text-slate-500">Ref: {item.refNo} | Branch: {item.branch}</div></td><td className="border border-black p-1 text-center">{item.quantity}</td><td className="border border-black p-1 text-center">{item.unit}</td><td className="border border-black p-1 text-right">{(item.priceBill || 0).toLocaleString()}</td><td className="border border-black p-1 text-right">{((item.priceBill || 0) * item.quantity).toLocaleString()}</td></tr>))}</tbody>
-                                 <tfoot><tr className="bg-slate-100 font-bold"><td colSpan={4} className="border border-black p-2 text-center">({ThaiBahtText(calculateTotal(docData.items, includeVat).net)})</td><td className="border border-black p-2 text-right">รวมเป็นเงิน<br/>ภาษี (7%)<br/>ยอดสุทธิ</td><td className="border border-black p-2 text-right">{calculateTotal(docData.items, includeVat).subtotal.toLocaleString()}<br/>{calculateTotal(docData.items, includeVat).vat.toLocaleString()}<br/><span className="underline">{calculateTotal(docData.items, includeVat).net.toLocaleString()}</span></td></tr></tfoot>
-                             </table>
-                             <div className="mb-8"><h4 className="font-bold text-xs mb-1">หมายเหตุ (Remarks):</h4>{isDocEditable ? <textarea className="w-full border border-blue-200 p-1 text-xs" rows={3} value={docConfig.remarks} onChange={e => setDocConfig({...docConfig, remarks: e.target.value})} /> : <pre className="text-xs font-sans whitespace-pre-wrap">{docConfig.remarks}</pre>}</div>
-                             <div className="flex justify-between items-end gap-4 text-center mt-auto"><div className="flex-1">{isDocEditable ? <input className="w-full border border-blue-200 text-center text-xs mb-1" value={docConfig.signatory1} onChange={e => setDocConfig({...docConfig, signatory1: e.target.value})} /> : <p className="font-bold text-xs mb-8">{docConfig.signatory1}</p>}<div className="border-b border-black w-3/4 mx-auto mb-2"></div><p className="text-[10px]">วันที่ ......../......../............</p></div><div className="flex-1">{isDocEditable ? <input className="w-full border border-blue-200 text-center text-xs mb-1" value={docConfig.signatory2} onChange={e => setDocConfig({...docConfig, signatory2: e.target.value})} /> : <p className="font-bold text-xs mb-8">{docConfig.signatory2}</p>}<div className="border-b border-black w-3/4 mx-auto mb-2"></div><p className="text-[10px]">วันที่ ......../......../............</p></div><div className="flex-1">{isDocEditable ? <input className="w-full border border-blue-200 text-center text-xs mb-1" value={docConfig.signatory3} onChange={e => setDocConfig({...docConfig, signatory3: e.target.value})} /> : <p className="font-bold text-xs mb-8">{docConfig.signatory3}</p>}<div className="border-b border-black w-3/4 mx-auto mb-2"></div><p className="text-[10px]">วันที่ ......../......../............</p></div></div>
-                             <div className="absolute bottom-4 left-10 text-[10px] text-slate-400">ISO 9001:2015 Controlled Document</div>
-                        </div>
-                    </div>
-                </div>
+                 <table className="w-full text-left">
+                     <thead className="bg-white border-b border-slate-100 text-xs uppercase text-slate-500">
+                         <tr><th className="px-6 py-3">รหัสสินค้า</th><th className="px-6 py-3">สินค้า</th><th className="px-6 py-3">การจัดการ</th><th className="px-6 py-3 text-center">สถานะ</th><th className="px-6 py-3 text-center">ดำเนินการ</th></tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-50">
+                         {documentedItems.map(item => (
+                             <tr key={item.id} className="hover:bg-slate-50">
+                                 <td className="px-6 py-4 font-mono text-xs text-slate-500">{item.id}</td>
+                                 <td className="px-6 py-4"><div className="font-bold text-slate-800">{item.productName}</div><div className="text-xs text-slate-500">{item.customerName}</div></td>
+                                 <td className="px-6 py-4">{getDispositionBadge(item.disposition)}</td>
+                                 <td className="px-6 py-4 text-center"><span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-bold">รอปิดงาน</span></td>
+                                 <td className="px-6 py-4 text-center">
+                                     <button onClick={() => handleCompleteJob(item.id)} className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 shadow-sm transition-colors">ยืนยันปิดงาน</button>
+                                 </td>
+                             </tr>
+                         ))}
+                         {documentedItems.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">ไม่มีรายการที่ต้องปิดงาน</td></tr>}
+                     </tbody>
+                 </table>
              </div>
+          </div>
         )}
       </div>
+
+      {/* SELECTION MODAL */}
+      {showSelectionModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+              <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[80vh] animate-fade-in">
+                  <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                      <h3 className="text-xl font-bold text-slate-800">เลือกรายการสินค้าเพื่อออกเอกสาร</h3>
+                      <button onClick={() => setShowSelectionModal(false)}><X className="w-6 h-6 text-slate-400 hover:text-slate-600" /></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2">
+                      {selectionItems.map(item => (
+                          <div key={item.id} onClick={() => toggleSelection(item.id)} className={`flex items-center gap-4 p-4 m-2 rounded-xl border cursor-pointer transition-all ${selectedItemIds.has(item.id) ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                              <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedItemIds.has(item.id) ? 'bg-blue-500 border-blue-500' : 'border-slate-300 bg-white'}`}>
+                                  {selectedItemIds.has(item.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                              </div>
+                              <div className="flex-1">
+                                  <div className="font-bold text-slate-800">{item.productName}</div>
+                                  <div className="text-xs text-slate-500 flex gap-2 mt-1"><span>{item.id}</span><span>•</span><span>{item.branch}</span><span>•</span><span>{item.quantity} {item.unit}</span></div>
+                              </div>
+                              <div className="text-right text-xs">
+                                  <div className="font-bold text-slate-700">Ref: {item.refNo}</div>
+                                  <div className="text-slate-400">{item.date}</div>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+                  <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 rounded-b-2xl">
+                      <div className="text-sm text-slate-600">เลือกแล้ว <b>{selectedItemIds.size}</b> รายการ</div>
+                      <button onClick={handleGenerateDoc} disabled={selectedItemIds.size === 0} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">สร้างเอกสาร</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* DOCUMENT PREVIEW MODAL */}
+      {showDocModal && docData && (
+        <div className="fixed inset-0 z-50 bg-slate-900/90 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white w-[210mm] min-h-[297mm] h-auto shadow-2xl relative flex flex-col my-8">
+             {/* Toolbar */}
+             <div className="absolute -top-12 left-0 right-0 flex justify-between items-center text-white print:hidden">
+                 <div className="flex items-center gap-4">
+                     <h3 className="font-bold text-lg">ตัวอย่างเอกสาร (Preview)</h3>
+                     <label className="flex items-center gap-2 cursor-pointer bg-white/20 px-3 py-1 rounded hover:bg-white/30 transition">
+                         <input type="checkbox" checked={includeVat} onChange={(e) => setIncludeVat(e.target.checked)} className="rounded text-blue-500 focus:ring-0" />
+                         <span className="text-sm">คิดภาษีมูลค่าเพิ่ม (VAT 7%)</span>
+                     </label>
+                     <button onClick={() => setIsDocEditable(!isDocEditable)} className={`flex items-center gap-2 px-3 py-1 rounded text-sm transition ${isDocEditable ? 'bg-yellow-500 text-black' : 'bg-white/20 hover:bg-white/30'}`}>
+                         <Edit3 className="w-4 h-4" /> {isDocEditable ? 'Finish Editing' : 'Edit Mode'}
+                     </button>
+                 </div>
+                 <div className="flex gap-2">
+                     <button onClick={() => window.print()} className="bg-white text-slate-900 px-4 py-2 rounded-lg font-bold hover:bg-slate-100 flex items-center gap-2"><Printer className="w-4 h-4" /> พิมพ์ (Print)</button>
+                     <button onClick={handleConfirmDocGeneration} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 shadow-lg"><CheckCircle className="w-4 h-4" /> ยืนยันการออกเอกสาร</button>
+                     <button onClick={() => setShowDocModal(false)} className="bg-red-500/80 text-white p-2 rounded-lg hover:bg-red-600"><X className="w-5 h-5" /></button>
+                 </div>
+             </div>
+
+             {/* DOCUMENT CONTENT (A4) */}
+             <div className="p-12 flex-1 flex flex-col text-slate-900 font-serif relative">
+                 {/* Header Table */}
+                 <table className="w-full border border-black mb-6">
+                     <tbody>
+                         <tr>
+                             <td className="w-[20%] border-r border-black p-4 text-center align-middle">
+                                 <img src="https://img2.pic.in.th/pic/logo-neo.png" alt="Company Logo" className="w-full h-auto object-contain max-h-20" />
+                             </td>
+                             <td className="w-[50%] border-r border-black p-4">
+                                 {isDocEditable ? (
+                                     <div className="space-y-2">
+                                         <input className="w-full border p-1 text-sm font-bold" value={docConfig.companyNameTH} onChange={(e) => setDocConfig({...docConfig, companyNameTH: e.target.value})} />
+                                         <input className="w-full border p-1 text-sm font-bold" value={docConfig.companyNameEN} onChange={(e) => setDocConfig({...docConfig, companyNameEN: e.target.value})} />
+                                         <textarea className="w-full border p-1 text-xs resize-none" rows={2} value={docConfig.address} onChange={(e) => setDocConfig({...docConfig, address: e.target.value})} />
+                                         <input className="w-full border p-1 text-xs" value={docConfig.contact} onChange={(e) => setDocConfig({...docConfig, contact: e.target.value})} />
+                                     </div>
+                                 ) : (
+                                     <>
+                                         <h1 className="text-lg font-bold leading-tight">{docConfig.companyNameTH}</h1>
+                                         <h2 className="text-sm font-bold mb-2">{docConfig.companyNameEN}</h2>
+                                         <p className="text-xs leading-relaxed">{docConfig.address}</p>
+                                         <p className="text-xs mt-1">{docConfig.contact}</p>
+                                     </>
+                                 )}
+                             </td>
+                             <td className="w-[30%] p-2 align-top text-xs">
+                                 <div className="grid grid-cols-2 gap-y-2">
+                                     <span className="font-bold">Document No:</span>
+                                     <span className="font-mono text-right">{docData.items[0]?.id.replace('RT-', getISODetails(docData.type).code + '-')}</span>
+                                     <span className="font-bold">Date:</span>
+                                     <span className="text-right">{new Date().toLocaleDateString('th-TH')}</span>
+                                     <span className="font-bold">Form Code:</span>
+                                     <span className="text-right">{getISODetails(docData.type).code}</span>
+                                     <span className="font-bold">Rev No:</span>
+                                     <span className="text-right">{getISODetails(docData.type).rev}</span>
+                                 </div>
+                             </td>
+                         </tr>
+                     </tbody>
+                 </table>
+
+                 {/* Title */}
+                 <div className="text-center mb-6 border border-black py-3 bg-slate-50 print:bg-transparent">
+                     <h2 className="text-xl font-bold uppercase">{docConfig.titleTH || getISODetails(docData.type).th}</h2>
+                     <h3 className="text-sm font-bold text-slate-500 uppercase">{docConfig.titleEN || getISODetails(docData.type).en}</h3>
+                 </div>
+
+                 {/* Info Block */}
+                 <div className="flex border border-black mb-6">
+                     <div className="w-1/2 p-4 border-r border-black space-y-2 text-sm">
+                         <h4 className="font-bold border-b border-black pb-1 mb-2">ผู้ส่ง / ผู้ขออนุมัติ (Sender / Requestor)</h4>
+                         <p><span className="font-bold w-20 inline-block">หน่วยงาน:</span> แผนกคืนสินค้า (Return Department)</p>
+                         <p><span className="font-bold w-20 inline-block">วันที่บันทึก:</span> {docData.items[0]?.date}</p>
+                     </div>
+                     <div className="w-1/2 p-4 space-y-2 text-sm">
+                         <h4 className="font-bold border-b border-black pb-1 mb-2">ผู้รับ / ปลายทาง (Receiver / Destination)</h4>
+                         {docData.type === 'RTV' && (
+                             <p><span className="font-bold w-20 inline-block">ปลายทาง:</span> {docData.items[0]?.dispositionRoute}</p>
+                         )}
+                         {docData.type === 'Restock' && (
+                             <>
+                                 <p><span className="font-bold w-20 inline-block">ชื่อผู้ซื้อ:</span> {docData.items[0]?.sellerName}</p>
+                                 <p><span className="font-bold w-20 inline-block">เบอร์โทร:</span> {docData.items[0]?.contactPhone}</p>
+                             </>
+                         )}
+                         {docData.type === 'Claim' && (
+                             <>
+                                 <p><span className="font-bold w-20 inline-block">บริษัทประกัน:</span> {docData.items[0]?.claimCompany}</p>
+                                 <p><span className="font-bold w-20 inline-block">ผู้ติดต่อ:</span> {docData.items[0]?.claimCoordinator}</p>
+                                 <p><span className="font-bold w-20 inline-block">เบอร์โทร:</span> {docData.items[0]?.claimPhone}</p>
+                             </>
+                         )}
+                         {docData.type === 'InternalUse' && (
+                             <p><span className="font-bold w-20 inline-block">หน่วยงาน:</span> {docData.items[0]?.internalUseDetail}</p>
+                         )}
+                     </div>
+                 </div>
+
+                 {/* Table */}
+                 <table className="w-full border-collapse border border-black mb-6 text-sm">
+                     <thead className="bg-slate-100 print:bg-transparent text-center font-bold">
+                         <tr>
+                             <th className="border border-black py-2 w-12">No.</th>
+                             <th className="border border-black py-2">รหัสสินค้า (Code)</th>
+                             <th className="border border-black py-2">รายการ (Description)</th>
+                             <th className="border border-black py-2 w-20">จำนวน</th>
+                             <th className="border border-black py-2 w-16">หน่วย</th>
+                             <th className="border border-black py-2 w-24">ราคา/หน่วย</th>
+                             <th className="border border-black py-2 w-24">จำนวนเงิน</th>
+                         </tr>
+                     </thead>
+                     <tbody>
+                         {docData.items.map((item, index) => (
+                             <tr key={index}>
+                                 <td className="border border-black py-2 text-center">{index + 1}</td>
+                                 <td className="border border-black py-2 px-2 font-mono">{item.productCode}</td>
+                                 <td className="border border-black py-2 px-2">
+                                     <div className="font-bold">{item.productName}</div>
+                                     <div className="text-xs text-slate-500">
+                                         สาขา: {item.branch} | Ref: {item.refNo} {item.customerName ? `| ลูกค้า: ${item.customerName}` : ''}
+                                     </div>
+                                 </td>
+                                 <td className="border border-black py-2 text-center">{item.quantity}</td>
+                                 <td className="border border-black py-2 text-center">{item.unit}</td>
+                                 <td className="border border-black py-2 text-right px-2">{(item.priceBill || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                 <td className="border border-black py-2 text-right px-2">{((item.priceBill || 0) * item.quantity).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                             </tr>
+                         ))}
+                         {/* Fill empty rows to maintain A4 look */}
+                         {Array.from({ length: Math.max(0, 10 - docData.items.length) }).map((_, i) => (
+                             <tr key={`empty-${i}`}>
+                                 <td className="border border-black py-2">&nbsp;</td>
+                                 <td className="border border-black py-2">&nbsp;</td>
+                                 <td className="border border-black py-2">&nbsp;</td>
+                                 <td className="border border-black py-2">&nbsp;</td>
+                                 <td className="border border-black py-2">&nbsp;</td>
+                                 <td className="border border-black py-2">&nbsp;</td>
+                                 <td className="border border-black py-2">&nbsp;</td>
+                             </tr>
+                         ))}
+                     </tbody>
+                     <tfoot>
+                         <tr>
+                             <td colSpan={4} rowSpan={3} className="border border-black p-2 align-top text-xs">
+                                 <span className="font-bold underline mb-1 block">หมายเหตุ (Remarks):</span>
+                                 {isDocEditable ? (
+                                     <textarea className="w-full h-full resize-none border-none outline-none bg-transparent" value={docConfig.remarks} onChange={(e) => setDocConfig({...docConfig, remarks: e.target.value})} />
+                                 ) : (
+                                     <p className="whitespace-pre-wrap">{docConfig.remarks}</p>
+                                 )}
+                                 <div className="mt-4 text-center font-bold">
+                                     ( {ThaiBahtText(calculateTotal(docData.items, includeVat).net)} )
+                                 </div>
+                             </td>
+                             <td colSpan={2} className="border border-black p-1 text-right font-bold bg-slate-50 print:bg-transparent">รวมเป็นเงิน</td>
+                             <td className="border border-black p-1 text-right">{calculateTotal(docData.items, includeVat).subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                         </tr>
+                         <tr>
+                             <td colSpan={2} className="border border-black p-1 text-right font-bold bg-slate-50 print:bg-transparent">ภาษีมูลค่าเพิ่ม (7%)</td>
+                             <td className="border border-black p-1 text-right">{calculateTotal(docData.items, includeVat).vat.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                         </tr>
+                         <tr>
+                             <td colSpan={2} className="border border-black p-1 text-right font-bold bg-slate-50 print:bg-transparent text-base">ยอดเงินสุทธิ</td>
+                             <td className="border border-black p-1 text-right font-bold text-base">{calculateTotal(docData.items, includeVat).net.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                         </tr>
+                     </tfoot>
+                 </table>
+
+                 {/* Signatures */}
+                 <div className="mt-auto grid grid-cols-3 gap-4 text-center">
+                     <div className="border border-black p-4 pt-12 relative">
+                         <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
+                         {isDocEditable ? <input className="text-center w-full text-xs font-bold" value={docConfig.signatory1} onChange={e => setDocConfig({...docConfig, signatory1: e.target.value})} /> : <p className="text-xs font-bold">{docConfig.signatory1}</p>}
+                         <p className="text-xs mt-4">วันที่ ......../......../............</p>
+                     </div>
+                     <div className="border border-black p-4 pt-12 relative">
+                         <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
+                         {isDocEditable ? <input className="text-center w-full text-xs font-bold" value={docConfig.signatory2} onChange={e => setDocConfig({...docConfig, signatory2: e.target.value})} /> : <p className="text-xs font-bold">{docConfig.signatory2}</p>}
+                         <p className="text-xs mt-4">วันที่ ......../......../............</p>
+                     </div>
+                     <div className="border border-black p-4 pt-12 relative">
+                         <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
+                         {isDocEditable ? <input className="text-center w-full text-xs font-bold" value={docConfig.signatory3} onChange={e => setDocConfig({...docConfig, signatory3: e.target.value})} /> : <p className="text-xs font-bold">{docConfig.signatory3}</p>}
+                         <p className="text-xs mt-4">วันที่ ......../......../............</p>
+                     </div>
+                 </div>
+
+                 {/* Footer Dist */}
+                 <div className="mt-4 text-[10px] text-slate-500 flex justify-between">
+                     <span>Distribution: Original (Customer), Copy 1 (Accounting), Copy 2 (Warehouse)</span>
+                     <span>System Generated by ReturnNeosiam Pro</span>
+                 </div>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export function ThaiBahtText(amount: number): string {
-  if (amount == null || isNaN(amount)) return "-";
-  const num = amount.toFixed(2);
-  const [bahtStr, satangStr] = num.split(".");
-  const baht = parseInt(bahtStr);
-  const satang = parseInt(satangStr);
-  if (baht === 0 && satang === 0) return "ศูนย์บาทถ้วน";
-  const numTexts = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
-  const unitTexts = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"];
-  const convert = (nStr: string): string => {
-    let text = "";
-    const len = nStr.length;
-    for (let i = 0; i < len; i++) {
-      const digit = parseInt(nStr[i]);
-      const pos = len - i - 1;
-      if (digit === 0) continue;
-      if (pos === 1 && digit === 2) { text += "ยี่"; } else if (pos === 1 && digit === 1) { text += ""; } else if (pos === 0 && digit === 1 && len > 1) { text += "เอ็ด"; } else { text += numTexts[digit]; }
-      if (pos === 1) { text += "สิบ"; } else { text += unitTexts[pos]; }
-    }
-    return text;
-  };
-  let result = "";
-  if (baht > 0) {
-    if (bahtStr.length > 6) { const millions = bahtStr.substring(0, bahtStr.length - 6); const remainder = bahtStr.substring(bahtStr.length - 6); result += convert(millions) + "ล้าน" + convert(remainder); } else { result += convert(bahtStr); }
-    result += "บาท";
-  }
-  if (satang > 0) { result += convert(satangStr) + "สตางค์"; } else { result += "ถ้วน"; }
-  return result;
-}
+// Helper for icon colors
+import { LucideIcon } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 
 export default Operations;

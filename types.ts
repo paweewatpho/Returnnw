@@ -20,7 +20,8 @@ export enum AppView {
   OPERATIONS = 'OPERATIONS',
   NCR = 'NCR',
   NCR_REPORT = 'NCR_REPORT',
-  INVENTORY = 'INVENTORY'
+  INVENTORY = 'INVENTORY',
+  STOCK_SUMMARY = 'STOCK_SUMMARY'
 }
 
 export interface ChatMessage {
@@ -61,6 +62,10 @@ export interface ReturnRecord {
   date: string; // ISO Date string YYYY-MM-DD (General/Initial Date)
   amount: number; // Qty * Price (Total Value)
   
+  // NEW: Fields for detailed tracking
+  neoRefNo?: string; // เลขที่เอกสาร Neo Siam
+  destinationCustomer?: string; // สถานที่ส่ง (ลูกค้าปลายทาง)
+
   // Status Timestamps (Timeline)
   dateRequested?: string;   // 1. แจ้งคืนสินค้า
   dateReceived?: string;    // 2. รับสินค้าเข้า

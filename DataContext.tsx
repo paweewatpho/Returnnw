@@ -1,8 +1,8 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { db } from './firebase';
 import { ref, onValue, set, update, remove, runTransaction } from 'firebase/database';
 import { ReturnRecord } from './types';
-import { MOCK_RETURN_HISTORY, MOCK_NCR_HISTORY } from './constants';
 
 // Interface for NCR Item (the product list inside an NCR)
 export interface NCRItem {
@@ -94,7 +94,7 @@ export interface NCRRecord {
   qaReject: boolean;
   qaReason: string;
 
-  status: 'Open' | 'Closed'; // Simplified status for report
+  status: 'Open' | 'Closed' | 'Canceled'; // Add 'Canceled' for soft delete
 }
 
 
@@ -107,7 +107,7 @@ interface DataContextType {
   deleteReturnRecord: (id: string) => Promise<boolean>;
   addNCRReport: (item: NCRRecord) => Promise<boolean>;
   updateNCRReport: (id: string, data: Partial<NCRRecord>) => Promise<boolean>;
-  deleteNCRReport: (id: string) => Promise<boolean>;
+  deleteNCRReport: (id: string) => Promise<boolean>; // This will now be a "cancel" operation
   getNextNCRNumber: () => Promise<string>;
 }
 
@@ -138,13 +138,43 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const returnRef = ref(db, 'return_records');
     const unsubReturn = onValue(returnRef, (snapshot) => {
       const data = snapshot.val();
-      const loadedItems = data ? Object.values(data).filter(Boolean) as ReturnRecord[] : [];
+      // FIX: Add robust filtering to prevent crashes from malformed data
+      const loadedItems = data
+        ? (Object.values(data) as any[])
+            .filter((item): item is ReturnRecord => {
+              // 1. Basic Object Check
+              if (!item || typeof item !== 'object') return false;
+
+              // 2. Strict Type Checking for crucial fields required by Operations UI
+              const requiredStrings = ['id', 'date', 'status', 'branch', 'customerName', 'productName', 'productCode'];
+              for (const field of requiredStrings) {
+                  if (typeof (item as any)[field] !== 'string') {
+                      console.warn(`🛡️ Data Hardening: Filtering out invalid ReturnRecord (missing/bad ${field})`, item);
+                      return false;
+                  }
+              }
+
+              // 3. Numeric Fields Check & Auto-fix
+              if (typeof item.quantity !== 'number') {
+                  // Attempt to parse string to number
+                  if (typeof item.quantity === 'string' && !isNaN(parseFloat(item.quantity))) {
+                      (item as any).quantity = parseFloat(item.quantity);
+                  } else {
+                      console.warn(`🛡️ Data Hardening: Filtering out invalid ReturnRecord (bad quantity)`, item);
+                      return false;
+                  }
+              }
+              
+              return true; // All checks passed
+            })
+        : [];
+      
       setItems(loadedItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setLoading(false);
-      console.log(`✅ RTDB Connected: Loaded ${loadedItems.length} Return Records`);
+      console.log(`✅ RTDB Connected: Loaded ${loadedItems.length} valid Return Records`);
     }, (error) => {
-      console.warn("⚠️ RTDB Permission/Connection Error (Returns). Falling back to mock data.", error.message);
-      setItems(MOCK_RETURN_HISTORY);
+      console.warn("⚠️ RTDB Permission/Connection Error (Returns).", error.message);
+      setItems([]);
       setLoading(false);
     });
 
@@ -152,12 +182,36 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const ncrRef = ref(db, 'ncr_reports');
     const unsubNCR = onValue(ncrRef, (snapshot) => {
       const data = snapshot.val();
-      const loadedReports = data ? Object.values(data).filter(Boolean) as NCRRecord[] : [];
+      // FIX: Add robust filtering for NCR reports as well
+      const loadedReports = data
+        ? (Object.values(data) as any[])
+            .filter((report): report is NCRRecord => {
+              if (!report || typeof report !== 'object') return false;
+              
+              // Header checks
+              if (typeof report.id !== 'string' || typeof report.date !== 'string' || typeof report.status !== 'string') {
+                console.warn("🛡️ Data Hardening: Filtering out invalid NCR (missing header fields).", report);
+                return false;
+              }
+
+              // Item checks (handle both nested and potential flat structures for backward compat)
+              const itemData = report.item || report;
+              if (!itemData || typeof itemData !== 'object') return false;
+
+              if (typeof itemData.productName !== 'string') {
+                 console.warn("🛡️ Data Hardening: Filtering out invalid NCR (bad product name).", report);
+                 return false;
+              }
+              
+              return true;
+            })
+        : [];
+      
       setNcrReports(loadedReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      console.log(`✅ RTDB Connected: Loaded ${loadedReports.length} NCR Reports`);
+      console.log(`✅ RTDB Connected: Loaded ${loadedReports.length} valid NCR Reports`);
     }, (error) => {
-      console.warn("⚠️ RTDB Permission/Connection Error (NCR). Falling back to mock data.", error.message);
-      setNcrReports(MOCK_NCR_HISTORY);
+      console.warn("⚠️ RTDB Permission/Connection Error (NCR).", error.message);
+      setNcrReports([]);
     });
 
     return () => {
@@ -248,15 +302,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const deleteNCRReport = async (id: string): Promise<boolean> => {
     try {
-      await remove(ref(db, 'ncr_reports/' + id));
+      // This is now a "soft delete" or "cancel" operation.
+      await update(ref(db, 'ncr_reports/' + id), { status: 'Canceled' });
       return true;
     } catch (error: any) {
       if (error.code === 'PERMISSION_DENIED') {
-        console.warn("⚠️ Delete Permission Denied.");
-        alert("Access Denied: Cannot delete NCR report.");
+        console.warn("⚠️ Cancel Permission Denied.");
+        alert("Access Denied: Cannot cancel NCR report.");
       } else {
-        console.error("Error deleting NCR report:", error);
-        alert("Failed to delete NCR report.");
+        console.error("Error canceling NCR report:", error);
+        alert("Failed to cancel NCR report.");
       }
       return false;
     }

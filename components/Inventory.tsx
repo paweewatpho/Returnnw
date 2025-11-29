@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../DataContext';
 import { DispositionAction, ReturnRecord } from '../types';
-import { Box, RotateCcw, ShieldCheck, Home, Trash2, ArrowUpCircle, ArrowDownCircle, History } from 'lucide-react';
+import { Box, RotateCcw, ShieldCheck, Home, Trash2, ArrowUpCircle, ArrowDownCircle, History, Search, Download } from 'lucide-react';
 
 interface StockAggregate {
   stats: {
@@ -10,20 +10,6 @@ interface StockAggregate {
     totalOut: number;
     onHand: number;
   };
-  list: StockItem[];
-}
-
-interface StockItem {
-  productCode: string;
-  productName: string;
-  onHand: number;
-  lastIntake?: string;
-  lastDispatch?: string;
-  totalValue: number;
-  unit: string;
-  // FIX: Add missing properties used in calculations
-  totalIn: number;
-  totalOut: number;
 }
 
 interface LedgerEntry extends ReturnRecord {
@@ -35,105 +21,159 @@ const Inventory: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'Ledger' | DispositionAction>('Ledger');
   const { items, loading } = useData();
 
+  const [filters, setFilters] = useState({
+    query: '',
+    startDate: '',
+    endDate: '',
+    movementType: 'All',
+  });
+
   const inventoryData = useMemo(() => {
-    // Ledger for all movements, sorted by most recent first
-    const fullLedger: LedgerEntry[] = items
-      .filter(item => ['Graded', 'Documented', 'Completed'].includes(item.status))
-      .map(item => ({
-        ...item,
-        movementType: item.status === 'Graded' ? 'IN' : 'OUT',
-        movementDate: item.status === 'Graded' ? item.dateGraded : (item.dateDocumented || item.dateCompleted),
-      }))
-      .sort((a, b) => (b.movementDate || '0').localeCompare(a.movementDate || '0'));
+    const fullLedger: LedgerEntry[] = [];
 
-    const aggregateStock = (disposition: DispositionAction): StockAggregate => {
-      const stockMap: { [key: string]: {
-        productCode: string;
-        productName: string;
-        unit: string;
-        totalIn: number;
-        totalOut: number;
-        lastIntake?: string;
-        lastDispatch?: string;
-      } } = {};
-
-      items
-        .filter(item => item.disposition === disposition)
-        .forEach(item => {
-          if (!stockMap[item.productCode]) {
-            stockMap[item.productCode] = {
-              productCode: item.productCode,
-              productName: item.productName,
-              unit: item.unit,
-              totalIn: 0,
-              totalOut: 0,
-              lastIntake: undefined,
-              lastDispatch: undefined,
-            };
-          }
-
-          const stockItem = stockMap[item.productCode];
-
-          if (item.status === 'Graded') {
-            stockItem.totalIn += item.quantity;
-            const intakeDate = item.dateGraded;
-            if (intakeDate && (!stockItem.lastIntake || intakeDate > stockItem.lastIntake)) {
-              stockItem.lastIntake = intakeDate;
-            }
-          }
-
-          if (item.status === 'Documented' || item.status === 'Completed') {
-            stockItem.totalOut += item.quantity;
-            const dispatchDate = item.dateDocumented || item.dateCompleted;
-            if (dispatchDate && (!stockItem.lastDispatch || dispatchDate > stockItem.lastDispatch)) {
-              stockItem.lastDispatch = dispatchDate;
-            }
-          }
+    items.forEach(item => {
+      // Create an IN entry if the item has been graded
+      if (item.dateGraded) {
+        fullLedger.push({
+          ...item,
+          movementType: 'IN',
+          movementDate: item.dateGraded,
         });
+      }
+      // Create an OUT entry if the item has been documented or completed
+      if (item.dateDocumented || item.dateCompleted) {
+        fullLedger.push({
+          ...item,
+          movementType: 'OUT',
+          movementDate: item.dateDocumented || item.dateCompleted,
+        });
+      }
+    });
 
-      const resultList: StockItem[] = Object.values(stockMap).map(stock => {
-        const onHand = stock.totalIn - stock.totalOut;
-        const latestItem = items
-          .filter(i => i.productCode === stock.productCode)
-          .sort((a, b) => b.date.localeCompare(a.date))[0];
-        const price = latestItem?.priceBill || 0;
-        
-        return {
-          ...stock,
-          onHand,
-          totalValue: onHand * price,
-        };
-      });
+    // Multi-level sort: 1. By date (desc), 2. By type ('IN' before 'OUT')
+    fullLedger.sort((a, b) => {
+      const dateA = a.movementDate || '0';
+      const dateB = b.movementDate || '0';
 
-      const totalIn = resultList.reduce((acc, item) => acc + item.totalIn, 0);
-      const totalOut = resultList.reduce((acc, item) => acc + item.totalOut, 0);
+      // Primary sort: Date descending
+      const dateComparison = dateB.localeCompare(dateA);
+      if (dateComparison !== 0) {
+        return dateComparison;
+      }
+
+      // Secondary sort: If dates are the same, 'IN' comes before 'OUT'
+      if (a.movementType === 'IN' && b.movementType === 'OUT') {
+        return -1; // a (IN) comes first
+      }
+      if (a.movementType === 'OUT' && b.movementType === 'IN') {
+        return 1; // b (IN) comes first
+      }
+
+      return 0; // Same date and type
+    });
+
+    const calculateStats = (disposition: DispositionAction): StockAggregate['stats'] => {
+      const relevantEntries = fullLedger.filter(entry => entry.disposition === disposition);
+      
+      const totalIn = relevantEntries
+        .filter(e => e.movementType === 'IN')
+        .reduce((sum, e) => sum + e.quantity, 0);
+
+      const totalOut = relevantEntries
+        .filter(e => e.movementType === 'OUT')
+        .reduce((sum, e) => sum + e.quantity, 0);
 
       return {
-        stats: { totalIn, totalOut, onHand: totalIn - totalOut },
-        list: resultList.filter(item => item.onHand > 0)
-                      .sort((a, b) => a.productName.localeCompare(b.productName)),
+        totalIn,
+        totalOut,
+        onHand: totalIn - totalOut,
       };
     };
 
     return {
       fullLedger,
-      sellableStock: aggregateStock('Restock'),
-      claimStock: aggregateStock('Claim'),
-      internalStock: aggregateStock('InternalUse'),
-      scrapStock: aggregateStock('Recycle'),
+      sellableStock: { stats: calculateStats('Restock') },
+      claimStock: { stats: calculateStats('Claim') },
+      internalStock: { stats: calculateStats('InternalUse') },
+      scrapStock: { stats: calculateStats('Recycle') },
     };
   }, [items]);
+  
+  const filteredLedgerList = useMemo(() => {
+    let baseList = activeTab === 'Ledger'
+      ? inventoryData.fullLedger
+      : inventoryData.fullLedger.filter(item => item.disposition === activeTab);
+      
+    return baseList.filter(item => {
+      const queryLower = filters.query.toLowerCase();
+      if (queryLower && 
+          !item.productName?.toLowerCase().includes(queryLower) &&
+          !item.productCode?.toLowerCase().includes(queryLower) &&
+          !item.customerName?.toLowerCase().includes(queryLower) &&
+          !String(item.branch)?.toLowerCase().includes(queryLower)
+      ) {
+        return false;
+      }
+
+      if (filters.startDate && (item.movementDate || '0') < filters.startDate) {
+        return false;
+      }
+      
+      if (filters.endDate && (item.movementDate || '0') > filters.endDate) {
+        return false;
+      }
+
+      if (filters.movementType !== 'All' && item.movementType !== filters.movementType) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [activeTab, inventoryData.fullLedger, filters]);
+
+  const handleExportExcel = () => {
+    const headers = [
+      "MovementDate", "MovementType", "Branch", "Customer", 
+      "ProductCode", "ProductName", "RefNo", "NeoRefNo",
+      "Quantity", "Unit", "PriceBill", "ExpiryDate", "Disposition"
+    ];
+
+    const rows = filteredLedgerList.map(item => [
+      item.movementDate || '',
+      item.movementType,
+      `"${String(item.branch).replace(/"/g, '""')}"`,
+      `"${item.customerName.replace(/"/g, '""')}"`,
+      item.productCode,
+      `"${item.productName.replace(/"/g, '""')}"`,
+      item.refNo,
+      item.neoRefNo || '',
+      item.quantity,
+      item.unit,
+      item.priceBill,
+      item.expiryDate || '',
+      item.disposition || ''
+    ].join(','));
+
+    const csvContent = "\uFEFF" + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `inventory_report_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const tabs = [
-    { id: 'Ledger', label: '1. ประวัติทั้งหมด (Full Ledger)', icon: History, data: inventoryData.fullLedger },
-    { id: 'Restock', label: '2. สินค้าสำหรับขาย (Sellable)', icon: RotateCcw, data: inventoryData.sellableStock },
-    { id: 'Claim', label: '3. สินค้าสำหรับเคลม (Claim)', icon: ShieldCheck, data: inventoryData.claimStock },
-    { id: 'InternalUse', label: '4. สินค้าใช้ภายใน (Internal)', icon: Home, data: inventoryData.internalStock },
-    { id: 'Recycle', label: '5. สินค้าสำหรับทำลาย (Scrap)', icon: Trash2, data: inventoryData.scrapStock },
+    { id: 'Ledger', label: '1. ประวัติทั้งหมด (Full Ledger)', icon: History, stats: null },
+    { id: 'Restock', label: '2. สินค้าสำหรับขาย (Sellable)', icon: RotateCcw, stats: inventoryData.sellableStock.stats },
+    { id: 'Claim', label: '3. สินค้าสำหรับเคลม (Claim)', icon: ShieldCheck, stats: inventoryData.claimStock.stats },
+    { id: 'InternalUse', label: '4. สินค้าใช้ภายใน (Internal)', icon: Home, stats: inventoryData.internalStock.stats },
+    { id: 'Recycle', label: '5. สินค้าสำหรับทำลาย (Scrap)', icon: Trash2, stats: inventoryData.scrapStock.stats },
   ];
 
   const currentTab = tabs.find(t => t.id === activeTab);
-  const currentTabData = currentTab?.data;
 
   return (
     <div className="p-6 h-full flex flex-col space-y-6">
@@ -143,7 +183,7 @@ const Inventory: React.FC = () => {
       </div>
 
       <div className="border-b border-slate-200">
-        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -165,71 +205,107 @@ const Inventory: React.FC = () => {
         </nav>
       </div>
 
-      {activeTab !== 'Ledger' && currentTabData && (
+      {activeTab !== 'Ledger' && currentTab?.stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
-            <StatCard title="รับเข้าทั้งหมด (Total In)" value={(currentTabData as StockAggregate).stats.totalIn} color="text-blue-600" />
-            <StatCard title="จ่ายออกแล้ว (Total Out)" value={(currentTabData as StockAggregate).stats.totalOut} color="text-amber-600" />
-            <StatCard title="คงเหลือในสต็อก (On-Hand)" value={(currentTabData as StockAggregate).stats.onHand} color="text-green-600" isHighlight />
+            <StatCard title="รับเข้าทั้งหมด (Total In)" value={currentTab.stats.totalIn} color="text-blue-600" />
+            <StatCard title="จ่ายออกแล้ว (Total Out)" value={currentTab.stats.totalOut} color="text-amber-600" />
+            <StatCard title="คงเหลือในสต็อก (On-Hand)" value={currentTab.stats.onHand} color="text-green-600" isHighlight />
         </div>
       )}
+
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+        <div className="relative flex-grow">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="ค้นหา สินค้า, ลูกค้า, สาขา..."
+            value={filters.query}
+            onChange={e => setFilters({...filters, query: e.target.value})}
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+          />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <input
+                type="date"
+                value={filters.startDate}
+                onChange={e => setFilters({...filters, startDate: e.target.value})}
+                className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+                type="date"
+                value={filters.endDate}
+                onChange={e => setFilters({...filters, endDate: e.target.value})}
+                className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <select
+                value={filters.movementType}
+                onChange={e => setFilters({...filters, movementType: e.target.value})}
+                className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+                <option value="All">IN/OUT ทั้งหมด</option>
+                <option value="IN">เฉพาะรับเข้า (IN)</option>
+                <option value="OUT">เฉพาะจ่ายออก (OUT)</option>
+            </select>
+        </div>
+        <button
+            onClick={handleExportExcel}
+            className="bg-green-600 text-white font-bold px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-sm"
+        >
+            <Download className="w-4 h-4" />
+            Export Excel
+        </button>
+      </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col">
         <div className="overflow-auto flex-1">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                {activeTab === 'Ledger' ? (
-                  <tr>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">วันที่เคลื่อนไหว</th>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">สินค้า (Product)</th>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center">ประเภท</th>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right">จำนวน</th>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">สถานะปลายทาง</th>
-                  </tr>
-                ) : (
-                  <tr>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">สินค้า (Product)</th>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-center">คงเหลือ (On-Hand)</th>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">วันที่รับเข้าล่าสุด</th>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">วันที่จ่ายออกล่าสุด</th>
-                    <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase text-right">มูลค่าคงเหลือ (Bill)</th>
-                  </tr>
-                )}
+            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm text-xs uppercase text-slate-500 font-bold">
+                <tr className="whitespace-nowrap">
+                  <th className="px-4 py-3">วันที่/ประเภท</th>
+                  <th className="px-4 py-3">สาขา/ลูกค้า</th>
+                  <th className="px-4 py-3">สินค้า</th>
+                  <th className="px-4 py-3">อ้างอิง (Ref)</th>
+                  <th className="px-4 py-3 text-right">จำนวน/หน่วย</th>
+                  <th className="px-4 py-3 text-right">ราคา/บิล</th>
+                  <th className="px-4 py-3">วันหมดอายุ</th>
+                  <th className="px-4 py-3">ปลายทาง</th>
+                </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                 <tr><td colSpan={5} className="p-8 text-center text-slate-400">Loading data...</td></tr>
-              ) : !currentTabData || currentTabData.length === 0 || ('list' in currentTabData && currentTabData.list.length === 0) ? (
-                <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">ไม่มีข้อมูลในหมวดหมู่นี้</td></tr>
-              ) : activeTab === 'Ledger' ? (
-                (currentTabData as LedgerEntry[]).map(item => (
-                  <tr key={item.id} className="text-sm">
-                    <td className="px-4 py-3">{item.movementDate || '-'}</td>
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-slate-800">{item.productName}</div>
-                      <div className="text-xs text-slate-500">{item.productCode}</div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {item.movementType === 'IN' ? (
-                        <span className="inline-flex items-center gap-1 text-green-600 font-bold text-xs"><ArrowUpCircle className="w-4 h-4"/> รับเข้า</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-red-600 font-bold text-xs"><ArrowDownCircle className="w-4 h-4"/> จ่ายออก</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono">{item.quantity} {item.unit}</td>
-                    <td className="px-4 py-3 text-slate-500">{item.disposition}</td>
-                  </tr>
-                ))
+                 <tr><td colSpan={8} className="p-8 text-center text-slate-400">Loading data...</td></tr>
+              ) : filteredLedgerList.length === 0 ? (
+                <tr><td colSpan={8} className="p-8 text-center text-slate-400 italic">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการกรอง</td></tr>
               ) : (
-                (currentTabData as StockAggregate).list.map(item => (
-                   <tr key={item.productCode} className="text-sm">
+                filteredLedgerList.map(item => (
+                  <tr key={item.id + '-' + item.movementType + '-' + item.movementDate} className="text-sm">
+                    <td className="px-4 py-3">
+                        <div>{item.movementDate || '-'}</div>
+                        {item.movementType === 'IN' ? (
+                            <span className="inline-flex items-center gap-1 text-green-600 font-bold text-xs"><ArrowUpCircle className="w-4 h-4"/> รับเข้า</span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1 text-red-600 font-bold text-xs"><ArrowDownCircle className="w-4 h-4"/> จ่ายออก</span>
+                        )}
+                    </td>
+                    <td className="px-4 py-3">
+                        <div className="font-medium text-slate-800">{item.customerName}</div>
+                        <div className="text-xs text-slate-500">สาขา: {item.branch}</div>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-bold text-slate-800">{item.productName}</div>
                       <div className="text-xs text-slate-500">{item.productCode}</div>
                     </td>
-                    <td className="px-4 py-3 text-center font-bold text-blue-600 text-base">{item.onHand} <span className="text-xs text-slate-500 font-normal">{item.unit}</span></td>
-                    <td className="px-4 py-3">{item.lastIntake || '-'}</td>
-                    <td className="px-4 py-3">{item.lastDispatch || '-'}</td>
-                    <td className="px-4 py-3 text-right font-mono">฿{item.totalValue.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                     <td className="px-4 py-3 text-xs">
+                        <div>Ref: {item.refNo}</div>
+                        <div className="text-slate-500">Neo: {item.neoRefNo || '-'}</div>
+                     </td>
+                    <td className="px-4 py-3 text-right font-mono">{item.quantity} {item.unit}</td>
+                    <td className="px-4 py-3 text-right font-mono">฿{item.priceBill.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-xs text-red-600 font-medium">{item.expiryDate || '-'}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                        <div>{item.disposition}</div>
+                        {item.destinationCustomer && <div className="text-blue-600 truncate max-w-[150px]" title={item.destinationCustomer}>ปลายทาง: {item.destinationCustomer}</div>}
+                    </td>
                   </tr>
                 ))
               )}
@@ -241,13 +317,11 @@ const Inventory: React.FC = () => {
   );
 };
 
-
 const StatCard = ({ title, value, color, isHighlight = false }: { title: string; value: number; color: string; isHighlight?: boolean }) => (
     <div className={`bg-white p-4 rounded-lg border shadow-sm ${isHighlight ? 'border-blue-200 bg-blue-50' : 'border-slate-200'}`}>
         <p className="text-xs font-bold text-slate-500 uppercase">{title}</p>
         <p className={`text-3xl font-bold ${color} ${isHighlight ? 'text-blue-600' : ''}`}>{value.toLocaleString()}</p>
     </div>
 );
-
 
 export default Inventory;

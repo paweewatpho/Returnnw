@@ -6,8 +6,9 @@ import Operations from './components/Operations';
 import NCRSystem from './components/NCRSystem';
 import NCRReport from './components/NCRReport';
 import Inventory from './components/Inventory';
+import StockSummary from './components/StockSummary';
 import { AppView, ReturnRecord } from './types';
-import { Bell, Search } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { DataProvider } from './DataContext';
 
 const MainApp: React.FC = () => {
@@ -36,6 +37,8 @@ const MainApp: React.FC = () => {
         return <NCRReport onTransfer={handleNCRTransfer} />;
       case AppView.INVENTORY:
         return <Inventory />;
+      case AppView.STOCK_SUMMARY:
+        return <StockSummary />;
       default:
         return <Dashboard />;
     }
@@ -48,6 +51,7 @@ const MainApp: React.FC = () => {
       case AppView.NCR: return 'ระบบแจ้งปัญหาคุณภาพ (NCR System)';
       case AppView.NCR_REPORT: return 'รายงาน NCR (NCR Report)';
       case AppView.INVENTORY: return 'คลังสินค้า (Inventory)';
+      case AppView.STOCK_SUMMARY: return 'สรุปสต็อกคงคลัง (Stock Summary)';
       default: return 'ReturnNeosiam Pro';
     }
   };
