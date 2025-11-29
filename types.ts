@@ -17,10 +17,10 @@ export interface ReturnStat {
 
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
-  SEARCH = 'SEARCH',
   OPERATIONS = 'OPERATIONS',
   NCR = 'NCR',
-  NCR_REPORT = 'NCR_REPORT'
+  NCR_REPORT = 'NCR_REPORT',
+  INVENTORY = 'INVENTORY'
 }
 
 export interface ChatMessage {

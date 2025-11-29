@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
-import ReturnSearch from './components/ReturnSearch';
 import Operations from './components/Operations';
 import NCRSystem from './components/NCRSystem';
 import NCRReport from './components/NCRReport';
+import Inventory from './components/Inventory';
 import { AppView, ReturnRecord } from './types';
 import { Bell, Search } from 'lucide-react';
 import { DataProvider } from './DataContext';
@@ -34,8 +34,8 @@ const MainApp: React.FC = () => {
         return <NCRSystem />;
       case AppView.NCR_REPORT:
         return <NCRReport onTransfer={handleNCRTransfer} />;
-      case AppView.SEARCH:
-        return <ReturnSearch />;
+      case AppView.INVENTORY:
+        return <Inventory />;
       default:
         return <Dashboard />;
     }
@@ -47,7 +47,7 @@ const MainApp: React.FC = () => {
       case AppView.OPERATIONS: return 'ศูนย์ปฏิบัติการคืนสินค้า (Return Operations Hub)';
       case AppView.NCR: return 'ระบบแจ้งปัญหาคุณภาพ (NCR System)';
       case AppView.NCR_REPORT: return 'รายงาน NCR (NCR Report)';
-      case AppView.SEARCH: return 'ประวัติการคืน (Return History)';
+      case AppView.INVENTORY: return 'คลังสินค้า (Inventory)';
       default: return 'ReturnNeosiam Pro';
     }
   };
@@ -63,17 +63,6 @@ const MainApp: React.FC = () => {
           </h2>
           
           <div className="flex items-center gap-4">
-             {currentView !== AppView.SEARCH && (
-               <div className="relative hidden md:block">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input 
-                    type="text" 
-                    placeholder="ค้นหาด่วน..." 
-                    onFocus={() => setCurrentView(AppView.SEARCH)}
-                    className="pl-9 pr-4 py-2 bg-slate-100 rounded-full text-sm border-none focus:ring-2 focus:ring-blue-200 focus:bg-white transition-all w-64"
-                  />
-               </div>
-             )}
              <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
                <Bell className="w-5 h-5" />
                <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
