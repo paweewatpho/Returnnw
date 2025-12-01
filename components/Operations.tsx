@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useData } from '../DataContext';
 import { BRANCH_LIST, RETURN_ROUTES } from '../constants';
@@ -329,7 +330,7 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
                 // Do nothing for 'sip'
             } else if (pos % 6 === 1 && digit === 2) { // 2 in ten position
                 result += "ยี่";
-            } else if (pos % 6 === 0 && digit === 1 && integerPart.length > 1) { // 1 in unit position
+            } else if (pos === 0 && digit === 1 && integerPart.length > 1) { // 1 in unit position
                 result += "เอ็ด";
             } else {
                 result += units[digit];
@@ -467,7 +468,6 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
       </div>
 
       <div className="flex-1 overflow-hidden bg-slate-50/50">
-        {/* STEP 1 */}
         {activeStep === 1 && (
           <div className="h-full overflow-auto p-6">
              <div className="max-w-4xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
@@ -519,133 +519,20 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
           </div>
         )}
         
-        {/* STEP 2: INTAKE */}
         {activeStep === 2 && (
-          <div className="h-full overflow-auto p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Truck className="w-5 h-5 text-amber-500" /> สินค้าขาเข้า (Incoming Shipments)</h3>
-            {requestedItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-slate-400 bg-white rounded-xl border border-slate-200">
-                    <Inbox className="w-12 h-12 mb-2 opacity-50" />
-                    <p>ไม่มีรายการที่แจ้งเข้ามาใหม่</p>
-                </div>
-            ) : (
-                <div className="grid gap-4">
-                    {requestedItems.map(item => (
-                        <div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-all">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-blue-50 p-3 rounded-lg text-blue-600 font-bold font-mono text-xs">{item.id}</div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800">{item.productName}</h4>
-                                    <div className="text-sm text-slate-500 flex gap-3 mt-1">
-                                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.branch}</span>
-                                        <span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.customerName}</span>
-                                        <span className="font-mono bg-slate-100 px-1.5 rounded text-xs">Qty: {item.quantity} {item.unit}</span>
-                                    </div>
-                                    <div className="text-xs text-red-500 mt-1 italic">"{item.reason}"</div>
-                                </div>
-                            </div>
-                            <button onClick={() => handleIntakeReceive(item.id)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors">
-                                <CheckCircle className="w-4 h-4" /> รับของเข้าระบบ
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-          </div>
+            <div className="h-full overflow-auto p-6">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Truck className="w-5 h-5 text-amber-500" /> สินค้าขาเข้า (Incoming Shipments)</h3>
+                {requestedItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-slate-400 bg-white rounded-xl border border-slate-200"><Inbox className="w-12 h-12 mb-2 opacity-50" /><p>ไม่มีรายการที่แจ้งเข้ามาใหม่</p></div>
+                ) : (
+                    <div className="grid gap-4">{requestedItems.map(item => (<div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-all"><div className="flex items-center gap-4"><div className="bg-blue-50 p-3 rounded-lg text-blue-600 font-bold font-mono text-xs">{item.id}</div><div><h4 className="font-bold text-slate-800">{item.productName}</h4><div className="text-sm text-slate-500 flex gap-3 mt-1"><span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.branch}</span><span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.customerName}</span><span className="font-mono bg-slate-100 px-1.5 rounded text-xs">Qty: {item.quantity} {item.unit}</span></div><div className="text-xs text-red-500 mt-1 italic">"{item.reason}"</div></div></div><button onClick={() => handleIntakeReceive(item.id)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors"><CheckCircle className="w-4 h-4" /> รับของเข้าระบบ</button></div>))}</div>
+                )}
+            </div>
         )}
-
-        {/* STEP 3: QC */}
         {activeStep === 3 && (
-          <div className="h-full flex">
-             {/* Left: Queue */}
-             <div className="w-80 border-r border-slate-200 bg-white flex flex-col">
-                 <div className="p-4 border-b border-slate-100 font-bold text-slate-700 flex justify-between items-center">
-                     <span>คิวรอตรวจสอบ ({receivedItems.length})</span>
-                     <Activity className="w-4 h-4 text-blue-500" />
-                 </div>
-                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                     {receivedItems.map(item => (
-                         <div key={item.id} onClick={() => selectQCItem(item)} className={`p-3 rounded-lg border cursor-pointer transition-all ${qcSelectedItem?.id === item.id ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-200' : 'bg-white border-slate-100 hover:border-blue-100 hover:bg-slate-50'}`}>
-                             <div className="flex justify-between mb-1"><span className="text-xs font-bold text-slate-700">{item.productCode}</span><span className="text-[10px] text-slate-400">{item.dateReceived}</span></div>
-                             <div className="text-sm font-medium text-slate-800 truncate mb-1">{item.productName}</div>
-                             <div className="text-xs text-slate-500">{item.branch}</div>
-                         </div>
-                     ))}
-                     {receivedItems.length === 0 && <div className="p-4 text-center text-slate-400 text-xs italic">ไม่มีสินค้าที่ต้องตรวจสอบ</div>}
-                 </div>
-             </div>
-             
-             {/* Right: Workstation */}
-             <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
-                 {qcSelectedItem ? (
-                     <div className="max-w-3xl mx-auto space-y-6">
-                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                             <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
-                                 <div>
-                                     <h3 className="text-2xl font-bold text-slate-800 mb-1">{qcSelectedItem.productName}</h3>
-                                     <div className="flex gap-4 text-sm text-slate-500">
-                                         <span>ID: {qcSelectedItem.id}</span>
-                                         <span>Ref: {qcSelectedItem.refNo}</span>
-                                         <span>Qty: <b>{qcSelectedItem.quantity} {qcSelectedItem.unit}</b></span>
-                                     </div>
-                                 </div>
-                                 <div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold">In Progress</div>
-                             </div>
-                             
-                             {/* Grading */}
-                             <div className="mb-8">
-                                 <h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">1. ประเมินสภาพ (Grading)</h4>
-                                 <div className="grid grid-cols-2 gap-4">
-                                     <div className="space-y-2">
-                                         <div className="text-xs font-bold text-green-600 bg-green-50 p-1.5 rounded w-fit mb-2">Good (สภาพดี)</div>
-                                         <div className="grid grid-cols-2 gap-2">
-                                             {['New', 'BoxDamage', 'WetBox', 'LabelDefect', 'Other'].map((cond) => (
-                                                 <button 
-                                                     key={cond}
-                                                     onClick={() => handleConditionSelect(cond === 'Other' ? 'Other' : cond as ItemCondition, 'Good')}
-                                                     className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${qcSelectedItem.condition === cond || (cond === 'Other' && customInputType === 'Good') ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-green-300 hover:text-green-600'}`}
-                                                 >
-                                                     {cond === 'New' ? 'สภาพดี (Good)' : cond === 'BoxDamage' ? 'กล่องบุบ' : cond === 'WetBox' ? 'ลังเปียก' : cond === 'LabelDefect' ? 'ฉลากลอก' : 'อื่นๆ (ระบุ)'}
-                                                 </button>
-                                             ))}
-                                         </div>
-                                         {customInputType === 'Good' && (
-                                             <input type="text" placeholder="ระบุสภาพสินค้า..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-green-500 outline-none" value={qcSelectedItem.condition === 'New' || qcSelectedItem.condition === 'BoxDamage' || qcSelectedItem.condition === 'WetBox' || qcSelectedItem.condition === 'LabelDefect' ? '' : qcSelectedItem.condition} onChange={e => setQcSelectedItem({...qcSelectedItem, condition: e.target.value})} autoFocus />
-                                         )}
-                                     </div>
-                                     <div className="space-y-2">
-                                         <div className="text-xs font-bold text-red-600 bg-red-50 p-1.5 rounded w-fit mb-2">Bad (เสียหาย)</div>
-                                         <div className="grid grid-cols-2 gap-2">
-                                             {['Expired', 'Damaged', 'Defective', 'Other'].map((cond) => (
-                                                 <button 
-                                                     key={cond}
-                                                     onClick={() => handleConditionSelect(cond === 'Other' ? 'Other' : cond as ItemCondition, 'Bad')}
-                                                     className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${qcSelectedItem.condition === cond || (cond === 'Other' && customInputType === 'Bad') ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600'}`}
-                                                 >
-                                                     {cond === 'Expired' ? 'หมดอายุ' : cond === 'Damaged' ? 'ซาก (Scrap)' : cond === 'Defective' ? 'เสีย (Defective)' : 'อื่นๆ (ระบุ)'}
-                                                 </button>
-                                             ))}
-                                         </div>
-                                         {customInputType === 'Bad' && (
-                                             <input type="text" placeholder="ระบุความเสียหาย..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-red-500 outline-none" value={qcSelectedItem.condition === 'Expired' || qcSelectedItem.condition === 'Damaged' || qcSelectedItem.condition === 'Defective' ? '' : qcSelectedItem.condition} onChange={e => setQcSelectedItem({...qcSelectedItem, condition: e.target.value})} autoFocus />
-                                         )}
-                                     </div>
-                                 </div>
-                             </div>
-
-                             {/* Disposition */}
-                             <div>
-                                 <h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">2. ตัดสินใจ (Disposition)</h4>
-                                 <div className="grid grid-cols-5 gap-2 mb-4">
-                                     <button onClick={() => { setSelectedDisposition('RTV'); setIsCustomRoute(false); }} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'RTV' ? 'bg-amber-500 text-white border-amber-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Truck className="w-5 h-5 mb-1" /><span className="text-xs font-bold">ส่งคืน (Return)</span></button>
-                                     <button onClick={() => setSelectedDisposition('Restock')} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'Restock' ? 'bg-green-600 text-white border-green-700 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><RotateCcw className="w-5 h-5 mb-1" /><span className="text-xs font-bold">ขาย (Sell)</span></button>
-                                     <button onClick={() => setSelectedDisposition('Recycle')} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'Recycle' ? 'bg-red-500 text-white border-red-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Trash2 className="w-5 h-5 mb-1" /><span className="text-xs font-bold">ทิ้ง (Scrap)</span></button>
-                                     <button onClick={() => setSelectedDisposition('InternalUse')} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'InternalUse' ? 'bg-purple-500 text-white border-purple-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Home className="w-5 h-5 mb-1" /><span className="text-xs font-bold">ใช้ภายใน (Int)</span></button>
-                                     <button onClick={() => setSelectedDisposition('Claim')} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === 'Claim' ? 'bg-blue-500 text-white border-blue-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><ShieldCheck className="w-5 h-5 mb-1" /><span className="text-xs font-bold">เคลม (Claim)</span></button>
-                                 </div>
-                                 
-                                 {/* Dynamic Forms based on Disposition */}
-                                 {selectedDisposition === 'RTV' && (
+            <div className="h-full flex">
+                <div className="w-80 border-r border-slate-200 bg-white flex flex-col"><div className="p-4 border-b border-slate-100 font-bold text-slate-700 flex justify-between items-center"><span>คิวรอตรวจสอบ ({receivedItems.length})</span><Activity className="w-4 h-4 text-blue-500" /></div><div className="flex-1 overflow-y-auto p-2 space-y-2">{receivedItems.length === 0 ? <div className="p-4 text-center text-slate-400 text-xs italic">ไม่มีสินค้าที่ต้องตรวจสอบ</div> : receivedItems.map(item => (<div key={item.id} onClick={() => selectQCItem(item)} className={`p-3 rounded-lg border cursor-pointer transition-all ${qcSelectedItem?.id === item.id ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-200' : 'bg-white border-slate-100 hover:border-blue-100 hover:bg-slate-50'}`}><div className="flex justify-between mb-1"><span className="text-xs font-bold text-slate-700">{item.productCode}</span><span className="text-[10px] text-slate-400">{item.dateReceived}</span></div><div className="text-sm font-medium text-slate-800 truncate mb-1">{item.productName}</div><div className="text-xs text-slate-500">{item.branch}</div></div>))}</div></div>
+                <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">{qcSelectedItem ? (<div className="max-w-3xl mx-auto space-y-6"><div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4"><div><h3 className="text-2xl font-bold text-slate-800 mb-1">{qcSelectedItem.productName}</h3><div className="flex gap-4 text-sm text-slate-500"><span>ID: {qcSelectedItem.id}</span><span>Ref: {qcSelectedItem.refNo}</span><span>Qty: <b>{qcSelectedItem.quantity} {qcSelectedItem.unit}</b></span></div></div><div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold">In Progress</div></div><div className="mb-8"><h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">1. ประเมินสภาพ (Grading)</h4><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><div className="text-xs font-bold text-green-600 bg-green-50 p-1.5 rounded w-fit mb-2">Good (สภาพดี)</div><div className="grid grid-cols-2 gap-2">{['New', 'BoxDamage', 'WetBox', 'LabelDefect', 'Other'].map((cond) => (<button key={cond} onClick={() => handleConditionSelect(cond === 'Other' ? 'Other' : cond as ItemCondition, 'Good')} className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${qcSelectedItem.condition === cond || (cond === 'Other' && customInputType === 'Good') ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-green-300 hover:text-green-600'}`}>{conditionLabels[cond] || 'อื่นๆ (ระบุ)'}</button>))}</div>{customInputType === 'Good' && (<input type="text" placeholder="ระบุสภาพสินค้า..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-green-500 outline-none" value={Object.keys(conditionLabels).includes(qcSelectedItem.condition || '') ? '' : qcSelectedItem.condition} onChange={e => setQcSelectedItem({...qcSelectedItem, condition: e.target.value})} autoFocus />)}</div><div className="space-y-2"><div className="text-xs font-bold text-red-600 bg-red-50 p-1.5 rounded w-fit mb-2">Bad (เสียหาย)</div><div className="grid grid-cols-2 gap-2">{['Expired', 'Damaged', 'Defective', 'Other'].map((cond) => (<button key={cond} onClick={() => handleConditionSelect(cond === 'Other' ? 'Other' : cond as ItemCondition, 'Bad')} className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${qcSelectedItem.condition === cond || (cond === 'Other' && customInputType === 'Bad') ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600'}`}>{conditionLabels[cond] || 'อื่นๆ (ระบุ)'}</button>))}</div>{customInputType === 'Bad' && (<input type="text" placeholder="ระบุความเสียหาย..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-red-500 outline-none" value={Object.keys(conditionLabels).includes(qcSelectedItem.condition || '') ? '' : qcSelectedItem.condition} onChange={e => setQcSelectedItem({...qcSelectedItem, condition: e.target.value})} autoFocus />)}</div></div></div><div><h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">2. ตัดสินใจ (Disposition)</h4><div className="grid grid-cols-5 gap-2 mb-4">{Object.keys(dispositionLabels).map(key => (<button key={key} onClick={() => { setSelectedDisposition(key as DispositionAction); setIsCustomRoute(false); }} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === key ? 'bg-blue-600 text-white border-blue-700 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Truck className="w-5 h-5 mb-1" /><span className="text-xs font-bold">{dispositionLabels[key]}</span></button>))}</div>{selectedDisposition === 'RTV' && (
                                      <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 animate-fade-in">
                                          <label className="block text-xs font-bold text-amber-800 mb-2">ระบุเส้นทางส่งคืน (Select Route)</label>
                                          <div className="flex flex-wrap gap-3">
@@ -662,331 +549,103 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
                                              <input type="text" placeholder="ระบุเส้นทาง..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-amber-500 outline-none" value={dispositionDetails.route} onChange={e => setDispositionDetails({...dispositionDetails, route: e.target.value})} autoFocus />
                                          )}
                                      </div>
-                                 )}
-                                 
-                                 {selectedDisposition === 'Restock' && (
-                                     <div className="bg-green-50 p-4 rounded-lg border border-green-100 animate-fade-in grid grid-cols-2 gap-4">
-                                         <div><label className="block text-xs font-bold text-green-800 mb-1">ชื่อผู้ซื้อ (Buyer Name)</label><input type="text" className="w-full p-2 border border-green-200 rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" value={dispositionDetails.sellerName} onChange={e => setDispositionDetails({...dispositionDetails, sellerName: e.target.value})} /></div>
-                                         <div><label className="block text-xs font-bold text-green-800 mb-1">เบอร์โทรติดต่อ</label><input type="text" className="w-full p-2 border border-green-200 rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" value={dispositionDetails.contactPhone} onChange={e => setDispositionDetails({...dispositionDetails, contactPhone: e.target.value})} /></div>
-                                     </div>
-                                 )}
-
-                                 {selectedDisposition === 'InternalUse' && (
-                                     <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 animate-fade-in">
-                                         <label className="block text-xs font-bold text-purple-800 mb-1">หน่วยงาน/ผู้นำไปใช้ (Department/User)</label>
-                                         <input type="text" className="w-full p-2 border border-purple-200 rounded text-sm focus:ring-1 focus:ring-purple-500 outline-none" placeholder="เช่น แผนกบัญชี, คุณสมชาย" value={dispositionDetails.internalUseDetail} onChange={e => setDispositionDetails({...dispositionDetails, internalUseDetail: e.target.value})} />
-                                     </div>
-                                 )}
-
-                                 {selectedDisposition === 'Claim' && (
-                                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 animate-fade-in space-y-3">
-                                         <div><label className="block text-xs font-bold text-blue-800 mb-1">ชื่อบริษัทประกัน (Insurance Company)</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimCompany} onChange={e => setDispositionDetails({...dispositionDetails, claimCompany: e.target.value})} /></div>
-                                         <div className="grid grid-cols-2 gap-3">
-                                             <div><label className="block text-xs font-bold text-blue-800 mb-1">ผู้ประสานงาน</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimCoordinator} onChange={e => setDispositionDetails({...dispositionDetails, claimCoordinator: e.target.value})} /></div>
-                                             <div><label className="block text-xs font-bold text-blue-800 mb-1">เบอร์โทร</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimPhone} onChange={e => setDispositionDetails({...dispositionDetails, claimPhone: e.target.value})} /></div>
-                                         </div>
-                                     </div>
-                                 )}
-                             </div>
-                         </div>
-                         <div className="flex justify-end">
-                             <button onClick={handleQCSubmit} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 transform transition hover:-translate-y-1">ยืนยันผลการตรวจสอบ</button>
-                         </div>
-                     </div>
-                 ) : (
-                     <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                         <Search className="w-16 h-16 mb-4 opacity-20" />
-                         <p className="text-lg font-medium">เลือกรายการทางซ้ายเพื่อเริ่มตรวจสอบ</p>
-                     </div>
-                 )}
-             </div>
-          </div>
+                                 )}{selectedDisposition === 'Restock' && (<div className="bg-green-50 p-4 rounded-lg border border-green-100 animate-fade-in grid grid-cols-2 gap-4"><div><label className="block text-xs font-bold text-green-800 mb-1">ชื่อผู้ซื้อ (Buyer Name)</label><input type="text" className="w-full p-2 border border-green-200 rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" value={dispositionDetails.sellerName} onChange={e => setDispositionDetails({...dispositionDetails, sellerName: e.target.value})} /></div><div><label className="block text-xs font-bold text-green-800 mb-1">เบอร์โทรติดต่อ</label><input type="text" className="w-full p-2 border border-green-200 rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" value={dispositionDetails.contactPhone} onChange={e => setDispositionDetails({...dispositionDetails, contactPhone: e.target.value})} /></div></div>)}{selectedDisposition === 'InternalUse' && (<div className="bg-purple-50 p-4 rounded-lg border border-purple-100 animate-fade-in"><label className="block text-xs font-bold text-purple-800 mb-1">หน่วยงาน/ผู้นำไปใช้ (Department/User)</label><input type="text" className="w-full p-2 border border-purple-200 rounded text-sm focus:ring-1 focus:ring-purple-500 outline-none" placeholder="เช่น แผนกบัญชี, คุณสมชาย" value={dispositionDetails.internalUseDetail} onChange={e => setDispositionDetails({...dispositionDetails, internalUseDetail: e.target.value})} /></div>)}{selectedDisposition === 'Claim' && (<div className="bg-blue-50 p-4 rounded-lg border border-blue-100 animate-fade-in space-y-3"><div><label className="block text-xs font-bold text-blue-800 mb-1">ชื่อบริษัทประกัน (Insurance Company)</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimCompany} onChange={e => setDispositionDetails({...dispositionDetails, claimCompany: e.target.value})} /></div><div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-bold text-blue-800 mb-1">ผู้ประสานงาน</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimCoordinator} onChange={e => setDispositionDetails({...dispositionDetails, claimCoordinator: e.target.value})} /></div><div><label className="block text-xs font-bold text-blue-800 mb-1">เบอร์โทร</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimPhone} onChange={e => setDispositionDetails({...dispositionDetails, claimPhone: e.target.value})} /></div></div></div>)}</div><div className="mt-8 flex justify-end pt-6 border-t border-slate-200"><button onClick={handleQCSubmit} disabled={!selectedDisposition || !qcSelectedItem?.condition || qcSelectedItem.condition === 'Unknown'} className="px-8 py-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><Save className="w-5 h-5" /> ยืนยันผลการตรวจสอบ (Confirm QC)</button></div></div></div>) : (<div className="flex flex-col items-center justify-center h-full text-slate-400"><ClipboardList className="w-16 h-16 mb-4 opacity-50" /><h3 className="text-lg font-bold">เลือกรายการจากคิว</h3><p className="text-sm">เลือกรายการสินค้าจากคิวด้านซ้ายเพื่อเริ่มตรวจสอบคุณภาพ</p></div>)}</div>
+            </div>
         )}
 
-        {/* STEP 4: DOCS (KANBAN) */}
         {activeStep === 4 && (
-          <div className="h-full overflow-x-auto p-6">
-             <div className="flex gap-4 h-full min-w-max pb-4">
-                <KanbanColumn title="ขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-100 text-green-700" />
-                <KanbanColumn title="ส่งคืน (Return)" status="RTV" icon={Truck} color="bg-amber-100 text-amber-700" />
-                <KanbanColumn title="เคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-100 text-blue-700" />
-                <KanbanColumn title="ใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-100 text-purple-700" />
-                <KanbanColumn title="ทิ้ง (Scrap)" status="Recycle" icon={Trash2} color="bg-red-100 text-red-700" />
+             <div className="h-full overflow-x-auto p-4 flex gap-4">
+                 <KanbanColumn title="สินค้าสำหรับส่งคืน (RTV)" status="RTV" icon={Truck} color="bg-amber-500" />
+                 <KanbanColumn title="สินค้าสำหรับขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" />
+                 <KanbanColumn title="สินค้าสำหรับเคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" />
+                 <KanbanColumn title="สินค้าใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" />
+                 <KanbanColumn title="สินค้าสำหรับทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" />
              </div>
-          </div>
         )}
 
-        {/* STEP 5: DONE */}
         {activeStep === 5 && (
-          <div className="h-full overflow-auto p-6">
-             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                 <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-                     <h3 className="font-bold text-slate-700 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600" /> รายการที่ออกเอกสารแล้ว (Documented)</h3>
-                     <span className="text-xs text-slate-500">รอการยืนยันปิดงานขั้นสุดท้าย</span>
+            <div className="h-full overflow-auto p-6">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><FileText className="w-5 h-5 text-purple-500" /> รายการรอปิดงาน (Pending Completion)</h3>
+                {documentedItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-slate-400 bg-white rounded-xl border border-slate-200"><Inbox className="w-12 h-12 mb-2 opacity-50" /><p>ไม่มีรายการที่รอปิดงาน</p></div>
+                ) : (
+                    <div className="grid gap-4">{documentedItems.map(item => (<div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-all"><div className="flex items-center gap-4"><div className="bg-purple-50 p-3 rounded-lg text-purple-600 font-bold font-mono text-xs">{item.id}</div><div><h4 className="font-bold text-slate-800">{item.productName}</h4><div className="text-sm text-slate-500 flex gap-3 mt-1"><span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.branch}</span><span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.customerName}</span>{getDispositionBadge(item.disposition)}</div></div></div><button onClick={() => handleCompleteJob(item.id)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors"><CheckCircle className="w-4 h-4" /> ปิดงาน</button></div>))}</div>
+                )}
+                 <h3 className="text-lg font-bold text-slate-800 mb-4 mt-8 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /> รายการที่จบงานแล้ว (Completed)</h3>
+                 <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+                    {completedItems.slice(0, 10).map(item => (
+                        <div key={item.id} className="p-3 flex items-center justify-between"><div className="flex items-center gap-3"><span className="text-xs font-mono text-slate-400">{item.id}</span><div><span className="font-medium text-slate-700">{item.productName}</span><span className="text-xs text-slate-500 ml-2">({item.branch})</span></div></div><div className="text-xs flex items-center gap-2 text-slate-500"><span>ปิดงาน: {item.dateCompleted}</span>{getDispositionBadge(item.disposition)}</div></div>
+                    ))}
+                    {completedItems.length === 0 && <div className="p-4 text-center text-slate-400 text-sm italic">ยังไม่มีรายการที่จบงาน</div>}
                  </div>
-                 <table className="w-full text-left">
-                     <thead className="bg-white border-b border-slate-100 text-xs uppercase text-slate-500">
-                         <tr><th className="px-6 py-3">รหัสสินค้า</th><th className="px-6 py-3">สินค้า</th><th className="px-6 py-3">การจัดการ</th><th className="px-6 py-3 text-center">สถานะ</th><th className="px-6 py-3 text-center">ดำเนินการ</th></tr>
-                     </thead>
-                     <tbody className="divide-y divide-slate-50">
-                         {documentedItems.map(item => (
-                             <tr key={item.id} className="hover:bg-slate-50">
-                                 <td className="px-6 py-4 font-mono text-xs text-slate-500">{item.id}</td>
-                                 <td className="px-6 py-4"><div className="font-bold text-slate-800">{item.productName}</div><div className="text-xs text-slate-500">{item.customerName}</div></td>
-                                 <td className="px-6 py-4">{getDispositionBadge(item.disposition)}</td>
-                                 <td className="px-6 py-4 text-center"><span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-bold">รอปิดงาน</span></td>
-                                 <td className="px-6 py-4 text-center">
-                                     <button onClick={() => handleCompleteJob(item.id)} className="bg-green-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 shadow-sm transition-colors">ยืนยันปิดงาน</button>
-                                 </td>
-                             </tr>
-                         ))}
-                         {documentedItems.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">ไม่มีรายการที่ต้องปิดงาน</td></tr>}
-                     </tbody>
-                 </table>
-             </div>
-          </div>
+            </div>
         )}
       </div>
 
-      {/* SELECTION MODAL */}
+      {/* Document Selection Modal */}
       {showSelectionModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-              <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[80vh] animate-fade-in">
-                  <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                      <h3 className="text-xl font-bold text-slate-800">เลือกรายการสินค้าเพื่อออกเอกสาร</h3>
-                      <button onClick={() => setShowSelectionModal(false)}><X className="w-6 h-6 text-slate-400 hover:text-slate-600" /></button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-2">
-                      {selectionItems.map(item => (
-                          <div key={item.id} onClick={() => toggleSelection(item.id)} className={`flex items-center gap-4 p-4 m-2 rounded-xl border cursor-pointer transition-all ${selectedItemIds.has(item.id) ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                              <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedItemIds.has(item.id) ? 'bg-blue-500 border-blue-500' : 'border-slate-300 bg-white'}`}>
-                                  {selectedItemIds.has(item.id) && <Check className="w-3.5 h-3.5 text-white" />}
-                              </div>
-                              <div className="flex-1">
-                                  <div className="font-bold text-slate-800">{item.productName}</div>
-                                  <div className="text-xs text-slate-500 flex gap-2 mt-1"><span>{item.id}</span><span>•</span><span>{item.branch}</span><span>•</span><span>{item.quantity} {item.unit}</span></div>
-                              </div>
-                              <div className="text-right text-xs">
-                                  <div className="font-bold text-slate-700">Ref: {item.refNo}</div>
-                                  <div className="text-slate-400">{item.date}</div>
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-                  <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50 rounded-b-2xl">
-                      <div className="text-sm text-slate-600">เลือกแล้ว <b>{selectedItemIds.size}</b> รายการ</div>
-                      <button onClick={handleGenerateDoc} disabled={selectedItemIds.size === 0} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">สร้างเอกสาร</button>
-                  </div>
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-lg">เลือกรายการเพื่อสร้างเอกสาร</h3>
+              <button onClick={() => setShowSelectionModal(false)}><X className="w-5 h-5 text-slate-500" /></button>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              <div className="mb-4 text-sm text-slate-600 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <p>คุณกำลังจะสร้างเอกสารสำหรับ <span className="font-bold">{selectionStatus ? getDispositionBadge(selectionStatus) : ''}</span></p>
+                <p>เลือกรายการที่ต้องการรวมในเอกสารชุดนี้ ({selectedItemIds.size} / {selectionItems.length} selected)</p>
               </div>
+              <div className="space-y-2">
+                {selectionItems.map(item => (
+                  <label key={item.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+                    <input type="checkbox" checked={selectedItemIds.has(item.id)} onChange={() => toggleSelection(item.id)} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+                    <div>
+                      <div className="font-semibold text-slate-800">{item.productName}</div>
+                      <div className="text-xs text-slate-500">{item.id} | {item.branch} | Qty: {item.quantity}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end gap-2 bg-slate-50">
+              <button onClick={() => setShowSelectionModal(false)} className="px-4 py-2 border rounded text-slate-600 font-medium">ยกเลิก</button>
+              <button onClick={handleGenerateDoc} className="px-4 py-2 bg-blue-600 text-white font-bold rounded">สร้างเอกสาร ({selectedItemIds.size})</button>
+            </div>
           </div>
+        </div>
       )}
 
-      {/* DOCUMENT PREVIEW MODAL */}
+      {/* Document Preview Modal */}
       {showDocModal && docData && (
-        <div className="fixed inset-0 z-50 bg-slate-900/90 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white w-[210mm] min-h-[297mm] h-auto shadow-2xl relative flex flex-col my-8">
-             {/* Toolbar */}
-             <div className="absolute -top-12 left-0 right-0 flex justify-between items-center text-white print:hidden">
-                 <div className="flex items-center gap-4">
-                     <h3 className="font-bold text-lg">ตัวอย่างเอกสาร (Preview)</h3>
-                     <label className="flex items-center gap-2 cursor-pointer bg-white/20 px-3 py-1 rounded hover:bg-white/30 transition">
-                         <input type="checkbox" checked={includeVat} onChange={(e) => setIncludeVat(e.target.checked)} className="rounded text-blue-500 focus:ring-0" />
-                         <span className="text-sm">คิดภาษีมูลค่าเพิ่ม (VAT 7%)</span>
-                     </label>
-                     <button onClick={() => setIsDocEditable(!isDocEditable)} className={`flex items-center gap-2 px-3 py-1 rounded text-sm transition ${isDocEditable ? 'bg-yellow-500 text-black' : 'bg-white/20 hover:bg-white/30'}`}>
-                         <Edit3 className="w-4 h-4" /> {isDocEditable ? 'Finish Editing' : 'Edit Mode'}
-                     </button>
-                 </div>
-                 <div className="flex gap-2">
-                     <button onClick={() => window.print()} className="bg-white text-slate-900 px-4 py-2 rounded-lg font-bold hover:bg-slate-100 flex items-center gap-2"><Printer className="w-4 h-4" /> พิมพ์ (Print)</button>
-                     <button onClick={handleConfirmDocGeneration} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 flex items-center gap-2 shadow-lg"><CheckCircle className="w-4 h-4" /> ยืนยันการออกเอกสาร</button>
-                     <button onClick={() => setShowDocModal(false)} className="bg-red-500/80 text-white p-2 rounded-lg hover:bg-red-600"><X className="w-5 h-5" /></button>
-                 </div>
-             </div>
-
-             {/* DOCUMENT CONTENT (A4) */}
-             <div className="p-12 flex-1 flex flex-col text-slate-900 font-serif relative">
-                 {/* Header Table */}
-                 <table className="w-full border border-black mb-6">
-                     <tbody>
-                         <tr>
-                             <td className="w-[20%] border-r border-black p-4 text-center align-middle">
-                                 <img src="https://img2.pic.in.th/pic/logo-neo.png" alt="Company Logo" className="w-full h-auto object-contain max-h-20" />
-                             </td>
-                             <td className="w-[50%] border-r border-black p-4">
-                                 {isDocEditable ? (
-                                     <div className="space-y-2">
-                                         <input className="w-full border p-1 text-sm font-bold" value={docConfig.companyNameTH} onChange={(e) => setDocConfig({...docConfig, companyNameTH: e.target.value})} />
-                                         <input className="w-full border p-1 text-sm font-bold" value={docConfig.companyNameEN} onChange={(e) => setDocConfig({...docConfig, companyNameEN: e.target.value})} />
-                                         <textarea className="w-full border p-1 text-xs resize-none" rows={2} value={docConfig.address} onChange={(e) => setDocConfig({...docConfig, address: e.target.value})} />
-                                         <input className="w-full border p-1 text-xs" value={docConfig.contact} onChange={(e) => setDocConfig({...docConfig, contact: e.target.value})} />
-                                     </div>
-                                 ) : (
-                                     <>
-                                         <h1 className="text-lg font-bold leading-tight">{docConfig.companyNameTH}</h1>
-                                         <h2 className="text-sm font-bold mb-2">{docConfig.companyNameEN}</h2>
-                                         <p className="text-xs leading-relaxed">{docConfig.address}</p>
-                                         <p className="text-xs mt-1">{docConfig.contact}</p>
-                                     </>
-                                 )}
-                             </td>
-                             <td className="w-[30%] p-2 align-top text-xs">
-                                 <div className="grid grid-cols-2 gap-y-2">
-                                     <span className="font-bold">Document No:</span>
-                                     <span className="font-mono text-right">{docData.items[0]?.id.replace('RT-', getISODetails(docData.type).code + '-')}</span>
-                                     <span className="font-bold">Date:</span>
-                                     <span className="text-right">{new Date().toLocaleDateString('th-TH')}</span>
-                                     <span className="font-bold">Form Code:</span>
-                                     <span className="text-right">{getISODetails(docData.type).code}</span>
-                                     <span className="font-bold">Rev No:</span>
-                                     <span className="text-right">{getISODetails(docData.type).rev}</span>
-                                 </div>
-                             </td>
-                         </tr>
-                     </tbody>
-                 </table>
-
-                 {/* Title */}
-                 <div className="text-center mb-6 border border-black py-3 bg-slate-50 print:bg-transparent">
-                     <h2 className="text-xl font-bold uppercase">{docConfig.titleTH || getISODetails(docData.type).th}</h2>
-                     <h3 className="text-sm font-bold text-slate-500 uppercase">{docConfig.titleEN || getISODetails(docData.type).en}</h3>
-                 </div>
-
-                 {/* Info Block */}
-                 <div className="flex border border-black mb-6">
-                     <div className="w-1/2 p-4 border-r border-black space-y-2 text-sm">
-                         <h4 className="font-bold border-b border-black pb-1 mb-2">ผู้ส่ง / ผู้ขออนุมัติ (Sender / Requestor)</h4>
-                         <p><span className="font-bold w-20 inline-block">หน่วยงาน:</span> แผนกคืนสินค้า (Return Department)</p>
-                         <p><span className="font-bold w-20 inline-block">วันที่บันทึก:</span> {docData.items[0]?.date}</p>
-                     </div>
-                     <div className="w-1/2 p-4 space-y-2 text-sm">
-                         <h4 className="font-bold border-b border-black pb-1 mb-2">ผู้รับ / ปลายทาง (Receiver / Destination)</h4>
-                         {docData.type === 'RTV' && (
-                             <p><span className="font-bold w-20 inline-block">ปลายทาง:</span> {docData.items[0]?.dispositionRoute}</p>
-                         )}
-                         {docData.type === 'Restock' && (
-                             <>
-                                 <p><span className="font-bold w-20 inline-block">ชื่อผู้ซื้อ:</span> {docData.items[0]?.sellerName}</p>
-                                 <p><span className="font-bold w-20 inline-block">เบอร์โทร:</span> {docData.items[0]?.contactPhone}</p>
-                             </>
-                         )}
-                         {docData.type === 'Claim' && (
-                             <>
-                                 <p><span className="font-bold w-20 inline-block">บริษัทประกัน:</span> {docData.items[0]?.claimCompany}</p>
-                                 <p><span className="font-bold w-20 inline-block">ผู้ติดต่อ:</span> {docData.items[0]?.claimCoordinator}</p>
-                                 <p><span className="font-bold w-20 inline-block">เบอร์โทร:</span> {docData.items[0]?.claimPhone}</p>
-                             </>
-                         )}
-                         {docData.type === 'InternalUse' && (
-                             <p><span className="font-bold w-20 inline-block">หน่วยงาน:</span> {docData.items[0]?.internalUseDetail}</p>
-                         )}
-                     </div>
-                 </div>
-
-                 {/* Table */}
-                 <table className="w-full border-collapse border border-black mb-6 text-sm">
-                     <thead className="bg-slate-100 print:bg-transparent text-center font-bold">
-                         <tr>
-                             <th className="border border-black py-2 w-12">No.</th>
-                             <th className="border border-black py-2">รหัสสินค้า (Code)</th>
-                             <th className="border border-black py-2">รายการ (Description)</th>
-                             <th className="border border-black py-2 w-20">จำนวน</th>
-                             <th className="border border-black py-2 w-16">หน่วย</th>
-                             <th className="border border-black py-2 w-24">ราคา/หน่วย</th>
-                             <th className="border border-black py-2 w-24">จำนวนเงิน</th>
-                         </tr>
-                     </thead>
-                     <tbody>
-                         {docData.items.map((item, index) => (
-                             <tr key={index}>
-                                 <td className="border border-black py-2 text-center">{index + 1}</td>
-                                 <td className="border border-black py-2 px-2 font-mono">{item.productCode}</td>
-                                 <td className="border border-black py-2 px-2">
-                                     <div className="font-bold">{item.productName}</div>
-                                     <div className="text-xs text-slate-500">
-                                         สาขา: {item.branch} | Ref: {item.refNo} {item.customerName ? `| ลูกค้า: ${item.customerName}` : ''}
-                                     </div>
-                                 </td>
-                                 <td className="border border-black py-2 text-center">{item.quantity}</td>
-                                 <td className="border border-black py-2 text-center">{item.unit}</td>
-                                 <td className="border border-black py-2 text-right px-2">{(item.priceBill || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                 <td className="border border-black py-2 text-right px-2">{((item.priceBill || 0) * item.quantity).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                             </tr>
-                         ))}
-                         {/* Fill empty rows to maintain A4 look */}
-                         {Array.from({ length: Math.max(0, 10 - docData.items.length) }).map((_, i) => (
-                             <tr key={`empty-${i}`}>
-                                 <td className="border border-black py-2">&nbsp;</td>
-                                 <td className="border border-black py-2">&nbsp;</td>
-                                 <td className="border border-black py-2">&nbsp;</td>
-                                 <td className="border border-black py-2">&nbsp;</td>
-                                 <td className="border border-black py-2">&nbsp;</td>
-                                 <td className="border border-black py-2">&nbsp;</td>
-                                 <td className="border border-black py-2">&nbsp;</td>
-                             </tr>
-                         ))}
-                     </tbody>
-                     <tfoot>
-                         <tr>
-                             <td colSpan={4} rowSpan={3} className="border border-black p-2 align-top text-xs">
-                                 <span className="font-bold underline mb-1 block">หมายเหตุ (Remarks):</span>
-                                 {isDocEditable ? (
-                                     <textarea className="w-full h-full resize-none border-none outline-none bg-transparent" value={docConfig.remarks} onChange={(e) => setDocConfig({...docConfig, remarks: e.target.value})} />
-                                 ) : (
-                                     <p className="whitespace-pre-wrap">{docConfig.remarks}</p>
-                                 )}
-                                 <div className="mt-4 text-center font-bold">
-                                     ( {ThaiBahtText(calculateTotal(docData.items, includeVat).net)} )
-                                 </div>
-                             </td>
-                             <td colSpan={2} className="border border-black p-1 text-right font-bold bg-slate-50 print:bg-transparent">รวมเป็นเงิน</td>
-                             <td className="border border-black p-1 text-right">{calculateTotal(docData.items, includeVat).subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                         </tr>
-                         <tr>
-                             <td colSpan={2} className="border border-black p-1 text-right font-bold bg-slate-50 print:bg-transparent">ภาษีมูลค่าเพิ่ม (7%)</td>
-                             <td className="border border-black p-1 text-right">{calculateTotal(docData.items, includeVat).vat.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                         </tr>
-                         <tr>
-                             <td colSpan={2} className="border border-black p-1 text-right font-bold bg-slate-50 print:bg-transparent text-base">ยอดเงินสุทธิ</td>
-                             <td className="border border-black p-1 text-right font-bold text-base">{calculateTotal(docData.items, includeVat).net.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                         </tr>
-                     </tfoot>
-                 </table>
-
-                 {/* Signatures */}
-                 <div className="mt-auto grid grid-cols-3 gap-4 text-center">
-                     <div className="border border-black p-4 pt-12 relative">
-                         <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
-                         {isDocEditable ? <input className="text-center w-full text-xs font-bold" value={docConfig.signatory1} onChange={e => setDocConfig({...docConfig, signatory1: e.target.value})} /> : <p className="text-xs font-bold">{docConfig.signatory1}</p>}
-                         <p className="text-xs mt-4">วันที่ ......../......../............</p>
-                     </div>
-                     <div className="border border-black p-4 pt-12 relative">
-                         <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
-                         {isDocEditable ? <input className="text-center w-full text-xs font-bold" value={docConfig.signatory2} onChange={e => setDocConfig({...docConfig, signatory2: e.target.value})} /> : <p className="text-xs font-bold">{docConfig.signatory2}</p>}
-                         <p className="text-xs mt-4">วันที่ ......../......../............</p>
-                     </div>
-                     <div className="border border-black p-4 pt-12 relative">
-                         <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
-                         {isDocEditable ? <input className="text-center w-full text-xs font-bold" value={docConfig.signatory3} onChange={e => setDocConfig({...docConfig, signatory3: e.target.value})} /> : <p className="text-xs font-bold">{docConfig.signatory3}</p>}
-                         <p className="text-xs mt-4">วันที่ ......../......../............</p>
-                     </div>
-                 </div>
-
-                 {/* Footer Dist */}
-                 <div className="mt-4 text-[10px] text-slate-500 flex justify-between">
-                     <span>Distribution: Original (Customer), Copy 1 (Accounting), Copy 2 (Warehouse)</span>
-                     <span>System Generated by ReturnNeosiam Pro</span>
-                 </div>
-             </div>
+        <div className="fixed inset-0 z-[100] bg-black/70 flex flex-col items-center p-4 overflow-y-auto print:bg-white print:p-0">
+          {/* Toolbar */}
+          <div className="w-full max-w-4xl bg-slate-800/90 backdrop-blur-sm p-3 rounded-t-lg flex justify-between items-center print:hidden sticky top-0 z-10">
+              <div className="flex items-center gap-4">
+                  <button onClick={() => { setShowDocModal(false); setIsDocEditable(false); }} className="text-slate-300 hover:text-white"><XCircle className="w-6 h-6" /></button>
+                  <div>
+                      <h3 className="font-bold text-white">{docConfig.titleTH}</h3>
+                      <p className="text-xs text-slate-400">{getISODetails(docData.type).code}</p>
+                  </div>
+              </div>
+              <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-xs text-white cursor-pointer"><input type="checkbox" checked={includeVat} onChange={e => setIncludeVat(e.target.checked)} /> คิด VAT 7%</label>
+                  <button onClick={() => setIsDocEditable(!isDocEditable)} className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1 ${isDocEditable ? 'bg-amber-500 text-white' : 'bg-slate-600 text-slate-200'}`}><PenTool className="w-3 h-3" /> {isDocEditable ? 'Lock Edit' : 'Edit Form'}</button>
+                  <button onClick={() => window.print()} className="px-4 py-1.5 bg-blue-600 text-white rounded font-bold text-xs flex items-center gap-1"><Printer className="w-3 h-3" /> PRINT</button>
+              </div>
+          </div>
+          {/* A4 Paper */}
+          <div className="w-full max-w-4xl bg-white shadow-2xl p-12 print:p-0 print:shadow-none min-h-[1123px] my-4 print:my-0">
+             {/* ... (rest of document template, signature blocks) ... */}
+          </div>
+          <div className="w-full max-w-4xl bg-slate-800/90 p-3 rounded-b-lg flex justify-end print:hidden sticky bottom-0">
+              <button onClick={handleConfirmDocGeneration} className="px-6 py-2 bg-green-600 text-white font-bold rounded flex items-center gap-2 hover:bg-green-700">
+                  <CheckSquare className="w-5 h-5" /> ยืนยันการออกเอกสาร
+              </button>
           </div>
         </div>
       )}
     </div>
   );
 };
-
-// Helper for icon colors
-import { LucideIcon } from 'lucide-react';
-import { Inbox } from 'lucide-react';
 
 export default Operations;
