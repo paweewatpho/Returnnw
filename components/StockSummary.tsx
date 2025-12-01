@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../DataContext';
 import { DispositionAction } from '../types';
-import { Box, RotateCcw, ShieldCheck, Home, Trash2, Search, Download } from 'lucide-react';
+import { Box, RotateCcw, ShieldCheck, Home, Trash2, Search, Download, Truck, DollarSign, Package, Layers } from 'lucide-react';
 
 interface StockSummaryItem {
   productCode: string;
@@ -19,6 +19,7 @@ const StockSummary: React.FC = () => {
   const { items, loading } = useData();
 
   const summarizedData = useMemo(() => {
+    // Correct On-Hand calculation: IN (Graded) - OUT (Documented/Completed)
     const productMap = new Map<string, {
       productName: string;
       totalIn: number;
@@ -28,51 +29,44 @@ const StockSummary: React.FC = () => {
       disposition: DispositionAction;
     }>();
 
-    // First pass to aggregate IN/OUT and find latest dates/prices
     items.forEach(item => {
-      if (!item.productCode) return;
+      if (!item.productCode || !item.disposition || item.disposition === 'Pending') return;
 
-      const existing = productMap.get(item.productCode) || {
+      const key = `${item.productCode}-${item.disposition}`;
+      const existing = productMap.get(key) || {
         productName: item.productName,
         totalIn: 0,
         totalOut: 0,
         lastIntakeDate: '1970-01-01',
         priceBill: item.priceBill,
-        disposition: item.disposition || 'Pending',
+        disposition: item.disposition,
       };
 
-      if (item.dateGraded) { // IN movement
+      if (item.dateGraded) {
         existing.totalIn += item.quantity;
         if (item.dateGraded > existing.lastIntakeDate) {
           existing.lastIntakeDate = item.dateGraded;
         }
       }
-      if (item.dateDocumented || item.dateCompleted) { // OUT movement
+      if (item.dateDocumented || item.dateCompleted) {
         existing.totalOut += item.quantity;
       }
       
-      // Keep the latest info if it's more relevant
-      if (item.date > (productMap.get(item.productCode) ? items.find(i => i.productCode === item.productCode)?.date || '1970-01-01' : '1970-01-01')) {
-        existing.productName = item.productName;
-        existing.priceBill = item.priceBill;
-        existing.disposition = item.disposition || 'Pending';
-      }
-
-      productMap.set(item.productCode, existing);
+      productMap.set(key, existing);
     });
     
-    // Second pass to calculate on-hand and create final list
     const summaryList: StockSummaryItem[] = [];
-    productMap.forEach((data, productCode) => {
+    productMap.forEach((data, key) => {
       const onHandQuantity = data.totalIn - data.totalOut;
       if (onHandQuantity > 0) {
+        const [productCode, disposition] = key.split('-');
         summaryList.push({
           productCode,
           productName: data.productName,
           onHandQuantity,
           totalValue: onHandQuantity * data.priceBill,
           lastIntakeDate: data.lastIntakeDate,
-          disposition: data.disposition,
+          disposition: disposition as DispositionAction,
         });
       }
     });
@@ -98,6 +92,14 @@ const StockSummary: React.FC = () => {
 
     return data;
   }, [summarizedData, activeTab, query]);
+
+  const stats = useMemo(() => {
+    return filteredData.reduce((acc, item) => ({
+      totalValue: acc.totalValue + item.totalValue,
+      totalQty: acc.totalQty + item.onHandQuantity,
+      skuCount: acc.skuCount + 1
+    }), { totalValue: 0, totalQty: 0, skuCount: 0 });
+  }, [filteredData]);
 
   const handleExportExcel = () => {
     const headers = [
@@ -127,6 +129,7 @@ const StockSummary: React.FC = () => {
   const tabs = [
     { id: 'All', label: 'ทั้งหมด (All On-Hand)', icon: Box },
     { id: 'Restock', label: 'สินค้าสำหรับขาย (Sellable)', icon: RotateCcw },
+    { id: 'RTV', label: 'สินค้าสำหรับคืน (RTV)', icon: Truck },
     { id: 'Claim', label: 'สินค้าสำหรับเคลม (Claim)', icon: ShieldCheck },
     { id: 'InternalUse', label: 'สินค้าใช้ภายใน (Internal)', icon: Home },
     { id: 'Recycle', label: 'สินค้าสำหรับทำลาย (Scrap)', icon: Trash2 },
@@ -160,6 +163,37 @@ const StockSummary: React.FC = () => {
             )
           })}
         </nav>
+      </div>
+
+      {/* SUMMARY STATS CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">มูลค่ารวม (Total Value)</p>
+                <h3 className="text-2xl font-bold text-slate-800">฿{stats.totalValue.toLocaleString()}</h3>
+            </div>
+            <div className="p-3 bg-green-50 text-green-600 rounded-lg">
+                <DollarSign className="w-6 h-6" />
+            </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">จำนวนรวม (Total Qty)</p>
+                <h3 className="text-2xl font-bold text-slate-800">{stats.totalQty.toLocaleString()} <span className="text-sm font-normal text-slate-400">ชิ้น</span></h3>
+            </div>
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                <Package className="w-6 h-6" />
+            </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">รายการสินค้า (SKUs)</p>
+                <h3 className="text-2xl font-bold text-slate-800">{stats.skuCount.toLocaleString()} <span className="text-sm font-normal text-slate-400">รายการ</span></h3>
+            </div>
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
+                <Layers className="w-6 h-6" />
+            </div>
+        </div>
       </div>
       
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
@@ -200,7 +234,7 @@ const StockSummary: React.FC = () => {
                 <tr><td colSpan={4} className="p-8 text-center text-slate-400 italic">ไม่พบข้อมูลสต็อกคงเหลือที่ตรงกับเงื่อนไข</td></tr>
               ) : (
                 filteredData.map(item => (
-                  <tr key={item.productCode} className="text-sm">
+                  <tr key={`${item.productCode}-${item.disposition}`} className="text-sm">
                     <td className="px-4 py-3">
                       <div className="font-bold text-slate-800">{item.productName}</div>
                       <div className="text-xs text-slate-500">{item.productCode}</div>

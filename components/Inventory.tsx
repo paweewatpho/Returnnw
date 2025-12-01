@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../DataContext';
 import { DispositionAction, ReturnRecord } from '../types';
-import { Box, RotateCcw, ShieldCheck, Home, Trash2, ArrowUpCircle, ArrowDownCircle, History, Search, Download } from 'lucide-react';
+import { Box, RotateCcw, ShieldCheck, Home, Trash2, ArrowUpCircle, ArrowDownCircle, History, Search, Download, Truck } from 'lucide-react';
 
 interface StockAggregate {
   stats: {
@@ -93,6 +93,7 @@ const Inventory: React.FC = () => {
     return {
       fullLedger,
       sellableStock: { stats: calculateStats('Restock') },
+      rtvStock: { stats: calculateStats('RTV') },
       claimStock: { stats: calculateStats('Claim') },
       internalStock: { stats: calculateStats('InternalUse') },
       scrapStock: { stats: calculateStats('Recycle') },
@@ -168,9 +169,10 @@ const Inventory: React.FC = () => {
   const tabs = [
     { id: 'Ledger', label: '1. ประวัติทั้งหมด (Full Ledger)', icon: History, stats: null },
     { id: 'Restock', label: '2. สินค้าสำหรับขาย (Sellable)', icon: RotateCcw, stats: inventoryData.sellableStock.stats },
-    { id: 'Claim', label: '3. สินค้าสำหรับเคลม (Claim)', icon: ShieldCheck, stats: inventoryData.claimStock.stats },
-    { id: 'InternalUse', label: '4. สินค้าใช้ภายใน (Internal)', icon: Home, stats: inventoryData.internalStock.stats },
-    { id: 'Recycle', label: '5. สินค้าสำหรับทำลาย (Scrap)', icon: Trash2, stats: inventoryData.scrapStock.stats },
+    { id: 'RTV', label: '3. สินค้าสำหรับคืน (RTV)', icon: Truck, stats: inventoryData.rtvStock.stats },
+    { id: 'Claim', label: '4. สินค้าสำหรับเคลม (Claim)', icon: ShieldCheck, stats: inventoryData.claimStock.stats },
+    { id: 'InternalUse', label: '5. สินค้าใช้ภายใน (Internal)', icon: Home, stats: inventoryData.internalStock.stats },
+    { id: 'Recycle', label: '6. สินค้าสำหรับทำลาย (Scrap)', icon: Trash2, stats: inventoryData.scrapStock.stats },
   ];
 
   const currentTab = tabs.find(t => t.id === activeTab);
