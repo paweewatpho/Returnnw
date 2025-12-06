@@ -195,7 +195,7 @@ export const MOCK_NCR_HISTORY: NCRRecord[] = [
     actionScrap: true,
     actionScrapQty: 50,
     // Add default values for other fields to prevent errors
-    problemDamaged: false, problemDamagedInBox: false, problemLost: false, problemMixed: false, problemWrongInv: false, problemLate: false, problemDuplicate: false, problemWrong: false, problemIncomplete: false, problemOver: false, problemWrongInfo: false, problemTransportDamage: false, problemAccident: false, problemOther: false, problemOtherText: '',
+    problemDamaged: false, problemDamagedInBox: false, problemLost: false, problemMixed: false, problemWrongInv: false, problemLate: false, problemDuplicate: false, problemWrong: false, problemIncomplete: false, problemOver: false, problemWrongInfo: false, problemTransportDamage: false, problemAccident: false, problemPOExpired: false, problemNoBarcode: false, problemNotOrdered: false, problemOther: false, problemOtherText: '',
     actionReject: false, actionRejectQty: 0, actionRejectSort: false, actionRejectSortQty: 0, actionRework: false, actionReworkQty: 0, actionReworkMethod: '', actionSpecialAcceptance: false, actionSpecialAcceptanceQty: 0, actionSpecialAcceptanceReason: '', actionReplace: false, actionReplaceQty: 0,
     dueDate: '', approver: '', approverPosition: '', approverDate: '',
     causePackaging: false, causeTransport: false, causeOperation: true, causeEnv: false, causeDetail: 'จัดเก็บผิดพลาด', preventionDetail: 'อบรมพนักงาน', preventionDueDate: '', responsiblePerson: '', responsiblePosition: '',
@@ -233,7 +233,7 @@ export const MOCK_NCR_HISTORY: NCRRecord[] = [
     actionReject: true,
     actionRejectQty: 10,
     // Add default values for other fields
-    problemDamaged: false, problemDamagedInBox: false, problemLost: false, problemMixed: false, problemWrongInv: false, problemLate: false, problemDuplicate: false, problemWrong: false, problemIncomplete: false, problemOver: false, problemWrongInfo: false, problemShortExpiry: false, problemAccident: false, problemOther: false, problemOtherText: '',
+    problemDamaged: false, problemDamagedInBox: false, problemLost: false, problemMixed: false, problemWrongInv: false, problemLate: false, problemDuplicate: false, problemWrong: false, problemIncomplete: false, problemOver: false, problemWrongInfo: false, problemShortExpiry: false, problemAccident: false, problemPOExpired: false, problemNoBarcode: false, problemNotOrdered: false, problemOther: false, problemOtherText: '',
     actionScrap: false, actionScrapQty: 0, actionRejectSort: false, actionRejectSortQty: 0, actionRework: false, actionReworkQty: 0, actionReworkMethod: '', actionSpecialAcceptance: false, actionSpecialAcceptanceQty: 0, actionSpecialAcceptanceReason: '', actionReplace: false, actionReplaceQty: 0,
     dueDate: '', approver: 'ผู้จัดการ', approverPosition: 'MD', approverDate: getDate(1),
     causePackaging: false, causeTransport: true, causeOperation: false, causeEnv: false, causeDetail: 'พนักงานขับรถไม่ระมัดระวัง', preventionDetail: 'ตักเตือนและอบรม', preventionDueDate: '', responsiblePerson: 'ฝ่ายบุคคล', responsiblePosition: 'HR',

@@ -144,7 +144,9 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
     problemDamaged: false, problemDamagedInBox: false, problemLost: false, problemMixed: false,
     problemWrongInv: false, problemLate: false, problemDuplicate: false, problemWrong: false,
     problemIncomplete: false, problemOver: false, problemWrongInfo: false, problemShortExpiry: false,
-    problemTransportDamage: false, problemAccident: false, problemOther: false,
+    problemTransportDamage: false, problemAccident: false,
+    problemPOExpired: false, problemNoBarcode: false, problemNotOrdered: false,
+    problemOther: false,
     problemOtherText: '', problemDetail: '',
 
     // Actions
@@ -823,6 +825,9 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
                       <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemShortExpiry} onChange={e => setFormData({ ...formData, problemShortExpiry: e.target.checked })} /> สินค้าอายุสั้น</label>
                       <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemTransportDamage} onChange={e => setFormData({ ...formData, problemTransportDamage: e.target.checked })} /> สินค้าเสียหายบนรถขนส่ง</label>
                       <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemAccident} onChange={e => setFormData({ ...formData, problemAccident: e.target.checked })} /> อุบัติเหตุ</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemPOExpired} onChange={e => setFormData({ ...formData, problemPOExpired: e.target.checked })} /> PO. หมดอายุ</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemNoBarcode} onChange={e => setFormData({ ...formData, problemNoBarcode: e.target.checked })} /> บาร์โค๊ตไม่ขึ้น</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemNotOrdered} onChange={e => setFormData({ ...formData, problemNotOrdered: e.target.checked })} /> ลูกค้าไม่ได้สั่งสินค้า</label>
                       <div className="flex items-center gap-2 p-1 col-span-2"><input type="checkbox" checked={formData.problemOther} onChange={e => setFormData({ ...formData, problemOther: e.target.checked })} /> <span>อื่นๆ</span><input type="text" className="border-b border-dotted border-slate-400 bg-transparent outline-none flex-1 text-slate-700" value={formData.problemOtherText || ''} onChange={e => setFormData({ ...formData, problemOtherText: e.target.value })} /></div>
                     </div>
                     <div>

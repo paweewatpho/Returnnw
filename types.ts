@@ -108,6 +108,9 @@ export interface ReturnRecord {
   problemShortExpiry?: boolean;
   problemTransportDamage?: boolean;
   problemAccident?: boolean;
+  problemPOExpired?: boolean;
+  problemNoBarcode?: boolean;
+  problemNotOrdered?: boolean;
   problemOther?: boolean;
   problemOtherText?: string;
 
