@@ -12,7 +12,7 @@ const NCRSystem: React.FC = () => {
     const initialFormData = {
         toDept: 'แผนกควบคุมคุณภาพ', date: new Date().toISOString().split('T')[0], copyTo: '',
         founder: 'สมชาย ใจดี', poNo: '',
-        problemDamaged: false, problemLost: false, problemMixed: false, problemWrongInv: false, problemLate: false, problemDuplicate: false, problemWrong: false, problemIncomplete: false, problemOver: false, problemWrongInfo: false, problemShortExpiry: false, problemTransportDamage: false, problemAccident: false, problemOther: false, problemOtherText: '', problemDetail: '',
+        problemDamaged: false, problemDamagedInBox: false, problemLost: false, problemMixed: false, problemWrongInv: false, problemLate: false, problemDuplicate: false, problemWrong: false, problemIncomplete: false, problemOver: false, problemWrongInfo: false, problemShortExpiry: false, problemTransportDamage: false, problemAccident: false, problemOther: false, problemOtherText: '', problemDetail: '',
         actionReject: false, actionRejectQty: 0, actionRejectSort: false, actionRejectSortQty: 0, actionRework: false, actionReworkQty: 0, actionReworkMethod: '', actionSpecialAccept: false, actionSpecialAcceptQty: 0, actionSpecialAcceptReason: '', actionScrap: false, actionScrapQty: 0, actionReplace: false, actionReplaceQty: 0,
         causePackaging: false, causeTransport: false, causeOperation: false, causeEnv: false, causeDetail: '', preventionDetail: '', preventionDueDate: '',
         dueDate: '', approver: '', approverPosition: '', approverDate: '', responsiblePerson: '', responsiblePosition: '',
@@ -32,6 +32,8 @@ const NCRSystem: React.FC = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showResultModal, setShowResultModal] = useState(false);
     const [saveResult, setSaveResult] = useState<{ success: boolean; message: string; ncrNo?: string } | null>(null);
+    const [isPrinting, setIsPrinting] = useState(false);
+    const [generatedNCRNumber, setGeneratedNCRNumber] = useState('');
 
 
     useEffect(() => {
@@ -82,15 +84,12 @@ const NCRSystem: React.FC = () => {
     };
 
     const handleDeleteItem = (id: string) => { setNcrItems(ncrItems.filter(i => i.id !== id)); };
-    const handlePrint = () => { window.print(); };
-
-    const handleSaveRecord = () => {
-        // 1. Validation Logic
+    const validateForm = () => {
         const errors = [];
         if (!formData.founder.trim()) errors.push("ผู้พบปัญหา");
 
         const isProblemChecked =
-            formData.problemDamaged || formData.problemLost || formData.problemMixed || formData.problemWrongInv ||
+            formData.problemDamaged || formData.problemDamagedInBox || formData.problemLost || formData.problemMixed || formData.problemWrongInv ||
             formData.problemLate || formData.problemDuplicate || formData.problemWrong || formData.problemIncomplete ||
             formData.problemOver || formData.problemWrongInfo || formData.problemShortExpiry || formData.problemTransportDamage ||
             formData.problemAccident || (formData.problemOther && formData.problemOtherText.trim());
@@ -103,17 +102,33 @@ const NCRSystem: React.FC = () => {
             errors.push("รายการสินค้า (กรุณากดปุ่ม '+ เพิ่มรายการ' สีน้ำเงิน)");
         }
 
+        return errors;
+    };
+
+    const handlePrint = () => {
+        const errors = validateForm();
+        if (errors.length > 0) {
+            alert("กรุณากรอกข้อมูลให้ครบถ้วนก่อนพิมพ์ (ระบบจะทำการบันทึกข้อมูลก่อนพิมพ์):\n\n" + errors.map(e => "- " + e).join("\n"));
+            return;
+        }
+        setIsPrinting(true);
+        setShowConfirmModal(true);
+    };
+
+    const handleSaveRecord = () => {
+        const errors = validateForm();
         if (errors.length > 0) {
             alert("กรุณากรอกข้อมูลต่อไปนี้ให้ครบถ้วนก่อนบันทึก:\n\n" + errors.map(e => "- " + e).join("\n"));
             return;
         }
-
-        // 2. Show Confirmation Modal
+        setIsPrinting(false);
         setShowConfirmModal(true);
     };
 
     const executeSave = async () => {
         setShowConfirmModal(false);
+        // Do not set isSaving(true) immediately if we want to show print dialog, 
+        // but basically we want to block interaction.
         setIsSaving(true);
 
         const newNcrNo = await getNextNCRNumber();
@@ -121,6 +136,7 @@ const NCRSystem: React.FC = () => {
             setSaveResult({ success: false, message: "ไม่สามารถสร้างเลขที่ NCR อัตโนมัติได้ กรุณาลองใหม่อีกครั้ง" });
             setShowResultModal(true);
             setIsSaving(false);
+            setIsPrinting(false);
             return;
         }
 
@@ -146,11 +162,25 @@ const NCRSystem: React.FC = () => {
         setIsSaving(false);
 
         if (successCount === ncrItems.length) {
+            setGeneratedNCRNumber(newNcrNo); // Show ID on form
             setSaveResult({ success: true, message: `บันทึกข้อมูลสำเร็จ`, ncrNo: newNcrNo });
+
+            if (isPrinting) {
+                // Wait a moment for the newNcrNo to be rendered in the DOM
+                setTimeout(() => {
+                    window.print();
+                    // After print dialog closes (or standard timeout), show success modal
+                    setShowResultModal(true);
+                }, 500);
+            } else {
+                setShowResultModal(true);
+            }
+
         } else {
             setSaveResult({ success: false, message: `บันทึกข้อมูลไม่สำเร็จ!\nกรุณาตรวจสอบสิทธิ์การใช้งาน (Permission Denied)` });
+            setShowResultModal(true);
         }
-        setShowResultModal(true);
+
     };
 
     const handleCloseResultModal = () => {
@@ -158,6 +188,8 @@ const NCRSystem: React.FC = () => {
         if (saveResult?.success) {
             setNcrItems([]);
             setFormData(initialFormData);
+            setGeneratedNCRNumber('');
+            setIsPrinting(false);
         }
         setSaveResult(null);
     };
@@ -183,7 +215,7 @@ const NCRSystem: React.FC = () => {
                     <div className="flex items-center gap-2">
                         <label className="font-bold w-24 text-slate-800">เลขที่ NCR: <span className="text-red-500">*</span></label>
                         <div className="flex-1 border-b border-dotted border-slate-400 bg-slate-100 outline-none px-2 py-1 font-mono text-slate-500 font-bold rounded-sm text-center">
-                            จะถูกสร้างอัตโนมัติเมื่อบันทึก
+                            {generatedNCRNumber || "จะถูกสร้างอัตโนมัติเมื่อบันทึก"}
                         </div>
                     </div>
                     <div className="flex items-center gap-2"><label className="font-bold w-24 text-slate-800">ผู้พบปัญหา: <span className="text-red-500">*</span></label><input type="text" className="flex-1 border-b border-dotted border-slate-400 bg-transparent outline-none px-1 text-slate-700 print:border-none" value={formData.founder} onChange={e => setFormData({ ...formData, founder: e.target.value })} /></div>
@@ -206,6 +238,7 @@ const NCRSystem: React.FC = () => {
                 {/* SECTION 1: PROBLEM */}
                 <table className="w-full border-2 border-black mb-6"><thead><tr className="border-b-2 border-black bg-slate-50 print:bg-transparent"><th className="border-r-2 border-black w-1/3 py-2 text-slate-900">รูปภาพ / เอกสาร</th><th className="py-2 text-slate-900">รายละเอียดของปัญหาที่พบ (ผู้พบปัญหา)</th></tr></thead><tbody><tr><td className="border-r-2 border-black p-4 text-center align-middle h-64 relative bg-white"><div className="flex flex-col items-center justify-center text-red-500 opacity-50 print:opacity-100 print:text-black"><h2 className="text-3xl font-bold mb-2">รูปภาพ / เอกสาร</h2><h2 className="text-3xl font-bold">ตามแนบ</h2><ImageIcon className="w-16 h-16 mt-4 print:hidden" /></div><input type="file" className="absolute inset-0 opacity-0 cursor-pointer print:hidden" title="Upload Image" /></td><td className="p-4 align-top text-sm bg-white"><div className="mb-2 font-bold underline text-slate-900">พบปัญหาที่กระบวนการ <span className="text-red-500">*</span></div><div className="grid grid-cols-2 gap-2 mb-4 text-slate-700">
                     <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemDamaged} onChange={e => setFormData({ ...formData, problemDamaged: e.target.checked })} /> ชำรุด</label>
+                    <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemDamagedInBox} onChange={e => setFormData({ ...formData, problemDamagedInBox: e.target.checked })} /> ชำรุดในกล่อง</label>
                     <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemLost} onChange={e => setFormData({ ...formData, problemLost: e.target.checked })} /> สูญหาย</label>
                     <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemMixed} onChange={e => setFormData({ ...formData, problemMixed: e.target.checked })} /> สินค้าสลับ</label>
                     <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemWrongInv} onChange={e => setFormData({ ...formData, problemWrongInv: e.target.checked })} /> สินค้าไม่ตรง INV.</label>
@@ -436,7 +469,7 @@ const NCRSystem: React.FC = () => {
 
             {/* Confirmation Modal */}
             {showConfirmModal && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm print:hidden">
                     <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
                         <div className="flex justify-center mb-4">
                             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
@@ -458,7 +491,7 @@ const NCRSystem: React.FC = () => {
 
             {/* Result Modal */}
             {showResultModal && saveResult && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm print:hidden">
                     <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
                         <div className="flex justify-center mb-4">
                             <div className={`w-16 h-16 rounded-full flex items-center justify-center ${saveResult.success ? 'bg-green-100' : 'bg-red-100'}`}>

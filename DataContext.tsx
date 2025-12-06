@@ -42,6 +42,7 @@ export interface NCRRecord {
 
   // Problem details
   problemDamaged: boolean;
+  problemDamagedInBox: boolean;
   problemLost: boolean;
   problemMixed: boolean;
   problemWrongInv: boolean;
@@ -88,7 +89,7 @@ export interface NCRRecord {
   preventionDueDate: string;
   responsiblePerson: string;
   responsiblePosition: string;
-  
+
   // Closing
   qaAccept: boolean;
   qaReject: boolean;
@@ -141,34 +142,34 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // FIX: Add robust filtering to prevent crashes from malformed data
       const loadedItems = data
         ? (Object.values(data) as any[])
-            .filter((item): item is ReturnRecord => {
-              // 1. Basic Object Check
-              if (!item || typeof item !== 'object') return false;
+          .filter((item): item is ReturnRecord => {
+            // 1. Basic Object Check
+            if (!item || typeof item !== 'object') return false;
 
-              // 2. Strict Type Checking for crucial fields required by Operations UI
-              const requiredStrings = ['id', 'date', 'status', 'branch', 'customerName', 'productName', 'productCode'];
-              for (const field of requiredStrings) {
-                  if (typeof (item as any)[field] !== 'string') {
-                      console.warn(`🛡️ Data Hardening: Filtering out invalid ReturnRecord (missing/bad ${field})`, item);
-                      return false;
-                  }
+            // 2. Strict Type Checking for crucial fields required by Operations UI
+            const requiredStrings = ['id', 'date', 'status', 'branch', 'customerName', 'productName', 'productCode'];
+            for (const field of requiredStrings) {
+              if (typeof (item as any)[field] !== 'string') {
+                console.warn(`🛡️ Data Hardening: Filtering out invalid ReturnRecord (missing/bad ${field})`, item);
+                return false;
               }
+            }
 
-              // 3. Numeric Fields Check & Auto-fix
-              if (typeof item.quantity !== 'number') {
-                  // Attempt to parse string to number
-                  if (typeof item.quantity === 'string' && !isNaN(parseFloat(item.quantity))) {
-                      (item as any).quantity = parseFloat(item.quantity);
-                  } else {
-                      console.warn(`🛡️ Data Hardening: Filtering out invalid ReturnRecord (bad quantity)`, item);
-                      return false;
-                  }
+            // 3. Numeric Fields Check & Auto-fix
+            if (typeof item.quantity !== 'number') {
+              // Attempt to parse string to number
+              if (typeof item.quantity === 'string' && !isNaN(parseFloat(item.quantity))) {
+                (item as any).quantity = parseFloat(item.quantity);
+              } else {
+                console.warn(`🛡️ Data Hardening: Filtering out invalid ReturnRecord (bad quantity)`, item);
+                return false;
               }
-              
-              return true; // All checks passed
-            })
+            }
+
+            return true; // All checks passed
+          })
         : [];
-      
+
       setItems(loadedItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setLoading(false);
       console.log(`✅ RTDB Connected: Loaded ${loadedItems.length} valid Return Records`);
@@ -185,28 +186,28 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // FIX: Add robust filtering for NCR reports as well
       const loadedReports = data
         ? (Object.values(data) as any[])
-            .filter((report): report is NCRRecord => {
-              if (!report || typeof report !== 'object') return false;
-              
-              // Header checks
-              if (typeof report.id !== 'string' || typeof report.date !== 'string' || typeof report.status !== 'string') {
-                console.warn("🛡️ Data Hardening: Filtering out invalid NCR (missing header fields).", report);
-                return false;
-              }
+          .filter((report): report is NCRRecord => {
+            if (!report || typeof report !== 'object') return false;
 
-              // Item checks (handle both nested and potential flat structures for backward compat)
-              const itemData = report.item || report;
-              if (!itemData || typeof itemData !== 'object') return false;
+            // Header checks
+            if (typeof report.id !== 'string' || typeof report.date !== 'string' || typeof report.status !== 'string') {
+              console.warn("🛡️ Data Hardening: Filtering out invalid NCR (missing header fields).", report);
+              return false;
+            }
 
-              if (typeof itemData.productName !== 'string') {
-                 console.warn("🛡️ Data Hardening: Filtering out invalid NCR (bad product name).", report);
-                 return false;
-              }
-              
-              return true;
-            })
+            // Item checks (handle both nested and potential flat structures for backward compat)
+            const itemData = report.item || report;
+            if (!itemData || typeof itemData !== 'object') return false;
+
+            if (typeof itemData.productName !== 'string') {
+              console.warn("🛡️ Data Hardening: Filtering out invalid NCR (bad product name).", report);
+              return false;
+            }
+
+            return true;
+          })
         : [];
-      
+
       setNcrReports(loadedReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       console.log(`✅ RTDB Connected: Loaded ${loadedReports.length} valid NCR Reports`);
     }, (error) => {
@@ -226,11 +227,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error: any) {
       if (error.code === 'PERMISSION_DENIED') {
-          console.warn("⚠️ Write Permission Denied: Cannot save return record.");
-          alert("Access Denied: Check Firebase Realtime Database Rules. Developer tip: Set rules to 'allow read, write: if true;' for testing.");
+        console.warn("⚠️ Write Permission Denied: Cannot save return record.");
+        alert("Access Denied: Check Firebase Realtime Database Rules. Developer tip: Set rules to 'allow read, write: if true;' for testing.");
       } else {
-          console.error("Error adding return record:", error);
-          alert("Failed to save record.");
+        console.error("Error adding return record:", error);
+        alert("Failed to save record.");
       }
       return false;
     }
@@ -242,11 +243,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error: any) {
       if (error.code === 'PERMISSION_DENIED') {
-          console.warn("⚠️ Update Permission Denied.");
-          alert("Access Denied: Cannot update record.");
+        console.warn("⚠️ Update Permission Denied.");
+        alert("Access Denied: Cannot update record.");
       } else {
-          console.error("Error updating return record:", error);
-          alert("Failed to update record.");
+        console.error("Error updating return record:", error);
+        alert("Failed to update record.");
       }
       return false;
     }
@@ -274,11 +275,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error: any) {
       if (error.code === 'PERMISSION_DENIED') {
-          console.warn("⚠️ Write Permission Denied: Cannot save NCR report.");
-          alert("Access Denied: Check Firebase Realtime Database Rules. Developer tip: Set rules to 'allow read, write: if true;' for testing.");
+        console.warn("⚠️ Write Permission Denied: Cannot save NCR report.");
+        alert("Access Denied: Check Firebase Realtime Database Rules. Developer tip: Set rules to 'allow read, write: if true;' for testing.");
       } else {
-          console.error("Error adding NCR report:", error);
-          alert("Failed to save NCR report.");
+        console.error("Error adding NCR report:", error);
+        alert("Failed to save NCR report.");
       }
       return false;
     }
@@ -290,11 +291,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error: any) {
       if (error.code === 'PERMISSION_DENIED') {
-          console.warn("⚠️ Update Permission Denied.");
-          alert("Access Denied: Cannot update NCR report.");
+        console.warn("⚠️ Update Permission Denied.");
+        alert("Access Denied: Cannot update NCR report.");
       } else {
-          console.error("Error updating NCR report:", error);
-          alert("Failed to update NCR report.");
+        console.error("Error updating NCR report:", error);
+        alert("Failed to update NCR report.");
       }
       return false;
     }
@@ -320,40 +321,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getNextNCRNumber = async (): Promise<string> => {
     const counterRef = ref(db, 'counters/ncr_counter');
     const currentYear = new Date().getFullYear();
-    
+
     try {
-        const { committed, snapshot } = await runTransaction(counterRef, (currentData) => {
-            if (currentData === null) {
-                // If counter doesn't exist, create it.
-                return { year: currentYear, lastNumber: 1 };
-            }
-
-            if (currentData.year === currentYear) {
-                // Same year, increment number.
-                currentData.lastNumber++;
-            } else {
-                // New year, reset number.
-                currentData.year = currentYear;
-                currentData.lastNumber = 1;
-            }
-            
-            return currentData;
-        });
-
-        if (committed) {
-            const data = snapshot.val();
-            const paddedNumber = String(data.lastNumber).padStart(4, '0');
-            return `NCR-${data.year}-${paddedNumber}`;
-        } else {
-            // Transaction aborted, throw error
-            throw new Error("Failed to get next NCR number, transaction aborted.");
+      const { committed, snapshot } = await runTransaction(counterRef, (currentData) => {
+        if (currentData === null) {
+          // If counter doesn't exist, create it.
+          return { year: currentYear, lastNumber: 1 };
         }
+
+        if (currentData.year === currentYear) {
+          // Same year, increment number.
+          currentData.lastNumber++;
+        } else {
+          // New year, reset number.
+          currentData.year = currentYear;
+          currentData.lastNumber = 1;
+        }
+
+        return currentData;
+      });
+
+      if (committed) {
+        const data = snapshot.val();
+        const paddedNumber = String(data.lastNumber).padStart(4, '0');
+        return `NCR-${data.year}-${paddedNumber}`;
+      } else {
+        // Transaction aborted, throw error
+        throw new Error("Failed to get next NCR number, transaction aborted.");
+      }
     } catch (error) {
-        console.error("Error getting next NCR number:", error);
-        // Fallback to a less reliable method if transaction fails, to avoid blocking user.
-        return `NCR-${currentYear}-ERR${Math.floor(Math.random() * 100)}`;
+      console.error("Error getting next NCR number:", error);
+      // Fallback to a less reliable method if transaction fails, to avoid blocking user.
+      return `NCR-${currentYear}-ERR${Math.floor(Math.random() * 100)}`;
     }
-};
+  };
 
   return (
     <DataContext.Provider value={{ items, ncrReports, loading, addReturnRecord, updateReturnRecord, deleteReturnRecord, addNCRReport, updateNCRReport, deleteNCRReport, getNextNCRNumber }}>
