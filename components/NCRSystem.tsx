@@ -499,7 +499,15 @@ const NCRSystem: React.FC = () => {
                             </div>
                         </div>
                         <h3 className="text-lg font-bold mb-2 text-slate-800">{saveResult.success ? 'บันทึกสำเร็จ!' : 'เกิดข้อผิดพลาด'}</h3>
-                        <p className="text-sm text-slate-500 mb-6 whitespace-pre-wrap">{saveResult.message}{saveResult.success && saveResult.ncrNo && `\n(NCR No: ${saveResult.ncrNo})`}</p>
+                        <div className="text-sm text-slate-500 mb-6 whitespace-pre-wrap">
+                            {saveResult.message}
+                            {saveResult.success && saveResult.ncrNo && (
+                                <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                    <div className="text-xs text-blue-500 uppercase font-semibold">เลขที่เอกสาร (NCR No.)</div>
+                                    <div className="text-xl font-bold text-blue-700">{saveResult.ncrNo}</div>
+                                </div>
+                            )}
+                        </div>
                         <button onClick={handleCloseResultModal} className={`w-full py-2 text-white rounded-lg font-bold shadow-sm ${saveResult.success ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>ตกลง</button>
                     </div>
                 </div>

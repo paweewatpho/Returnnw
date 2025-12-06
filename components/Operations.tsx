@@ -199,6 +199,7 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
 
     try {
       let successCount = 0;
+      let savedNcrNumbers: string[] = [];
 
       for (const item of itemsToProcess) {
         const finalProblemType = item.problemType === 'Other' ? customProblemType : item.problemType;
@@ -307,11 +308,13 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
             alert(`Warning: Failed to create NCR Record for ${record.id}`);
           }
           successCount++;
+          if (finalNcrNumber) savedNcrNumbers.push(finalNcrNumber);
         }
       }
 
       if (successCount > 0) {
-        alert(`บันทึกคำขอคืนเรียบร้อย ${successCount} รายการ! \nรายการจะไปรอที่ขั้นตอน "รับสินค้าเข้า"`);
+        const ncrListText = savedNcrNumbers.length > 0 ? `\n(NCR No: ${savedNcrNumbers.join(', ')})` : '';
+        alert(`บันทึกคำขอคืนเรียบร้อย ${successCount} รายการ! ${ncrListText} \nรายการจะไปรอที่ขั้นตอน "รับสินค้าเข้า"`);
         setFormData(initialFormState);
         setRequestItems([]);
         setCustomProblemType('');

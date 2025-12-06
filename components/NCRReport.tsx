@@ -468,13 +468,23 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
                         {report.actionReject || report.actionRejectSort ? (
                           <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold border ${isCanceled ? 'bg-slate-200' : 'bg-red-100 text-red-700 border-red-200'}`}>Reject</span>
                         ) : report.actionScrap ? (
-                          <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold border ${isCanceled ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-slate-200 text-slate-700 border-slate-300'}`}>Scrap</span>
+                          <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold border ${isCanceled ? 'bg-slate-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}>Scrap</span>
                         ) : (
-                          <span className="text-xs">-</span>
+                          <span className="text-xs text-slate-400">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {getReturnStatusBadge(correspondingReturn?.status)}
+                        {correspondingReturn ? (
+                          <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold border ${correspondingReturn.status === 'Received' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                              correspondingReturn.status === 'Graded' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                correspondingReturn.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200' :
+                                  'bg-yellow-100 text-yellow-700 border-yellow-200'
+                            }`}>
+                            {correspondingReturn.status}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
                       </td>
                       <td className={`px-4 py-3 text-center sticky right-0 border-l ${isCanceled ? 'bg-slate-100' : 'bg-white'}`}>
                         <div className="flex items-center justify-center gap-2">
