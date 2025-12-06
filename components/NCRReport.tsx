@@ -33,6 +33,10 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
     endDate: '',
   });
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
   const filteredNcrReports = useMemo(() => {
     return ncrReports.filter(report => {
       const itemData = report.item || (report as any);
@@ -126,6 +130,18 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
     link.click();
     document.body.removeChild(link);
   };
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredNcrReports.length / itemsPerPage);
+  const paginatedReports = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredNcrReports.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredNcrReports, currentPage, itemsPerPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, itemsPerPage]);
 
   const handleCreateReturn = (ncr: NCRRecord) => {
     const itemData = ncr.item || (ncr as any);
@@ -364,10 +380,10 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col print:hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left whitespace-nowrap">
-            <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 font-bold">
-              <tr>
+        <div className="overflow-auto flex-1 relative" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm text-xs uppercase text-slate-500 font-bold">
+              <tr className="whitespace-nowrap">
                 <th className="px-4 py-3 bg-slate-50 sticky left-0 z-10 border-r">วันที่ / เลขที่ NCR</th>
                 <th className="px-4 py-3">สินค้า (Product)</th>
                 <th className="px-4 py-3">ลูกค้า (Customer)</th>
@@ -379,11 +395,11 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
                 <th className="px-4 py-3 text-center bg-slate-50 sticky right-0 z-10 border-l">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {filteredNcrReports.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 italic">ไม่พบรายการ NCR ที่ตรงกับเงื่อนไข</td></tr>
+            <tbody className="divide-y divide-slate-100">
+              {paginatedReports.length === 0 ? (
+                <tr><td colSpan={9} className="p-8 text-center text-slate-400 italic">ไม่พบรายการ NCR ในช่วงเวลานี้</td></tr>
               ) : (
-                filteredNcrReports.map((report) => {
+                paginatedReports.map((report) => {
                   const itemData = report.item || (report as any);
                   const correspondingReturn = items.find(item => item.ncrNumber === report.ncrNo);
                   const isCanceled = report.status === 'Canceled';
@@ -496,8 +512,502 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 text-sm print:hidden">
+          <div className="flex items-center gap-2 text-slate-600">
+            <span>แสดง</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="bg-white border border-slate-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 font-bold"
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span>รายการต่อหน้า (จากทั้งหมด {filteredNcrReports.length} รายการ)</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ก่อนหน้า
+            </button>
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-slate-800">หน้า {currentPage}</span>
+              <span className="text-slate-500">จาก {totalPages || 1}</span>
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ถัดไป
+            </button>
+          </div>
+        </div>
       </div>
-      {/* ... Modals ... */}
+      {/* Modals */}
+      {/* Print Modal */}
+      {showPrintModal && printItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 print:p-0 print:bg-white print:fixed print:inset-0 print:z-[9999]" style={{ margin: 0 }}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col print:shadow-none print:max-w-none print:w-full print:h-full print:max-h-none print:rounded-none">
+            <div className="p-4 border-b flex justify-between items-center bg-slate-50 print:hidden">
+              <h3 className="font-bold flex items-center gap-2">
+                <Printer className="w-5 h-5" /> พิมพ์ NCR Report
+              </h3>
+              <button onClick={() => setShowPrintModal(false)} className="text-slate-500 hover:text-slate-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-8 overflow-auto flex-1 bg-white print:p-0 print:overflow-visible">
+              <div className="print-content text-black h-full" id="print-area">
+                {/* HEADER */}
+                <div className="flex border-2 border-black mb-6">
+                  <div className="w-[30%] border-r-2 border-black p-4 flex items-center justify-center">
+                    <img src="https://img2.pic.in.th/pic/logo-neo.png" alt="Neo Logistics" className="w-full h-auto object-contain max-h-24" />
+                  </div>
+                  <div className="w-[70%] p-4 flex flex-col justify-center pl-6">
+                    <h2 className="text-xl font-bold text-slate-900 leading-none mb-2">บริษัท นีโอสยาม โลจิสติกส์ แอนด์ ทรานสปอร์ต จำกัด</h2>
+                    <h3 className="text-sm font-bold text-slate-700 mb-3">NEOSIAM LOGISTICS & TRANSPORT CO., LTD.</h3>
+                    <p className="text-sm text-slate-600 mb-1">159/9-10 หมู่ 7 ต.บางม่วง อ.เมืองนครสวรรค์ จ.นครสวรรค์ 60000</p>
+                    <div className="text-sm text-slate-600 flex gap-4"><span>Tax ID: 0105552087673</span><span className="text-slate-400">|</span><span>Tel: 056-275-841</span></div>
+                  </div>
+                </div>
+
+                <h1 className="text-xl font-bold text-center border-2 border-black py-2 mb-6 bg-white text-slate-900 print:bg-transparent">ใบแจ้งปัญหาระบบ (NCR) / ใบแจ้งปัญหารับสินค้าคืน</h1>
+
+                {/* INFO GRID */}
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm mb-8">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold w-24 text-slate-800">ถึงหน่วยงาน:</span>
+                    <div className="flex-1 border-b border-dotted border-black px-1">{printItem.toDept || 'แผนกควบคุมคุณภาพ'}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold w-24 text-slate-800">วันที่:</span>
+                    <div className="flex-1 border-b border-dotted border-black px-1">{printItem.date}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold w-24 text-slate-800">สำเนา:</span>
+                    <div className="flex-1 border-b border-dotted border-black px-1">{printItem.copyTo || '-'}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold w-24 text-slate-800">เลขที่ NCR:</span>
+                    <div className="flex-1 border-b border-dotted border-black px-1 font-bold">{printItem.ncrNo}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold w-24 text-slate-800">ผู้พบปัญหา:</span>
+                    <div className="flex-1 border-b border-dotted border-black px-1">{printItem.founder || '-'}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold w-32 text-slate-800">เลขที่ใบสั่งซื้อ/ผลิต:</span>
+                    <div className="flex-1 border-b border-dotted border-black px-1">{printItem.poNo || '-'}</div>
+                  </div>
+                </div>
+
+                {/* ITEM LIST */}
+                <div className="mb-6">
+                  <h3 className="font-bold text-slate-900 underline mb-2">รายการสินค้าที่พบปัญหา (Non-Conforming Items)</h3>
+                  <div className="border-2 border-black bg-white">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-100 print:bg-transparent border-b border-black font-bold">
+                        <tr>
+                          <th className="p-2 border-r border-black">สาขาต้นทาง</th>
+                          <th className="p-2 border-r border-black">Ref/Neo Ref</th>
+                          <th className="p-2 border-r border-black">สินค้า/ลูกค้า</th>
+                          <th className="p-2 border-r border-black text-center">จำนวน</th>
+                          <th className="p-2 border-r border-black text-right">ราคา/วันหมดอายุ</th>
+                          <th className="p-2 border-r border-black">วิเคราะห์ปัญหา/ค่าใช้จ่าย</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="p-2 border-r border-black align-top">{(printItem.item || (printItem as any)).branch}</td>
+                          <td className="p-2 border-r border-black align-top">
+                            <div>Ref: {(printItem.item || (printItem as any)).refNo || '-'}</div>
+                            <div className="text-slate-500">Neo: {(printItem.item || (printItem as any)).neoRefNo || '-'}</div>
+                          </td>
+                          <td className="p-2 border-r border-black align-top">
+                            <div className="font-bold">{(printItem.item || (printItem as any)).productCode}</div>
+                            <div className="text-slate-600">{(printItem.item || (printItem as any)).productName}</div>
+                            <div className="text-slate-500">{(printItem.item || (printItem as any)).customerName}</div>
+                            {(printItem.item || (printItem as any)).destinationCustomer && <div className="text-xs text-blue-600 mt-1">ปลายทาง: {(printItem.item || (printItem as any)).destinationCustomer}</div>}
+                          </td>
+                          <td className="p-2 border-r border-black text-center align-top">{(printItem.item || (printItem as any)).quantity} {(printItem.item || (printItem as any)).unit}</td>
+                          <td className="p-2 border-r border-black text-right align-top">
+                            <div>{(printItem.item || (printItem as any)).priceBill?.toLocaleString()} บ.</div>
+                            <div className="text-red-500">Exp: {(printItem.item || (printItem as any)).expiryDate || '-'}</div>
+                          </td>
+                          <td className="p-2 align-top">
+                            <div className="font-medium">{(printItem.item || (printItem as any)).problemSource}</div>
+                            {(printItem.item || (printItem as any)).hasCost && (
+                              <div className="text-red-600 font-bold mt-1">
+                                Cost: {(printItem.item || (printItem as any)).costAmount?.toLocaleString()} บ.
+                                <div className="text-xs text-slate-500 font-normal">({(printItem.item || (printItem as any)).costResponsible})</div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* SECTION 1: PROBLEM */}
+                <table className="w-full border-2 border-black mb-6">
+                  <thead>
+                    <tr className="border-b-2 border-black bg-slate-50 print:bg-transparent">
+                      <th className="border-r-2 border-black w-1/3 py-2 text-slate-900">รูปภาพ / เอกสาร</th>
+                      <th className="py-2 text-slate-900">รายละเอียดของปัญหาที่พบ (ผู้พบปัญหา)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border-r-2 border-black p-4 text-center align-middle h-64 relative bg-slate-50 print:bg-white text-slate-400 font-bold text-lg">
+                        [รูปภาพประกอบ]
+                      </td>
+                      <td className="p-4 align-top text-sm bg-white">
+                        <div className="mb-2 font-bold underline text-slate-900">พบปัญหาที่กระบวนการ</div>
+                        <div className="grid grid-cols-2 gap-2 mb-4 text-slate-700">
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemDamaged} /> ชำรุด</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemLost} /> สูญหาย</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemMixed} /> สินค้าสลับ</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemWrongInv} /> สินค้าไม่ตรง INV.</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemLate} /> ส่งช้า</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemDuplicate} /> ส่งซ้ำ</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemWrong} /> ส่งผิด</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemIncomplete} /> ส่งของไม่ครบ</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemOver} /> ส่งของเกิน</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemWrongInfo} /> ข้อมูลผิด</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemShortExpiry} /> สินค้าอายุสั้น</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemTransportDamage} /> สินค้าเสียหายบนรถขนส่ง</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.problemAccident} /> อุบัติเหตุ</div>
+                          <div className="flex items-center gap-2 col-span-2">
+                            <input type="checkbox" readOnly checked={printItem.problemOther} />
+                            <span>อื่นๆ: {printItem.problemOtherText || '-'}</span>
+                          </div>
+                        </div>
+                        <div className="font-bold underline mb-1 text-slate-900">รายละเอียด:</div>
+                        <div className="w-full min-h-[50px] border border-dotted border-black p-2 text-sm">{printItem.problemDetail}</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* SECTION 2: ACTION */}
+                <table className="w-full border-2 border-black mb-6 text-sm bg-white">
+                  <thead><tr className="bg-slate-50 print:bg-transparent border-b-2 border-black"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">การดำเนินการ</th></tr></thead>
+                  <tbody className="divide-y divide-black border-b-2 border-black">
+                    <tr>
+                      <td className="p-2 border-r border-black w-1/2">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" readOnly checked={printItem.actionReject} />
+                          <span className="font-bold">ส่งคืน (Reject)</span>
+                          <span className="ml-auto text-slate-600">จำนวน: {printItem.actionRejectQty || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="p-2 w-1/2">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" readOnly checked={printItem.actionRejectSort} />
+                          <span className="font-bold">คัดแยกของเสียเพื่อส่งคืน</span>
+                          <span className="ml-auto text-slate-600">จำนวน: {printItem.actionRejectSortQty || '-'}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 border-r border-black">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" readOnly checked={printItem.actionRework} />
+                          <span className="font-bold">แก้ไข (Rework)</span>
+                          <span className="ml-auto text-slate-600">จำนวน: {printItem.actionReworkQty || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">วิธีการแก้ไข:</span>
+                          <span className="flex-1 border-b border-dotted border-black">{printItem.actionReworkMethod || '-'}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 border-r border-black">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" readOnly checked={printItem.actionSpecialAcceptance} />
+                          <span className="font-bold">ยอมรับกรณีพิเศษ</span>
+                          <span className="ml-auto text-slate-600">จำนวน: {printItem.actionSpecialAcceptanceQty || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">เหตุผล:</span>
+                          <span className="flex-1 border-b border-dotted border-black">{printItem.actionSpecialAcceptanceReason || '-'}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="p-2 border-r border-black">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" readOnly checked={printItem.actionScrap} />
+                          <span className="font-bold">ทำลาย (Scrap)</span>
+                          <span className="ml-auto text-slate-600">จำนวน: {printItem.actionScrapQty || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" readOnly checked={printItem.actionReplace} />
+                          <span className="font-bold">เปลี่ยนสินค้าใหม่</span>
+                          <span className="ml-auto text-slate-600">จำนวน: {printItem.actionReplaceQty || '-'}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={2} className="p-3 bg-white print:bg-transparent">
+                        <div className="flex justify-between items-center gap-4 text-sm">
+                          <div className="flex items-center gap-2"><span>กำหนดแล้วเสร็จ:</span> <span className="border-b border-dotted border-black px-2">{printItem.dueDate || '-'}</span></div>
+                          <div className="flex items-center gap-2"><span>ผู้อนุมัติ:</span> <span className="border-b border-dotted border-black px-2 w-24 text-center">{printItem.approver || '-'}</span></div>
+                          <div className="flex items-center gap-2"><span>ตำแหน่ง:</span> <span className="border-b border-dotted border-black px-2">{printItem.approverPosition || '-'}</span></div>
+                          <div className="flex items-center gap-2"><span>วันที่:</span> <span className="border-b border-dotted border-black px-2">{printItem.approverDate || '-'}</span></div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {/* SECTION 3: ROOT CAUSE */}
+                <table className="w-full border-2 border-black mb-6 text-sm bg-white">
+                  <thead><tr className="bg-slate-50 print:bg-transparent border-b-2 border-black"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">สาเหตุ-การป้องกัน (ผู้รับผิดชอบปัญหา)</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td className="w-1/4 border-r-2 border-black align-top p-0">
+                        <div className="border-b border-black p-2 font-bold text-center bg-slate-50 print:bg-transparent">สาเหตุเกิดจาก</div>
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.causePackaging} /> บรรจุภัณฑ์</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.causeTransport} /> การขนส่ง</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.causeOperation} /> ปฏิบัติงาน</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.causeEnv} /> สิ่งแวดล้อม</div>
+                        </div>
+                      </td>
+                      <td className="align-top p-0">
+                        <div className="h-24 border-b border-black p-2 flex flex-col">
+                          <div className="font-bold mb-1">รายละเอียดสาเหตุ :</div>
+                          <div className="flex-1 w-full">{printItem.causeDetail || '-'}</div>
+                        </div>
+                        <div className="h-24 p-2 flex flex-col">
+                          <div className="font-bold underline mb-1">แนวทางป้องกัน :</div>
+                          <div className="flex-1 w-full">{printItem.preventionDetail || '-'}</div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="border-t-2 border-black">
+                      <td colSpan={2} className="p-3 bg-white print:bg-transparent">
+                        <div className="flex justify-between items-center gap-4 text-sm">
+                          <div className="flex items-center gap-2"><span>กำหนดการป้องกันแล้วเสร็จ:</span> <span className="border-b border-dotted border-black px-2">{printItem.preventionDueDate || '-'}</span></div>
+                          <div className="flex items-center gap-2"><span>ผู้รับผิดชอบ:</span> <span className="border-b border-dotted border-black px-2 w-24 text-center">{printItem.responsiblePerson || '-'}</span></div>
+                          <div className="flex items-center gap-2"><span>ตำแหน่ง:</span> <span className="border-b border-dotted border-black px-2">{printItem.responsiblePosition || '-'}</span></div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* FOOTER NOTE */}
+                <div className="border-2 border-black p-2 mb-6 text-xs bg-white">
+                  <span className="font-bold">หมายเหตุ :</span> เมื่อทาง Supplier/Out source หรือหน่วยงานผู้รับผิดชอบปัญหา ได้รับเอกสารใบ NCR กรุณาระบุสาเหตุ-การป้องกัน และตอบกลับมายังแผนกประกันคุณภาพ ภายใน 1 สัปดาห์
+                </div>
+
+                {/* CLOSING / SIGNATURES */}
+                <table className="w-full border-2 border-black text-sm bg-white">
+                  <thead><tr className="bg-slate-50 print:bg-transparent border-b-2 border-black"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">การตรวจติดตามและการปิด NCR</th></tr></thead>
+                  <tbody>
+                    <tr className="border-b-2 border-black">
+                      <td colSpan={2} className="p-4">
+                        <div className="flex items-center gap-8">
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.qaAccept} /> ยอมรับแนวทางการป้องกัน</div>
+                          <div className="flex items-center gap-2"><input type="checkbox" readOnly checked={printItem.qaReject} /> ไม่ยอมรับแนวทางการป้องกัน</div>
+                          <span className="border-b border-dotted border-black px-2">เหตุผล: {printItem.qaReason || '-'}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="w-1/2 border-r-2 border-black p-4 text-center align-bottom h-32">
+                        <div className="font-bold mb-8">ผู้ตรวจติดตาม</div>
+                        <div className="border-b border-dotted border-black w-3/4 mx-auto mb-2"></div>
+                        <div className="text-slate-500 text-xs">แผนกประกันคุณภาพ</div>
+                      </td>
+                      <td className="w-1/2 p-4 text-center align-bottom h-32">
+                        <div className="font-bold mb-8">ผู้อนุมัติปิดการตรวจติดตาม</div>
+                        <div className="border-b border-dotted border-black w-3/4 mx-auto mb-2"></div>
+                        <div className="text-slate-500 text-xs">กรรมการผู้จัดการ</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div className="text-right text-xs mt-4 font-mono text-slate-400">FM-OP01-06 Rev.00</div>
+              </div>
+            </div>
+            <div className="p-4 border-t bg-slate-50 flex justify-end gap-2 print:hidden">
+              <button onClick={() => setShowPrintModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded">ปิด</button>
+              <button onClick={handlePrint} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 font-bold shadow-sm">
+                <Printer className="w-4 h-4" /> พิมพ์เอกสาร
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NCR Form Modal (Edit Mode) */}
+      {showNCRFormModal && ncrFormItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl my-8">
+            <div className="p-4 border-b flex justify-between items-center bg-slate-50 sticky top-0 rounded-t-lg z-10">
+              <h3 className="font-bold flex items-center gap-2 text-lg">
+                {isEditMode ? <Edit className="w-5 h-5 text-amber-500" /> : <Eye className="w-5 h-5 text-blue-500" />}
+                {isEditMode ? 'แก้ไขข้อมูล NCR' : 'ดูรายละเอียด NCR'}
+              </h3>
+              <button onClick={() => setShowNCRFormModal(false)} className="text-slate-500 hover:text-slate-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Read Only Header Info */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded text-sm">
+                <div><span className="text-slate-500 block">เลขที่ NCR:</span> <span className="font-bold">{ncrFormItem.ncrNo}</span></div>
+                <div><span className="text-slate-500 block">วันที่:</span> <span className="font-bold">{ncrFormItem.date}</span></div>
+                <div><span className="text-slate-500 block">สาขา:</span> <span className="font-bold">{(ncrFormItem.item || (ncrFormItem as any)).branch}</span></div>
+                <div><span className="text-slate-500 block">ลูกค้า:</span> <span className="font-bold">{(ncrFormItem.item || (ncrFormItem as any)).customerName}</span></div>
+              </div>
+
+              {/* Form Fields - Editable only in Edit Mode */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold mb-1">รายละเอียดปัญหา</label>
+                  {isEditMode ? (
+                    <textarea
+                      value={ncrFormItem.problemDetail}
+                      onChange={e => handleInputChange('problemDetail', e.target.value)}
+                      className="w-full border rounded p-2 text-sm"
+                      rows={3}
+                    />
+                  ) : (
+                    <div className="p-2 border rounded bg-slate-50 text-sm">{ncrFormItem.problemDetail}</div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold mb-1">สาเหตุ/ที่มา (Problem Source)</label>
+                  {isEditMode ? (
+                    <select
+                      value={(ncrFormItem.item || (ncrFormItem as any)).problemSource}
+                      onChange={e => handleItemInputChange('problemSource', e.target.value)}
+                      className="w-full border rounded p-2 text-sm"
+                    >
+                      <option value="">เลือกสาเหตุ...</option>
+                      <option value="DC">DC (คลังสินค้า)</option>
+                      <option value="Transport">Transport (ขนส่ง)</option>
+                      <option value="Supplier">Supplier (ผู้ผลิต)</option>
+                      <option value="Store">Store (หน้าร้าน)</option>
+                      <option value="Other">Other (อื่นๆ)</option>
+                    </select>
+                  ) : (
+                    <div className="p-2 border rounded bg-slate-50 text-sm">{(ncrFormItem.item || (ncrFormItem as any)).problemSource}</div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold mb-1">Cost Amount (บาท)</label>
+                    {isEditMode ? (
+                      <input
+                        type="number"
+                        value={(ncrFormItem.item || (ncrFormItem as any)).costAmount || 0}
+                        onChange={e => handleItemInputChange('costAmount', Number(e.target.value))}
+                        className="w-full border rounded p-2 text-sm"
+                      />
+                    ) : (
+                      <div className="p-2 border rounded bg-slate-50 text-sm">{(ncrFormItem.item || (ncrFormItem as any)).costAmount?.toLocaleString()}</div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold mb-1">ผู้รับผิดชอบ (Responsible)</label>
+                    {isEditMode ? (
+                      <input
+                        type="text"
+                        value={(ncrFormItem.item || (ncrFormItem as any)).costResponsible || ''}
+                        onChange={e => handleItemInputChange('costResponsible', e.target.value)}
+                        className="w-full border rounded p-2 text-sm"
+                      />
+                    ) : (
+                      <div className="p-2 border rounded bg-slate-50 text-sm">{(ncrFormItem.item || (ncrFormItem as any)).costResponsible || '-'}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t bg-slate-50 flex justify-end gap-2 sticky bottom-0 rounded-b-lg">
+              <button onClick={() => setShowNCRFormModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded">ปิด</button>
+              {isEditMode && (
+                <button onClick={handleSaveChanges} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 font-bold shadow-sm">
+                  <Save className="w-4 h-4" /> บันทึกการแก้ไข
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Modal for Edit */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 text-center">
+            <Lock className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold mb-2">ยืนยันสิทธิ์การแก้ไข</h3>
+            <p className="text-slate-500 text-sm mb-4">กรุณากรอกรหัสผ่านเพื่อแก้ไขข้อมูล NCR</p>
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={e => setPasswordInput(e.target.value)}
+              placeholder="รหัสผ่าน (1234)"
+              className="w-full border rounded p-2 text-center text-lg tracking-widest mb-4"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-center">
+              <button onClick={() => setShowPasswordModal(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded">ยกเลิก</button>
+              <button onClick={handleVerifyPassword} className="px-6 py-2 bg-amber-500 text-white rounded font-bold hover:bg-amber-600">ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Modal for Delete */}
+      {showDeletePasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 text-center">
+            <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold mb-2 text-red-600">ยืนยันการยกเลิก NCR</h3>
+            <p className="text-slate-500 text-sm mb-4">การกระทำนี้ไม่สามารถเรียกคืนได้<br />กรุณากรอกรหัสผ่านเพื่อยืนยัน</p>
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={e => setPasswordInput(e.target.value)}
+              placeholder="รหัสผ่าน (1234)"
+              className="w-full border rounded p-2 text-center text-lg tracking-widest mb-4 border-red-200 focus:ring-red-500"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-center">
+              <button onClick={() => setShowDeletePasswordModal(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded">ยกเลิก</button>
+              <button onClick={handleVerifyPasswordAndDelete} className="px-6 py-2 bg-red-600 text-white rounded font-bold hover:bg-red-700">ยืนยันลบ</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
