@@ -1,13 +1,15 @@
 
 import React, { useMemo } from 'react';
 import { useData } from '../DataContext';
+import { db } from '../firebase';
+import { ref, remove, set } from 'firebase/database';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, AreaChart, Area
 } from 'recharts';
 import {
   TrendingUp, Activity, AlertTriangle,
-  Truck, CheckCircle, Clock, FileText, Package, AlertOctagon, DollarSign
+  Truck, CheckCircle, Clock, FileText, Package, AlertOctagon, DollarSign, Trash2
 } from 'lucide-react';
 
 const COLORS = {
@@ -264,7 +266,42 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+
+
+      {/* DANGER ZONE - Factory Reset */}
+      <div className="border border-red-200 bg-red-50 rounded-lg p-6 flex flex-col items-center mt-12 mb-8">
+        <h3 className="text-red-700 font-bold text-lg mb-2 flex items-center gap-2">
+          <AlertOctagon className="w-6 h-6" /> DATA FACTORY RESET (ล้างข้อมูลระบบ)
+        </h3>
+        <p className="text-red-600 mb-4 text-center text-sm">
+          ปุ่มนี้สำหรับ <b>"เคลียร์ข้อมูลตัวอย่าง"</b> ทั้งหมดเพื่อเริ่มต้นใช้งานจริง <br />
+          ระบบจะลบข้อมูล Return และ NCR ทั้งหมด และเริ่มนับเลขที่เอกสารใหม่ (NCR-2025-0001) <br />
+          <b>คำเตือน: ข้อมูลที่ลบแล้วจะไม่สามารถกู้คืนได้</b>
+        </p>
+        <button
+          onClick={async () => {
+            const confirmCode = prompt('กรุณาใส่รหัสผ่านเพื่อยืนยัน:');
+            if (confirmCode === '1234') {
+              try {
+                await remove(ref(db, 'return_records'));
+                await remove(ref(db, 'ncr_reports'));
+                await set(ref(db, 'ncr_counter'), 0);
+                location.reload(); // Reload to refresh contexts
+              } catch (e) {
+                console.error(e);
+                alert("เกิดข้อผิดพลาดในการล้างข้อมูล (Firebase Error)");
+              }
+            } else {
+              if (confirmCode !== null) alert("รหัสผ่านไม่ถูกต้อง");
+            }
+          }}
+          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg flex items-center gap-2"
+        >
+          <Trash2 className="w-5 h-5" /> ล้างข้อมูลทั้งหมด & เริ่มต้นใหม่
+        </button>
+      </div>
+
+    </div >
   );
 };
 
