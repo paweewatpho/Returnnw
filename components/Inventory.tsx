@@ -13,8 +13,8 @@ interface StockAggregate {
 }
 
 interface LedgerEntry extends ReturnRecord {
-    movementType: 'IN' | 'OUT';
-    movementDate?: string;
+  movementType: 'IN' | 'OUT';
+  movementDate?: string;
 }
 
 const Inventory: React.FC = () => {
@@ -74,7 +74,7 @@ const Inventory: React.FC = () => {
 
     const calculateStats = (disposition: DispositionAction): StockAggregate['stats'] => {
       const relevantEntries = fullLedger.filter(entry => entry.disposition === disposition);
-      
+
       const totalIn = relevantEntries
         .filter(e => e.movementType === 'IN')
         .reduce((sum, e) => sum + e.quantity, 0);
@@ -99,19 +99,19 @@ const Inventory: React.FC = () => {
       scrapStock: { stats: calculateStats('Recycle') },
     };
   }, [items]);
-  
+
   const filteredLedgerList = useMemo(() => {
     let baseList = activeTab === 'Ledger'
       ? inventoryData.fullLedger
       : inventoryData.fullLedger.filter(item => item.disposition === activeTab);
-      
+
     return baseList.filter(item => {
       const queryLower = filters.query.toLowerCase();
-      if (queryLower && 
-          !item.productName?.toLowerCase().includes(queryLower) &&
-          !item.productCode?.toLowerCase().includes(queryLower) &&
-          !item.customerName?.toLowerCase().includes(queryLower) &&
-          !String(item.branch)?.toLowerCase().includes(queryLower)
+      if (queryLower &&
+        !item.productName?.toLowerCase().includes(queryLower) &&
+        !item.productCode?.toLowerCase().includes(queryLower) &&
+        !item.customerName?.toLowerCase().includes(queryLower) &&
+        !String(item.branch)?.toLowerCase().includes(queryLower)
       ) {
         return false;
       }
@@ -119,7 +119,7 @@ const Inventory: React.FC = () => {
       if (filters.startDate && (item.movementDate || '0') < filters.startDate) {
         return false;
       }
-      
+
       if (filters.endDate && (item.movementDate || '0') > filters.endDate) {
         return false;
       }
@@ -127,14 +127,14 @@ const Inventory: React.FC = () => {
       if (filters.movementType !== 'All' && item.movementType !== filters.movementType) {
         return false;
       }
-      
+
       return true;
     });
   }, [activeTab, inventoryData.fullLedger, filters]);
 
   const handleExportExcel = () => {
     const headers = [
-      "MovementDate", "MovementType", "Branch", "Customer", 
+      "MovementDate", "MovementType", "Branch", "Customer",
       "ProductCode", "ProductName", "RefNo", "NeoRefNo",
       "Quantity", "Unit", "PriceBill", "ExpiryDate", "Disposition"
     ];
@@ -209,9 +209,9 @@ const Inventory: React.FC = () => {
 
       {activeTab !== 'Ledger' && currentTab?.stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
-            <StatCard title="รับเข้าทั้งหมด (Total In)" value={currentTab.stats.totalIn} color="text-blue-600" />
-            <StatCard title="จ่ายออกแล้ว (Total Out)" value={currentTab.stats.totalOut} color="text-amber-600" />
-            <StatCard title="คงเหลือในสต็อก (On-Hand)" value={currentTab.stats.onHand} color="text-green-600" isHighlight />
+          <StatCard title="รับเข้าทั้งหมด (Total In)" value={currentTab.stats.totalIn} color="text-blue-600" />
+          <StatCard title="จ่ายออกแล้ว (Total Out)" value={currentTab.stats.totalOut} color="text-amber-600" />
+          <StatCard title="คงเหลือในสต็อก (On-Hand)" value={currentTab.stats.onHand} color="text-green-600" isHighlight />
         </div>
       )}
 
@@ -222,39 +222,39 @@ const Inventory: React.FC = () => {
             type="text"
             placeholder="ค้นหา สินค้า, ลูกค้า, สาขา..."
             value={filters.query}
-            onChange={e => setFilters({...filters, query: e.target.value})}
+            onChange={e => setFilters({ ...filters, query: e.target.value })}
             className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
           />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <input
-                type="date"
-                value={filters.startDate}
-                onChange={e => setFilters({...filters, startDate: e.target.value})}
-                className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-                type="date"
-                value={filters.endDate}
-                onChange={e => setFilters({...filters, endDate: e.target.value})}
-                className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <select
-                value={filters.movementType}
-                onChange={e => setFilters({...filters, movementType: e.target.value})}
-                className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
-            >
-                <option value="All">IN/OUT ทั้งหมด</option>
-                <option value="IN">เฉพาะรับเข้า (IN)</option>
-                <option value="OUT">เฉพาะจ่ายออก (OUT)</option>
-            </select>
+          <input
+            type="date"
+            value={filters.startDate}
+            onChange={e => setFilters({ ...filters, startDate: e.target.value })}
+            className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="date"
+            value={filters.endDate}
+            onChange={e => setFilters({ ...filters, endDate: e.target.value })}
+            className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            value={filters.movementType}
+            onChange={e => setFilters({ ...filters, movementType: e.target.value })}
+            className="bg-slate-50 border border-slate-200 rounded-lg text-sm p-2 outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="All">IN/OUT ทั้งหมด</option>
+            <option value="IN">เฉพาะรับเข้า (IN)</option>
+            <option value="OUT">เฉพาะจ่ายออก (OUT)</option>
+          </select>
         </div>
         <button
-            onClick={handleExportExcel}
-            className="bg-green-600 text-white font-bold px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-sm"
+          onClick={handleExportExcel}
+          className="bg-green-600 text-white font-bold px-4 py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-sm"
         >
-            <Download className="w-4 h-4" />
-            Export Excel
+          <Download className="w-4 h-4" />
+          Export Excel
         </button>
       </div>
 
@@ -262,51 +262,55 @@ const Inventory: React.FC = () => {
         <div className="overflow-auto flex-1">
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm text-xs uppercase text-slate-500 font-bold">
-                <tr className="whitespace-nowrap">
-                  <th className="px-4 py-3">วันที่/ประเภท</th>
-                  <th className="px-4 py-3">สาขา/ลูกค้า</th>
-                  <th className="px-4 py-3">สินค้า</th>
-                  <th className="px-4 py-3">อ้างอิง (Ref)</th>
-                  <th className="px-4 py-3 text-right">จำนวน/หน่วย</th>
-                  <th className="px-4 py-3 text-right">ราคา/บิล</th>
-                  <th className="px-4 py-3">วันหมดอายุ</th>
-                  <th className="px-4 py-3">ปลายทาง</th>
-                </tr>
+              <tr className="whitespace-nowrap">
+                <th className="px-4 py-3">วันที่/ประเภท</th>
+                <th className="px-4 py-3">สาขา/ลูกค้า</th>
+                <th className="px-4 py-3">สินค้า</th>
+                <th className="px-4 py-3">NCR No.</th>
+                <th className="px-4 py-3">อ้างอิง (Ref)</th>
+                <th className="px-4 py-3 text-right">จำนวน/หน่วย</th>
+                <th className="px-4 py-3 text-right">ราคา/บิล</th>
+                <th className="px-4 py-3">วันหมดอายุ</th>
+                <th className="px-4 py-3">ปลายทาง</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                 <tr><td colSpan={8} className="p-8 text-center text-slate-400">Loading data...</td></tr>
+                <tr><td colSpan={9} className="p-8 text-center text-slate-400">Loading data...</td></tr>
               ) : filteredLedgerList.length === 0 ? (
-                <tr><td colSpan={8} className="p-8 text-center text-slate-400 italic">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการกรอง</td></tr>
+                <tr><td colSpan={9} className="p-8 text-center text-slate-400 italic">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการกรอง</td></tr>
               ) : (
                 filteredLedgerList.map(item => (
                   <tr key={item.id + '-' + item.movementType + '-' + item.movementDate} className="text-sm">
                     <td className="px-4 py-3">
-                        <div>{item.movementDate || '-'}</div>
-                        {item.movementType === 'IN' ? (
-                            <span className="inline-flex items-center gap-1 text-green-600 font-bold text-xs"><ArrowUpCircle className="w-4 h-4"/> รับเข้า</span>
-                        ) : (
-                            <span className="inline-flex items-center gap-1 text-red-600 font-bold text-xs"><ArrowDownCircle className="w-4 h-4"/> จ่ายออก</span>
-                        )}
+                      <div>{item.movementDate || '-'}</div>
+                      {item.movementType === 'IN' ? (
+                        <span className="inline-flex items-center gap-1 text-green-600 font-bold text-xs"><ArrowUpCircle className="w-4 h-4" /> รับเข้า</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-red-600 font-bold text-xs"><ArrowDownCircle className="w-4 h-4" /> จ่ายออก</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                        <div className="font-medium text-slate-800">{item.customerName}</div>
-                        <div className="text-xs text-slate-500">สาขา: {item.branch}</div>
+                      <div className="font-medium text-slate-800">{item.customerName}</div>
+                      <div className="text-xs text-slate-500">สาขา: {item.branch}</div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-bold text-slate-800">{item.productName}</div>
                       <div className="text-xs text-slate-500">{item.productCode}</div>
                     </td>
-                     <td className="px-4 py-3 text-xs">
-                        <div>Ref: {item.refNo}</div>
-                        <div className="text-slate-500">Neo: {item.neoRefNo || '-'}</div>
-                     </td>
+                    <td className="px-4 py-3 text-xs font-mono text-slate-600">
+                      {item.ncrNumber || '-'}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <div>Ref: {item.refNo}</div>
+                      <div className="text-slate-500">Neo: {item.neoRefNo || '-'}</div>
+                    </td>
                     <td className="px-4 py-3 text-right font-mono">{item.quantity} {item.unit}</td>
                     <td className="px-4 py-3 text-right font-mono">฿{item.priceBill.toLocaleString()}</td>
                     <td className="px-4 py-3 text-xs text-red-600 font-medium">{item.expiryDate || '-'}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">
-                        <div>{item.disposition}</div>
-                        {item.destinationCustomer && <div className="text-blue-600 truncate max-w-[150px]" title={item.destinationCustomer}>ปลายทาง: {item.destinationCustomer}</div>}
+                      <div>{item.disposition}</div>
+                      {item.destinationCustomer && <div className="text-blue-600 truncate max-w-[150px]" title={item.destinationCustomer}>ปลายทาง: {item.destinationCustomer}</div>}
                     </td>
                   </tr>
                 ))
@@ -320,10 +324,10 @@ const Inventory: React.FC = () => {
 };
 
 const StatCard = ({ title, value, color, isHighlight = false }: { title: string; value: number; color: string; isHighlight?: boolean }) => (
-    <div className={`bg-white p-4 rounded-lg border shadow-sm ${isHighlight ? 'border-blue-200 bg-blue-50' : 'border-slate-200'}`}>
-        <p className="text-xs font-bold text-slate-500 uppercase">{title}</p>
-        <p className={`text-3xl font-bold ${color} ${isHighlight ? 'text-blue-600' : ''}`}>{value.toLocaleString()}</p>
-    </div>
+  <div className={`bg-white p-4 rounded-lg border shadow-sm ${isHighlight ? 'border-blue-200 bg-blue-50' : 'border-slate-200'}`}>
+    <p className="text-xs font-bold text-slate-500 uppercase">{title}</p>
+    <p className={`text-3xl font-bold ${color} ${isHighlight ? 'text-blue-600' : ''}`}>{value.toLocaleString()}</p>
+  </div>
 );
 
 export default Inventory;
