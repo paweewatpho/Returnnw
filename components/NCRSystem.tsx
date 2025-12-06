@@ -153,6 +153,29 @@ const NCRSystem: React.FC = () => {
 
             const success = await addNCRReport(record);
             if (success) {
+                // BIDIRECTIONAL SYNC: Create Return Record for Operations Hub (Step 2: Intake)
+                const returnRecord: any = { // Using any to avoid strict type issues locally, but structure matches ReturnRecord
+                    id: `RT-${new Date().getFullYear()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                    dateRequested: formData.date || new Date().toISOString().split('T')[0],
+                    productName: item.productName,
+                    productCode: item.productCode,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    customerName: item.customerName,
+                    destinationCustomer: item.destinationCustomer,
+                    branch: item.branch,
+                    ncrNumber: newNcrNo, // Link back
+                    status: 'Requested', // Shows in Step 2 (Intake)
+                    disposition: 'Pending',
+                    problemType: formData.problemDetail,
+                    rootCause: item.problemSource,
+                    reason: `Created via NCR System (${formData.problemDetail})`,
+                    amount: 0, // Default
+                    neoRefNo: item.neoRefNo
+                };
+
+                await addReturnRecord(returnRecord);
+
                 successCount++;
             } else {
                 break;

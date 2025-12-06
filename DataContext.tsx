@@ -67,9 +67,9 @@ export interface NCRRecord {
   actionRework: boolean;
   actionReworkQty: number;
   actionReworkMethod: string;
-  actionSpecialAccept: boolean;
-  actionSpecialAcceptQty: number;
-  actionSpecialAcceptReason: string;
+  actionSpecialAcceptance: boolean;
+  actionSpecialAcceptanceQty: number;
+  actionSpecialAcceptanceReason: string;
   actionScrap: boolean;
   actionScrapQty: number;
   actionReplace: boolean;

@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../DataContext';
 import { BRANCH_LIST, RETURN_ROUTES } from '../constants';
 import { ReturnRecord, ItemCondition, DispositionAction } from '../types';
-import { Scan, Box, Truck, RotateCcw, Trash2, Home, CheckCircle, ArrowRight, ClipboardList, PlusCircle, Save, Clock, Search, AlertCircle, XCircle, Edit3, ShieldCheck, User, Phone, Briefcase, Building2, Printer, FileText, X, PenTool, CheckSquare, Square, AlertTriangle, HelpCircle, Settings, Wrench, Package, Filter, LayoutGrid, FileInput, Check, MapPin, Activity, Inbox } from 'lucide-react';
-
-const PROBLEM_TYPES = ['ชำรุด', 'สูญหาย', 'สินค้าสลับ', 'สินค้าไม่ตรง INV.'];
-const ROOT_CAUSES = ['บรรจุภัณฑ์', 'การขนส่ง', 'ปฏิบัติงาน', 'สิ่งแวดล้อม'];
+import { Scan, Box, Truck, RotateCcw, Trash2, Home, CheckCircle, ArrowRight, ClipboardList, PlusCircle, Save, Clock, Search, AlertCircle, XCircle, Edit3, ShieldCheck, User, Phone, Briefcase, Building2, Printer, FileText, X, PenTool, CheckSquare, Square, AlertTriangle, HelpCircle, Settings, Wrench, Package, Filter, LayoutGrid, FileInput, Check, MapPin, Activity, Inbox, Image as ImageIcon } from 'lucide-react';
 
 interface OperationsProps {
   initialData?: Partial<ReturnRecord> | null;
@@ -78,13 +75,20 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
     productCode: '',
     expiryDate: '',
     notes: '',
-    problemType: '',
-    rootCause: '',
     ncrNumber: '',
     refNo: '',
     neoRefNo: '',
     customerName: '',
     destinationCustomer: '',
+
+    // Detailed Problem Flags
+    problemDamaged: false, problemDamagedInBox: false, problemLost: false, problemMixed: false,
+    problemWrongInv: false, problemLate: false, problemDuplicate: false, problemWrong: false,
+    problemIncomplete: false, problemOver: false, problemWrongInfo: false, problemShortExpiry: false,
+    problemTransportDamage: false, problemAccident: false, problemOther: false,
+    problemOtherText: '', problemDetail: '',
+
+    // Actions
     actionReject: false,
     actionRejectQty: 0,
     actionRejectSort: false,
@@ -97,8 +101,17 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
     actionSpecialAcceptanceReason: '',
     actionScrap: false,
     actionScrapQty: 0,
-    actionScrapReplace: false,
-    actionScrapReplaceQty: 0
+    actionScrapReplace: false, // Corrected name from actionScrapReplace
+    actionScrapReplaceQty: 0,
+
+    // Root Causes
+    causePackaging: false,
+    causeTransport: false,
+    causeOperation: false,
+    causeEnv: false,
+    causeDetail: '',
+    preventionDetail: '',
+    images: []
   };
   const [formData, setFormData] = useState<Partial<ReturnRecord>>(initialFormState);
   const [requestItems, setRequestItems] = useState<Partial<ReturnRecord>[]>([]); // NEW: List of items to be added
@@ -141,6 +154,31 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
     }
   };
 
+
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData(prev => ({
+            ...prev,
+            images: [...(prev.images || []), reader.result as string]
+          }));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== index)
+    }));
+  };
+
   // NEW: Add current form data to local list
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,17 +192,14 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
 
     // Reset only product-specific fields, keep header info (Branch, Customer, Date, RefNo)
     setFormData(prev => ({
-      ...prev,
-      productCode: '',
-      productName: '',
-      quantity: 1,
-      unit: 'ชิ้น',
-      priceBill: 0,
-      priceSell: 0,
-      expiryDate: '',
-      problemType: '',
-      rootCause: '',
-      notes: ''
+      ...initialFormState,
+      branch: prev.branch,
+      date: prev.date,
+      customerName: prev.customerName,
+      destinationCustomer: prev.destinationCustomer,
+      neoRefNo: prev.neoRefNo,
+      // Keep refNo? Usually RefNo is per document, but if submitting multiple items from same invoice, keep it.
+      refNo: prev.refNo
     }));
     setCustomProblemType('');
     setCustomRootCause('');
@@ -202,14 +237,9 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
       let savedNcrNumbers: string[] = [];
 
       for (const item of itemsToProcess) {
-        const finalProblemType = item.problemType === 'Other' ? customProblemType : item.problemType;
-        const finalRootCause = item.rootCause === 'Other' ? customRootCause : item.rootCause;
-
         // Generate NCR Number explicitly if not provided
         let finalNcrNumber = item.ncrNumber;
         if (!finalNcrNumber) {
-          // We will generate one. Note: fetching sequentially in a loop might be tricky with async/await state, 
-          // but since we await, it should be fine.
           finalNcrNumber = await getNextNCRNumber();
         }
 
@@ -217,7 +247,7 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
           ...item as ReturnRecord,
           id: `RT-${new Date().getFullYear()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           amount: (item.quantity || 0) * (item.priceBill || 0),
-          reason: item.notes || 'แจ้งคืนสินค้า',
+          reason: item.problemDetail || item.notes || 'แจ้งคืนสินค้า',
           status: 'Requested',
           dateRequested: item.date || new Date().toISOString().split('T')[0],
           disposition: 'Pending',
@@ -226,46 +256,50 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
           productCode: item.productCode || 'N/A',
           customerName: item.customerName || 'Unknown Customer',
           category: 'General',
-          problemType: finalProblemType,
-          rootCause: finalRootCause,
           ncrNumber: finalNcrNumber,
           neoRefNo: item.neoRefNo,
           destinationCustomer: item.destinationCustomer,
+          // Map Booleans (Copied via spread, but explicit for clarity if needed)
         };
 
         const success = await addReturnRecord(record);
 
         if (success) {
           // AUTO-CREATE NCR RECORD
-          // Map ReturnRecord data to NCRRecord structure
-          const ncrRecord: any = { // Use 'any' temporarily or import NCRRecord type if easy
+          const ncrRecord: any = {
             id: finalNcrNumber + '-' + record.id,
             ncrNo: finalNcrNumber,
             date: record.dateRequested,
             toDept: 'แผนกควบคุมคุณภาพ',
-            founder: 'Operations Hub', // Default founder
+            founder: 'Operations Hub',
             poNo: '',
             copyTo: '',
 
-            // Header Flags - Smart Mapping from Return Data
-            problemDamaged: finalProblemType === 'ชำรุด',
-            problemDamagedInBox: finalProblemType === 'ชำรุดในกล่อง',
-            problemLost: finalProblemType === 'สูญหาย',
-            problemMixed: finalProblemType === 'สินค้าสลับ',
-            problemWrongInv: finalProblemType === 'สินค้าไม่ตรง INV.',
-            problemLate: false, problemDuplicate: false, problemWrong: false, problemIncomplete: false,
-            problemOver: false, problemWrongInfo: false, problemShortExpiry: false,
-            problemTransportDamage: false, problemAccident: false,
-            problemOther: !['ชำรุด', 'ชำรุดในกล่อง', 'สูญหาย', 'สินค้าสลับ', 'สินค้าไม่ตรง INV.'].includes(finalProblemType || ''),
-            problemOtherText: !['ชำรุด', 'ชำรุดในกล่อง', 'สูญหาย', 'สินค้าสลับ', 'สินค้าไม่ตรง INV.'].includes(finalProblemType || '') ? finalProblemType || '' : '',
+            // Header Flags - Direct Mapping
+            problemDamaged: record.problemDamaged,
+            problemDamagedInBox: record.problemDamagedInBox,
+            problemLost: record.problemLost,
+            problemMixed: record.problemMixed,
+            problemWrongInv: record.problemWrongInv,
+            problemLate: record.problemLate,
+            problemDuplicate: record.problemDuplicate,
+            problemWrong: record.problemWrong,
+            problemIncomplete: record.problemIncomplete,
+            problemOver: record.problemOver,
+            problemWrongInfo: record.problemWrongInfo,
+            problemShortExpiry: record.problemShortExpiry,
+            problemTransportDamage: record.problemTransportDamage,
+            problemAccident: record.problemAccident,
+            problemOther: record.problemOther,
+            problemOtherText: record.problemOtherText,
 
-            problemDetail: record.reason || '',
+            problemDetail: record.problemDetail || record.reason || '',
 
             // Item Details
             item: {
               id: record.id,
               branch: record.branch,
-              refNo: '',
+              refNo: record.refNo,
               neoRefNo: record.neoRefNo,
               productCode: record.productCode,
               productName: record.productName,
@@ -278,22 +312,35 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
               hasCost: false,
               costAmount: 0,
               costResponsible: '',
-              problemSource: finalRootCause || '-'
+              problemSource: '-'
             },
 
             // Action defaults
-            actionReject: false, actionRejectQty: 0, actionRejectSort: false, actionRejectSortQty: 0,
-            actionRework: false, actionReworkQty: 0, actionReworkMethod: '',
-            actionSpecialAccept: false, actionSpecialAcceptQty: 0, actionSpecialAcceptReason: '',
-            actionScrap: false, actionScrapQty: 0, actionReplace: false, actionReplaceQty: 0,
+            actionReject: record.actionReject,
+            actionRejectQty: record.actionRejectQty,
+            actionRejectSort: record.actionRejectSort,
+            actionRejectSortQty: record.actionRejectSortQty,
+            actionRework: record.actionRework,
+            actionReworkQty: record.actionReworkQty,
+            actionReworkMethod: record.actionReworkMethod,
+            actionSpecialAccept: record.actionSpecialAcceptance,
+            actionSpecialAcceptQty: record.actionSpecialAcceptanceQty,
+            actionSpecialAcceptReason: record.actionSpecialAcceptanceReason,
+            actionScrap: record.actionScrap,
+            actionScrapQty: record.actionScrapQty,
+            actionReplace: record.actionScrapReplace,
+            actionReplaceQty: record.actionScrapReplaceQty,
 
-            // Cause defaults - Smart Mapping
-            causePackaging: finalRootCause === 'บรรจุภัณฑ์',
-            causeTransport: finalRootCause === 'การขนส่ง',
-            causeOperation: finalRootCause === 'ปฏิบัติงาน',
-            causeEnv: finalRootCause === 'สิ่งแวดล้อม',
-            causeDetail: '', preventionDetail: '', preventionDueDate: '',
-            responsiblePerson: '', responsiblePosition: '',
+            // Cause defaults
+            causePackaging: record.causePackaging,
+            causeTransport: record.causeTransport,
+            causeOperation: record.causeOperation,
+            causeEnv: record.causeEnv,
+            causeDetail: record.causeDetail,
+            preventionDetail: record.preventionDetail,
+            preventionDueDate: '',
+            responsiblePerson: '',
+            responsiblePosition: '',
 
             // Closing defaults
             qaAccept: false, qaReject: false, qaReason: '',
@@ -302,7 +349,6 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
             status: 'Open'
           };
 
-          // alert(`Debug: Auto-creating NCR Record: ${ncrRecord.ncrNo}`); // Debug
           const ncrSuccess = await addNCRReport(ncrRecord);
           if (!ncrSuccess) {
             alert(`Warning: Failed to create NCR Record for ${record.id}`);
@@ -599,260 +645,426 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
             <div><label className="text-xs text-slate-500 block mb-1">เลขที่เอกสารอ้างอิง</label><input type="text" required value={formData.refNo} onChange={e => setFormData({ ...formData, refNo: e.target.value })} className="w-full p-2 border rounded text-sm" /></div>
             <div><label className="text-xs text-slate-500 block mb-1">รหัสสินค้า</label><input type="text" required value={formData.productCode} onChange={e => setFormData({ ...formData, productCode: e.target.value })} className="w-full p-2 border rounded text-sm" /></div>
             <div className="md:col-span-2"><label className="text-xs text-slate-500 block mb-1">ชื่อสินค้า</label><input type="text" required value={formData.productName} onChange={e => setFormData({ ...formData, productName: e.target.value })} className="w-full p-2 border rounded text-sm" /></div>
-          </div> <div className="grid grid-cols-3 gap-4"> <div><label className="text-xs text-slate-500 block mb-1">จำนวน</label><input type="number" required value={formData.quantity} onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) })} className="w-full p-2 border rounded text-sm" /></div> <div><label className="text-xs text-slate-500 block mb-1">หน่วย</label><input type="text" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} className="w-full p-2 border rounded text-sm" /></div> <div><label className="text-xs text-slate-500 block mb-1">วันหมดอายุ</label><input type="date" value={formData.expiryDate} onChange={e => setFormData({ ...formData, expiryDate: e.target.value })} className="w-full p-2 border rounded text-sm" /></div> </div> <div className="grid grid-cols-2 gap-4"> <div><label className="text-xs text-slate-500 block mb-1">ราคาหน้าบิล</label><input type="number" value={formData.priceBill} onChange={e => setFormData({ ...formData, priceBill: parseFloat(e.target.value) })} className="w-full p-2 border rounded text-sm" /></div> <div><label className="text-xs text-slate-500 block mb-1">ราคาขาย</label><input type="number" value={formData.priceSell} onChange={e => setFormData({ ...formData, priceSell: parseFloat(e.target.value) })} className="w-full p-2 border rounded text-sm" /></div> </div> </div> <div><label className="block text-sm font-medium text-slate-700 mb-1">หมายเหตุ/สาเหตุการคืน</label><textarea rows={2} value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" placeholder="ระบุสาเหตุ..."></textarea></div>
+          </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-              <button type="submit" className="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 font-bold hover:bg-blue-50 flex items-center gap-2"> <PlusCircle className="w-4 h-4" /> เพิ่มรายการ (Add to List) </button>
-              <button type="button" onClick={handleRequestSubmit} className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md flex items-center gap-2"> <Save className="w-4 h-4" /> ยืนยัน ({requestItems.length + (formData.productName ? 1 : 0)}) รายการ </button>
-            </div> </form> </div> </div>)}
+              <div className="grid grid-cols-3 gap-4">
+                <div><label className="text-xs text-slate-500 block mb-1">จำนวน</label><input type="number" required value={formData.quantity} onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) })} className="w-full p-2 border rounded text-sm" /></div>
+                <div><label className="text-xs text-slate-500 block mb-1">หน่วย</label><input type="text" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} className="w-full p-2 border rounded text-sm" /></div>
+                <div><label className="text-xs text-slate-500 block mb-1">วันหมดอายุ</label><input type="date" value={formData.expiryDate} onChange={e => setFormData({ ...formData, expiryDate: e.target.value })} className="w-full p-2 border rounded text-sm" /></div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div><label className="text-xs text-slate-500 block mb-1">ราคาหน้าบิล</label><input type="number" value={formData.priceBill} onChange={e => setFormData({ ...formData, priceBill: parseFloat(e.target.value) })} className="w-full p-2 border rounded text-sm" /></div>
+                <div><label className="text-xs text-slate-500 block mb-1">ราคาขาย</label><input type="number" value={formData.priceSell} onChange={e => setFormData({ ...formData, priceSell: parseFloat(e.target.value) })} className="w-full p-2 border rounded text-sm" /></div>
+                <div>
+                  <button type="submit" className="w-full px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-sm flex items-center justify-center gap-2 h-[38px]">
+                    <PlusCircle className="w-4 h-4" /> เพิ่มรายการ (Add)
+                  </button>
+                </div>
+              </div>
+
+
+
+              {/* PROBLEM DETAILS SECTION */}
+              <div className="border-2 border-slate-300 rounded-xl overflow-hidden">
+                <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 font-bold text-slate-700 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-500" /> รายละเอียดของปัญหาที่พบ (ผู้พบปัญหา)
+                </div>
+                <div className="p-4 bg-white grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="border-r border-slate-200 pr-4">
+                    <div className="flex flex-col items-center justify-center text-slate-400 min-h-[200px] border-2 border-dashed border-slate-300 rounded-lg hover:bg-slate-50 transition-colors relative">
+                      <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                      <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+                      <span className="text-sm font-bold">คลิกเพื่ออัพโหลดรูปภาพ</span>
+                      <span className="text-xs text-slate-400 mt-1">หรือลากไฟล์มาวางที่นี่</span>
+                    </div>
+                    {formData.images && formData.images.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-4">
+                        {formData.images.map((img, idx) => (
+                          <div key={idx} className="relative group aspect-square bg-slate-100 rounded overflow-hidden border border-slate-200">
+                            <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                            <button onClick={() => handleRemoveImage(idx)} type="button" className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="mb-2 font-bold underline text-slate-800 text-sm">พบปัญหาที่กระบวนการ <span className="text-red-500">*</span></div>
+                    <div className="grid grid-cols-2 gap-2 mb-4 text-slate-700 text-sm">
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemDamaged} onChange={e => setFormData({ ...formData, problemDamaged: e.target.checked })} /> ชำรุด</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemDamagedInBox} onChange={e => setFormData({ ...formData, problemDamagedInBox: e.target.checked })} /> ชำรุดในกล่อง</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemLost} onChange={e => setFormData({ ...formData, problemLost: e.target.checked })} /> สูญหาย</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemMixed} onChange={e => setFormData({ ...formData, problemMixed: e.target.checked })} /> สินค้าสลับ</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemWrongInv} onChange={e => setFormData({ ...formData, problemWrongInv: e.target.checked })} /> สินค้าไม่ตรง INV.</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemLate} onChange={e => setFormData({ ...formData, problemLate: e.target.checked })} /> ส่งช้า</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemDuplicate} onChange={e => setFormData({ ...formData, problemDuplicate: e.target.checked })} /> ส่งซ้ำ</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemWrong} onChange={e => setFormData({ ...formData, problemWrong: e.target.checked })} /> ส่งผิด</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemIncomplete} onChange={e => setFormData({ ...formData, problemIncomplete: e.target.checked })} /> ส่งของไม่ครบ</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemOver} onChange={e => setFormData({ ...formData, problemOver: e.target.checked })} /> ส่งของเกิน</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemWrongInfo} onChange={e => setFormData({ ...formData, problemWrongInfo: e.target.checked })} /> ข้อมูลผิด</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemShortExpiry} onChange={e => setFormData({ ...formData, problemShortExpiry: e.target.checked })} /> สินค้าอายุสั้น</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemTransportDamage} onChange={e => setFormData({ ...formData, problemTransportDamage: e.target.checked })} /> สินค้าเสียหายบนรถขนส่ง</label>
+                      <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemAccident} onChange={e => setFormData({ ...formData, problemAccident: e.target.checked })} /> อุบัติเหตุ</label>
+                      <div className="flex items-center gap-2 p-1 col-span-2"><input type="checkbox" checked={formData.problemOther} onChange={e => setFormData({ ...formData, problemOther: e.target.checked })} /> <span>อื่นๆ</span><input type="text" className="border-b border-dotted border-slate-400 bg-transparent outline-none flex-1 text-slate-700" value={formData.problemOtherText || ''} onChange={e => setFormData({ ...formData, problemOtherText: e.target.value })} /></div>
+                    </div>
+                    <div>
+                      <label className="font-bold underline text-sm text-slate-800">รายละเอียด:</label>
+                      <textarea value={formData.problemDetail || ''} onChange={e => setFormData({ ...formData, problemDetail: e.target.value })} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm min-h-[80px]" placeholder="รายละเอียดเพิ่มเติม..."></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTION SECTION */}
+              <div className="border-2 border-slate-300 rounded-xl overflow-hidden mt-6">
+                <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 font-bold text-slate-700 flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-blue-500" /> การดำเนินการ
+                </div>
+                <div className="p-4 bg-white space-y-3 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={formData.actionReject} onChange={e => setFormData({ ...formData, actionReject: e.target.checked })} className="w-4 h-4" />
+                      <span className="font-bold w-32">ส่งคืน (Reject)</span>
+                      <div className="flex items-center gap-2"><span className="text-xs text-slate-500">จำนวน:</span><input type="number" value={formData.actionRejectQty} onChange={e => setFormData({ ...formData, actionRejectQty: Number(e.target.value) })} className="w-20 border rounded px-2 py-1" /></div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={formData.actionRejectSort} onChange={e => setFormData({ ...formData, actionRejectSort: e.target.checked })} className="w-4 h-4" />
+                      <span className="font-bold w-40">คัดแยกของเสียเพื่อส่งคืน</span>
+                      <div className="flex items-center gap-2"><span className="text-xs text-slate-500">จำนวน:</span><input type="number" value={formData.actionRejectSortQty} onChange={e => setFormData({ ...formData, actionRejectSortQty: Number(e.target.value) })} className="w-20 border rounded px-2 py-1" /></div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 border-b border-slate-100 pb-3">
+                    <div className="flex items-start gap-3">
+                      <input type="checkbox" checked={formData.actionRework} onChange={e => setFormData({ ...formData, actionRework: e.target.checked })} className="w-4 h-4 mt-1" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-2">
+                          <span className="font-bold w-32">แก้ไข (Rework)</span>
+                          <div className="flex items-center gap-2"><span className="text-xs text-slate-500">จำนวน:</span><input type="number" value={formData.actionReworkQty} onChange={e => setFormData({ ...formData, actionReworkQty: Number(e.target.value) })} className="w-20 border rounded px-2 py-1" /></div>
+                        </div>
+                        <div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-600">วิธีการแก้ไข:</span><input type="text" value={formData.actionReworkMethod} onChange={e => setFormData({ ...formData, actionReworkMethod: e.target.value })} className="flex-1 border-b border-dotted border-slate-400 outline-none px-1" /></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 border-b border-slate-100 pb-3">
+                    <div className="flex items-start gap-3">
+                      <input type="checkbox" checked={formData.actionSpecialAcceptance} onChange={e => setFormData({ ...formData, actionSpecialAcceptance: e.target.checked })} className="w-4 h-4 mt-1" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-2">
+                          <span className="font-bold w-32">ยอมรับกรณีพิเศษ</span>
+                          <div className="flex items-center gap-2"><span className="text-xs text-slate-500">จำนวน:</span><input type="number" value={formData.actionSpecialAcceptanceQty} onChange={e => setFormData({ ...formData, actionSpecialAcceptanceQty: Number(e.target.value) })} className="w-20 border rounded px-2 py-1" /></div>
+                        </div>
+                        <div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-600">เหตุผลในการยอมรับ:</span><input type="text" value={formData.actionSpecialAcceptanceReason} onChange={e => setFormData({ ...formData, actionSpecialAcceptanceReason: e.target.value })} className="flex-1 border-b border-dotted border-slate-400 outline-none px-1" /></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={formData.actionScrap} onChange={e => setFormData({ ...formData, actionScrap: e.target.checked })} className="w-4 h-4" />
+                      <span className="font-bold w-32">ทำลาย (Scrap)</span>
+                      <div className="flex items-center gap-2"><span className="text-xs text-slate-500">จำนวน:</span><input type="number" value={formData.actionScrapQty} onChange={e => setFormData({ ...formData, actionScrapQty: Number(e.target.value) })} className="w-20 border rounded px-2 py-1" /></div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" checked={formData.actionScrapReplace} onChange={e => setFormData({ ...formData, actionScrapReplace: e.target.checked })} className="w-4 h-4" />
+                      <span className="font-bold w-32">เปลี่ยนสินค้าใหม่</span>
+                      <div className="flex items-center gap-2"><span className="text-xs text-slate-500">จำนวน:</span><input type="number" value={formData.actionScrapReplaceQty} onChange={e => setFormData({ ...formData, actionScrapReplaceQty: Number(e.target.value) })} className="w-20 border rounded px-2 py-1" /></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ROOT CAUSE SECTION */}
+              <div className="border-2 border-slate-300 rounded-xl overflow-hidden mt-6">
+                <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 font-bold text-slate-700 flex items-center gap-2">
+                  <Search className="w-4 h-4 text-purple-500" /> สาเหตุ-การป้องกัน (ผู้รับผิดชอบปัญหา)
+                </div>
+                <div className="p-4 bg-white text-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold underline text-slate-800">สาเหตุเกิดจาก:</span>
+                    <label className="flex items-center gap-1 cursor-pointer ml-4"><input type="checkbox" checked={formData.causePackaging} onChange={e => setFormData({ ...formData, causePackaging: e.target.checked })} /> บรรจุภัณฑ์</label>
+                    <label className="flex items-center gap-1 cursor-pointer ml-4"><input type="checkbox" checked={formData.causeTransport} onChange={e => setFormData({ ...formData, causeTransport: e.target.checked })} /> การขนส่ง</label>
+                    <label className="flex items-center gap-1 cursor-pointer ml-4"><input type="checkbox" checked={formData.causeOperation} onChange={e => setFormData({ ...formData, causeOperation: e.target.checked })} /> ปฏิบัติงาน</label>
+                    <label className="flex items-center gap-1 cursor-pointer ml-4"><input type="checkbox" checked={formData.causeEnv} onChange={e => setFormData({ ...formData, causeEnv: e.target.checked })} /> สิ่งแวดล้อม</label>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">รายละเอียดสาเหตุ:</label>
+                      <textarea value={formData.causeDetail || ''} onChange={e => setFormData({ ...formData, causeDetail: e.target.value })} className="w-full p-2 bg-slate-50 border rounded min-h-[60px]" placeholder="ระบุสาเหตุ..."></textarea>
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">แนวทางป้องกัน:</label>
+                      <textarea value={formData.preventionDetail || ''} onChange={e => setFormData({ ...formData, preventionDetail: e.target.value })} className="w-full p-2 bg-slate-50 border rounded min-h-[60px]" placeholder="ระบุแนวทางป้องกัน..."></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+
+            </div>
+
+            <div className="flex justify-end items-center pt-4 border-t border-slate-100 mt-6">
+              <button type="button" onClick={handleRequestSubmit} className="px-6 py-2.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 shadow-md flex items-center gap-2"> <Save className="w-4 h-4" /> ยืนยันข้อมูลทั้งหมด ({requestItems.length + (formData.productName ? 1 : 0)}) รายการ </button>
+            </div>
+          </form>
+        </div>
+        </div>
+        )
+        }
         {activeStep === 2 && (<div className="h-full overflow-auto p-6"> <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Truck className="w-5 h-5 text-amber-500" /> สินค้าขาเข้า (Incoming Shipments)</h3> {requestedItems.length === 0 ? (<div className="flex flex-col items-center justify-center h-64 text-slate-400 bg-white rounded-xl border border-slate-200"><Inbox className="w-12 h-12 mb-2 opacity-50" /><p>ไม่มีรายการที่แจ้งเข้ามาใหม่</p></div>) : (<div className="grid gap-4">{requestedItems.map(item => (<div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-all"><div className="flex items-center gap-4"><div className="bg-blue-50 p-3 rounded-lg text-blue-600 font-bold font-mono text-xs">{item.id}</div><div><h4 className="font-bold text-slate-800">{item.productName}</h4><div className="text-sm text-slate-500 flex gap-3 mt-1"><span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.branch}</span><span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.customerName}</span><span className="font-mono bg-slate-100 px-1.5 rounded text-xs">Qty: {item.quantity} {item.unit}</span></div><div className="text-xs text-red-500 mt-1 italic">"{item.reason}"</div></div></div><button onClick={() => handleIntakeReceive(item.id)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors"><CheckCircle className="w-4 h-4" /> รับของเข้าระบบ</button></div>))}</div>)} </div>)}
         {activeStep === 3 && (<div className="h-full flex"> <div className="w-80 border-r border-slate-200 bg-white flex flex-col"><div className="p-4 border-b border-slate-100 font-bold text-slate-700 flex justify-between items-center"><span>คิวรอตรวจสอบ ({receivedItems.length})</span><Activity className="w-4 h-4 text-blue-500" /></div><div className="flex-1 overflow-y-auto p-2 space-y-2">{receivedItems.length === 0 ? <div className="p-4 text-center text-slate-400 text-xs italic">ไม่มีสินค้าที่ต้องตรวจสอบ</div> : receivedItems.map(item => (<div key={item.id} onClick={() => selectQCItem(item)} className={`p-3 rounded-lg border cursor-pointer transition-all ${qcSelectedItem?.id === item.id ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-200' : 'bg-white border-slate-100 hover:border-blue-100 hover:bg-slate-50'}`}><div className="flex justify-between mb-1"><span className="text-xs font-bold text-slate-700">{item.productCode}</span><span className="text-[10px] text-slate-400">{item.dateReceived}</span></div><div className="text-sm font-medium text-slate-800 truncate mb-1">{item.productName}</div><div className="text-xs text-slate-500">{item.branch}</div></div>))}</div></div> <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">{qcSelectedItem ? (<div className="max-w-3xl mx-auto space-y-6"><div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4"><div><h3 className="text-2xl font-bold text-slate-800 mb-1">{qcSelectedItem.productName}</h3><div className="flex gap-4 text-sm text-slate-500"><span>ID: {qcSelectedItem.id}</span><span>Ref: {qcSelectedItem.refNo}</span><span>Qty: <b>{qcSelectedItem.quantity} {qcSelectedItem.unit}</b></span></div></div><div className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold">In Progress</div></div><div className="mb-8"><h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">1. ประเมินสภาพ (Grading)</h4><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><div className="text-xs font-bold text-green-600 bg-green-50 p-1.5 rounded w-fit mb-2">Good (สภาพดี)</div><div className="grid grid-cols-2 gap-2">{['New', 'BoxDamage', 'WetBox', 'LabelDefect', 'Other'].map((cond) => (<button key={cond} onClick={() => handleConditionSelect(cond === 'Other' ? 'Other' : cond as ItemCondition, 'Good')} className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${qcSelectedItem.condition === cond || (cond === 'Other' && customInputType === 'Good') ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-green-300 hover:text-green-600'}`}>{conditionLabels[cond] || 'อื่นๆ (ระบุ)'}</button>))}</div>{customInputType === 'Good' && (<input type="text" placeholder="ระบุสภาพสินค้า..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-green-500 outline-none" value={Object.keys(conditionLabels).includes(qcSelectedItem.condition || '') ? '' : qcSelectedItem.condition} onChange={e => setQcSelectedItem({ ...qcSelectedItem, condition: e.target.value })} autoFocus />)}</div><div className="space-y-2"><div className="text-xs font-bold text-red-600 bg-red-50 p-1.5 rounded w-fit mb-2">Bad (เสียหาย)</div><div className="grid grid-cols-2 gap-2">{['Expired', 'Damaged', 'Defective', 'Other'].map((cond) => (<button key={cond} onClick={() => handleConditionSelect(cond === 'Other' ? 'Other' : cond as ItemCondition, 'Bad')} className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${qcSelectedItem.condition === cond || (cond === 'Other' && customInputType === 'Bad') ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600'}`}>{conditionLabels[cond] || 'อื่นๆ (ระบุ)'}</button>))}</div>{customInputType === 'Bad' && (<input type="text" placeholder="ระบุความเสียหาย..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-red-500 outline-none" value={Object.keys(conditionLabels).includes(qcSelectedItem.condition || '') ? '' : qcSelectedItem.condition} onChange={e => setQcSelectedItem({ ...qcSelectedItem, condition: e.target.value })} autoFocus />)}</div></div></div><div><h4 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">2. ตัดสินใจ (Disposition)</h4><div className="grid grid-cols-5 gap-2 mb-4">{Object.keys(dispositionLabels).map(key => (<button key={key} onClick={() => { setSelectedDisposition(key as DispositionAction); setIsCustomRoute(false); }} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${selectedDisposition === key ? 'bg-blue-600 text-white border-blue-700 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}><Truck className="w-5 h-5 mb-1" /><span className="text-xs font-bold">{dispositionLabels[key]}</span></button>))}</div>{selectedDisposition === 'RTV' && (<div className="bg-amber-50 p-4 rounded-lg border border-amber-100 animate-fade-in"> <label className="block text-xs font-bold text-amber-800 mb-2">ระบุเส้นทางส่งคืน (Select Route)</label> <div className="flex flex-wrap gap-3"> {RETURN_ROUTES.map(r => (<label key={r} className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-amber-200 text-sm text-slate-700 hover:border-amber-400"> <input type="radio" name="route" value={r} checked={dispositionDetails.route === r} onChange={e => { setDispositionDetails({ ...dispositionDetails, route: e.target.value }); setIsCustomRoute(false); }} className="text-amber-500 focus:ring-amber-500" /> {r} </label>))} <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded border border-amber-200 text-sm text-slate-700 hover:border-amber-400"> <input type="radio" name="route" checked={isCustomRoute} onChange={() => { setIsCustomRoute(true); setDispositionDetails({ ...dispositionDetails, route: '' }); }} className="text-amber-500 focus:ring-amber-500" /> อื่นๆ </label> </div> {isCustomRoute && (<input type="text" placeholder="ระบุเส้นทาง..." className="w-full mt-2 p-2 border rounded-lg text-sm focus:ring-1 focus:ring-amber-500 outline-none" value={dispositionDetails.route} onChange={e => setDispositionDetails({ ...dispositionDetails, route: e.target.value })} autoFocus />)} </div>)}{selectedDisposition === 'Restock' && (<div className="bg-green-50 p-4 rounded-lg border border-green-100 animate-fade-in grid grid-cols-2 gap-4"><div><label className="block text-xs font-bold text-green-800 mb-1">ชื่อผู้ซื้อ (Buyer Name)</label><input type="text" className="w-full p-2 border border-green-200 rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" value={dispositionDetails.sellerName} onChange={e => setDispositionDetails({ ...dispositionDetails, sellerName: e.target.value })} /></div><div><label className="block text-xs font-bold text-green-800 mb-1">เบอร์โทรติดต่อ</label><input type="text" className="w-full p-2 border border-green-200 rounded text-sm focus:ring-1 focus:ring-green-500 outline-none" value={dispositionDetails.contactPhone} onChange={e => setDispositionDetails({ ...dispositionDetails, contactPhone: e.target.value })} /></div></div>)}{selectedDisposition === 'InternalUse' && (<div className="bg-purple-50 p-4 rounded-lg border border-purple-100 animate-fade-in"><label className="block text-xs font-bold text-purple-800 mb-1">หน่วยงาน/ผู้นำไปใช้ (Department/User)</label><input type="text" className="w-full p-2 border border-purple-200 rounded text-sm focus:ring-1 focus:ring-purple-500 outline-none" placeholder="เช่น แผนกบัญชี, คุณสมชาย" value={dispositionDetails.internalUseDetail} onChange={e => setDispositionDetails({ ...dispositionDetails, internalUseDetail: e.target.value })} /></div>)}{selectedDisposition === 'Claim' && (<div className="bg-blue-50 p-4 rounded-lg border border-blue-100 animate-fade-in space-y-3"><div><label className="block text-xs font-bold text-blue-800 mb-1">ชื่อบริษัทประกัน (Insurance Company)</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimCompany} onChange={e => setDispositionDetails({ ...dispositionDetails, claimCompany: e.target.value })} /></div><div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-bold text-blue-800 mb-1">ผู้ประสานงาน</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimCoordinator} onChange={e => setDispositionDetails({ ...dispositionDetails, claimCoordinator: e.target.value })} /></div><div><label className="block text-xs font-bold text-blue-800 mb-1">เบอร์โทร</label><input type="text" className="w-full p-2 border border-blue-200 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={dispositionDetails.claimPhone} onChange={e => setDispositionDetails({ ...dispositionDetails, claimPhone: e.target.value })} /></div></div></div>)}</div><div className="mt-8 flex justify-end pt-6 border-t border-slate-200"><button onClick={handleQCSubmit} disabled={!selectedDisposition || !qcSelectedItem?.condition || qcSelectedItem.condition === 'Unknown'} className="px-8 py-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><Save className="w-5 h-5" /> ยืนยันผลการตรวจสอบ (Confirm QC)</button></div></div></div>) : (<div className="flex flex-col items-center justify-center h-full text-slate-400"><ClipboardList className="w-16 h-16 mb-4 opacity-50" /><h3 className="text-lg font-bold">เลือกรายการจากคิว</h3><p className="text-sm">เลือกรายการสินค้าจากคิวด้านซ้ายเพื่อเริ่มตรวจสอบคุณภาพ</p></div>)}</div> </div>)}
         {activeStep === 4 && (<div className="h-full overflow-x-auto p-4 flex gap-4"> <KanbanColumn title="สินค้าสำหรับส่งคืน (RTV)" status="RTV" icon={Truck} color="bg-amber-500" /> <KanbanColumn title="สินค้าสำหรับขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" /> <KanbanColumn title="สินค้าสำหรับเคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" /> <KanbanColumn title="สินค้าใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" /> <KanbanColumn title="สินค้าสำหรับทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" /> </div>)}
         {activeStep === 5 && (<div className="h-full overflow-auto p-6"> <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><FileText className="w-5 h-5 text-purple-500" /> รายการรอปิดงาน (Pending Completion)</h3> {documentedItems.length === 0 ? (<div className="flex flex-col items-center justify-center h-64 text-slate-400 bg-white rounded-xl border border-slate-200"><Inbox className="w-12 h-12 mb-2 opacity-50" /><p>ไม่มีรายการที่รอปิดงาน</p></div>) : (<div className="grid gap-4">{documentedItems.map(item => (<div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-all"><div className="flex items-center gap-4"><div className="bg-purple-50 p-3 rounded-lg text-purple-600 font-bold font-mono text-xs">{item.id}</div><div><h4 className="font-bold text-slate-800">{item.productName}</h4><div className="text-sm text-slate-500 flex gap-3 mt-1"><span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {item.branch}</span><span className="flex items-center gap-1"><User className="w-3 h-3" /> {item.customerName}</span>{getDispositionBadge(item.disposition)}</div></div></div><button onClick={() => handleCompleteJob(item.id)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors"><CheckCircle className="w-4 h-4" /> ปิดงาน</button></div>))}</div>)} <h3 className="text-lg font-bold text-slate-800 mb-4 mt-8 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-500" /> รายการที่จบงานแล้ว (Completed)</h3> <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100"> {completedItems.slice(0, 10).map(item => (<div key={item.id} className="p-3 flex items-center justify-between"><div className="flex items-center gap-3"><span className="text-xs font-mono text-slate-400">{item.id}</span><div><span className="font-medium text-slate-700">{item.productName}</span><span className="text-xs text-slate-500 ml-2">({item.branch})</span></div></div><div className="text-xs flex items-center gap-2 text-slate-500"><span>ปิดงาน: {item.dateCompleted}</span>{getDispositionBadge(item.disposition)}</div></div>))} {completedItems.length === 0 && <div className="p-4 text-center text-slate-400 text-sm italic">ยังไม่มีรายการที่จบงาน</div>} </div> </div>)}
-      </div>
+      </div >
 
       {/* PRINT SELECTION MODAL */}
-      {showSelectionModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full flex flex-col max-h-[80vh]">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                <Printer className="w-5 h-5 text-blue-600" /> เลือกรายการสินค้าเพื่อออกเอกสาร
-              </h3>
-              <button onClick={() => setShowSelectionModal(false)} className="p-2 hover:bg-slate-100 rounded-full"><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
-            <div className="p-4 overflow-y-auto flex-1">
-              <div className="mb-4 flex justify-between items-center bg-blue-50 p-3 rounded-lg border border-blue-100">
-                <span className="text-sm font-bold text-blue-700">{getDispositionBadge(selectionStatus || undefined)}</span>
-                <span className="text-xs text-blue-600">เลือก {selectedItemIds.size} รายการ</span>
+      {
+        showSelectionModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full flex flex-col max-h-[80vh]">
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-blue-600" /> เลือกรายการสินค้าเพื่อออกเอกสาร
+                </h3>
+                <button onClick={() => setShowSelectionModal(false)} className="p-2 hover:bg-slate-100 rounded-full"><X className="w-5 h-5 text-slate-400" /></button>
               </div>
-              <div className="space-y-2">
-                {selectionItems.map(item => (
-                  <label key={item.id} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50 transition-all ${selectedItemIds.has(item.id) ? 'border-blue-500 bg-blue-50/30' : 'border-slate-200'}`}>
-                    <input type="checkbox" checked={selectedItemIds.has(item.id)} onChange={() => toggleSelection(item.id)} className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <span className="font-bold text-slate-800 text-sm">{item.productName}</span>
-                        <span className="text-xs font-mono text-slate-400">{item.id}</span>
+              <div className="p-4 overflow-y-auto flex-1">
+                <div className="mb-4 flex justify-between items-center bg-blue-50 p-3 rounded-lg border border-blue-100">
+                  <span className="text-sm font-bold text-blue-700">{getDispositionBadge(selectionStatus || undefined)}</span>
+                  <span className="text-xs text-blue-600">เลือก {selectedItemIds.size} รายการ</span>
+                </div>
+                <div className="space-y-2">
+                  {selectionItems.map(item => (
+                    <label key={item.id} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-slate-50 transition-all ${selectedItemIds.has(item.id) ? 'border-blue-500 bg-blue-50/30' : 'border-slate-200'}`}>
+                      <input type="checkbox" checked={selectedItemIds.has(item.id)} onChange={() => toggleSelection(item.id)} className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500" />
+                      <div className="flex-1">
+                        <div className="flex justify-between">
+                          <span className="font-bold text-slate-800 text-sm">{item.productName}</span>
+                          <span className="text-xs font-mono text-slate-400">{item.id}</span>
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1 flex gap-2">
+                          <span>{item.branch}</span>
+                          <span>•</span>
+                          <span>{item.customerName}</span>
+                          <span>•</span>
+                          <span className="font-bold">{item.quantity} {item.unit}</span>
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-500 mt-1 flex gap-2">
-                        <span>{item.branch}</span>
-                        <span>•</span>
-                        <span>{item.customerName}</span>
-                        <span>•</span>
-                        <span className="font-bold">{item.quantity} {item.unit}</span>
-                      </div>
-                    </div>
-                  </label>
-                ))}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-              <button onClick={() => setShowSelectionModal(false)} className="px-4 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-lg font-bold text-sm">ยกเลิก</button>
-              <button onClick={handleGenerateDoc} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 shadow-sm flex items-center gap-2">
-                <FileText className="w-4 h-4" /> สร้างเอกสาร (Generate)
-              </button>
+              <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
+                <button onClick={() => setShowSelectionModal(false)} className="px-4 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-lg font-bold text-sm">ยกเลิก</button>
+                <button onClick={handleGenerateDoc} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 shadow-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> สร้างเอกสาร (Generate)
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* DOCUMENT PREVIEW MODAL */}
-      {showDocModal && docData && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex flex-col animate-fade-in text-slate-900 overflow-hidden">
-          {/* Toolbar */}
-          <div className="bg-slate-800 text-white p-4 flex justify-between items-center shadow-md print:hidden w-full z-10">
-            <h3 className="font-bold text-lg flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-400" /> ตัวอย่างเอกสาร (Print Preview)
-            </h3>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-slate-700 rounded-lg px-2 py-1 border border-slate-600">
-                <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                  <input type="checkbox" checked={includeVat} onChange={e => setIncludeVat(e.target.checked)} className="rounded text-blue-500 focus:ring-blue-500 bg-slate-600 border-slate-500" />
-                  <span className={includeVat ? 'text-white' : 'text-slate-400'}>คิด VAT</span>
-                </label>
-                {includeVat && (
-                  <div className="flex items-center gap-1 border-l border-slate-600 pl-2">
-                    <input
-                      type="number"
-                      value={vatRate}
-                      onChange={e => setVatRate(Number(e.target.value))}
-                      className="w-12 bg-slate-800 border border-slate-500 rounded px-1 text-center text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none"
-                      min="0" max="100"
-                    />
-                    <span className="text-xs text-slate-400">%</span>
-                  </div>
-                )}
-              </div>
-              <button onClick={() => setIsDocEditable(!isDocEditable)} className={`px-3 py-1.5 text-xs font-bold rounded-lg border flex items-center gap-1 transition-all ${isDocEditable ? 'bg-amber-500 border-amber-500 text-white' : 'bg-transparent border-slate-600 text-slate-300 hover:border-slate-400'}`}>
-                <Edit3 className="w-3 h-3" /> {isDocEditable ? 'Editing Mode' : 'Edit Header'}
-              </button>
-              <div className="h-6 w-px bg-slate-600 mx-2"></div>
-              <button onClick={() => window.print()} className="px-4 py-2 bg-white text-slate-900 rounded-lg hover:bg-slate-100 font-bold text-sm flex items-center gap-2">
-                <Printer className="w-4 h-4" /> พิมพ์ (Print)
-              </button>
-              <button onClick={handleConfirmDocGeneration} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" /> บันทึกและไประดับถัดไป
-              </button>
-              <button onClick={() => setShowDocModal(false)} className="ml-2 p-2 hover:bg-slate-700 rounded-full">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Document Content */}
-          <div className="flex-1 overflow-auto bg-slate-100 p-8 print:p-0 print:bg-white print:overflow-visible">
-            <div className="bg-white shadow-lg mx-auto max-w-[210mm] min-h-[297mm] p-[15mm] print:shadow-none print:w-full print:max-w-none print:p-0 relative">
-
-              {/* Header */}
-              <div className="flex border-b-2 border-slate-800 pb-4 mb-6">
-                <div className="w-[100px] h-[100px] flex items-center justify-center mr-6">
-                  <img src="https://img2.pic.in.th/pic/logo-neo.png" alt="Neo Siam Logo" className="max-w-full max-h-full object-contain" />
-                </div>
-                <div className="flex-1">
-                  {isDocEditable ? (
-                    <div className="space-y-1">
-                      <input value={docConfig.companyNameTH} onChange={e => setDocConfig({ ...docConfig, companyNameTH: e.target.value })} className="w-full text-lg font-bold border rounded px-1" />
-                      <input value={docConfig.companyNameEN} onChange={e => setDocConfig({ ...docConfig, companyNameEN: e.target.value })} className="w-full text-sm border rounded px-1" />
-                      <input value={docConfig.address} onChange={e => setDocConfig({ ...docConfig, address: e.target.value })} className="w-full text-xs text-slate-600 border rounded px-1" />
-                      <input value={docConfig.contact} onChange={e => setDocConfig({ ...docConfig, contact: e.target.value })} className="w-full text-xs text-slate-600 border rounded px-1" />
-                    </div>
-                  ) : (
-                    <>
-                      <h1 className="text-xl font-bold text-slate-800">{docConfig.companyNameTH}</h1>
-                      <h2 className="text-sm font-bold text-slate-600">{docConfig.companyNameEN}</h2>
-                      <p className="text-xs text-slate-500 mt-1">{docConfig.address}</p>
-                      <p className="text-xs text-slate-500">{docConfig.contact}</p>
-                    </>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className="border inline-block px-4 py-2 rounded text-center mb-2">
-                    <div className="text-[10px] text-slate-500">Document No.</div>
-                    <div className="font-bold font-mono text-lg">{getISODetails(docData.type).code}</div>
-                  </div>
-                  <div className="text-xs text-slate-500">Date: {new Date().toLocaleDateString('th-TH')}</div>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div className="text-center mb-8">
-                {isDocEditable ? (
-                  <input value={docConfig.titleTH} onChange={e => setDocConfig({ ...docConfig, titleTH: e.target.value })} className="text-CENTER text-2xl font-bold border rounded px-2 w-full mb-1" />
-                ) : (
-                  <h2 className="text-2xl font-bold uppercase border-b border-black inline-block px-8 pb-1">{docConfig.titleTH || getISODetails(docData.type).th}</h2>
-                )}
-                <p className="text-sm text-slate-500 mt-1 uppercase tracking-wide">{docConfig.titleEN || getISODetails(docData.type).en}</p>
-              </div>
-
-              {/* Info Block */}
-              <div className="mb-6 text-sm">
-                {/* To / Via Section - Standard Document Format */}
-                <div className="p-4 border rounded-lg print:border-none print:p-0">
-                  <div className="grid grid-cols-1 gap-4 leading-loose">
-                    <div className="flex items-end border-b border-dotted border-slate-400 pb-1">
-                      <span className="font-bold w-[60px]">เรียน:</span>
-                      <span className="flex-1 px-2 text-slate-800"></span>
-                    </div>
-                    <div className="flex items-end border-b border-dotted border-slate-400 pb-1">
-                      <span className="font-bold w-[60px]">ผ่าน:</span>
-                      <span className="flex-1 px-2 text-slate-800"></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Table */}
-              <table className="w-full border-collapse border border-slate-800 text-sm mb-6">
-                <thead>
-                  <tr className="bg-slate-100 print:bg-slate-200 text-center">
-                    <th className="border border-slate-800 p-2 w-10">#</th>
-                    <th className="border border-slate-800 p-2 w-[120px]">รหัสสินค้า</th>
-                    <th className="border border-slate-800 p-2">รายการสินค้า</th>
-                    <th className="border border-slate-800 p-2 w-[80px]">จำนวน</th>
-                    <th className="border border-slate-800 p-2 w-[60px]">หน่วย</th>
-                    <th className="border border-slate-800 p-2 w-[100px]">สภาพ</th>
-                    <th className="border border-slate-800 p-2 w-[100px]">ราคา/หน่วย</th>
-                    <th className="border border-slate-800 p-2 w-[100px]">รวมเงิน</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {docData.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="border border-slate-800 p-2 text-center">{idx + 1}</td>
-                      <td className="border border-slate-800 p-2">{item.productCode}</td>
-                      <td className="border border-slate-800 p-2">
-                        <div>{item.productName}</div>
-                        <div className="text-[10px] text-slate-500">Ref: {item.refNo}</div>
-                      </td>
-                      <td className="border border-slate-800 p-2 text-center font-bold">{item.quantity}</td>
-                      <td className="border border-slate-800 p-2 text-center">{item.unit}</td>
-                      <td className="border border-slate-800 p-2 text-center text-xs">{item.condition}</td>
-                      <td className="border border-slate-800 p-2 text-right">{item.priceBill?.toLocaleString()}</td>
-                      <td className="border border-slate-800 p-2 text-right">{((item.priceBill || 0) * item.quantity).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                  {/* Summary Rows */}
-                  <tr className="font-bold bg-slate-50 print:bg-transparent">
-                    <td colSpan={6} rowSpan={3} className="border border-slate-800 p-4 text-center align-middle text-lg italic bg-slate-50 text-slate-600 print:hidden">
-                      ({ThaiBahtText(calculateTotal(docData.items, includeVat).net)})
-                    </td>
-                    <td colSpan={6} rowSpan={includeVat ? 1 : 3} className="border border-slate-800 p-4 text-center align-middle text-lg italic bg-slate-50 text-slate-600 hidden print:table-cell">
-                      ({ThaiBahtText(calculateTotal(docData.items, includeVat).net)})
-                    </td>
-                    <td className="border border-slate-800 p-2 text-right">รวมเป็นเงิน</td>
-                    <td className="border border-slate-800 p-2 text-right">{calculateTotal(docData.items, includeVat).subtotal.toLocaleString()}</td>
-                  </tr>
+      {
+        showDocModal && docData && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex flex-col animate-fade-in text-slate-900 overflow-hidden">
+            {/* Toolbar */}
+            <div className="bg-slate-800 text-white p-4 flex justify-between items-center shadow-md print:hidden w-full z-10">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-400" /> ตัวอย่างเอกสาร (Print Preview)
+              </h3>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-slate-700 rounded-lg px-2 py-1 border border-slate-600">
+                  <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                    <input type="checkbox" checked={includeVat} onChange={e => setIncludeVat(e.target.checked)} className="rounded text-blue-500 focus:ring-blue-500 bg-slate-600 border-slate-500" />
+                    <span className={includeVat ? 'text-white' : 'text-slate-400'}>คิด VAT</span>
+                  </label>
                   {includeVat && (
-                    <>
-                      <tr className="font-bold bg-slate-50 print:bg-transparent">
-                        <td className="border border-slate-800 p-2 text-right">VAT 7%</td>
-                        <td className="border border-slate-800 p-2 text-right">{calculateTotal(docData.items, includeVat).vat.toLocaleString([], { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>
-                      <tr className="font-bold bg-slate-100 print:bg-slate-200">
-                        <td className="border border-slate-800 p-2 text-right text-black">ยอดสุทธิ</td>
-                        <td className="border border-slate-800 p-2 text-right text-black">{calculateTotal(docData.items, includeVat).net.toLocaleString([], { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>
-                    </>
+                    <div className="flex items-center gap-1 border-l border-slate-600 pl-2">
+                      <input
+                        type="number"
+                        value={vatRate}
+                        onChange={e => setVatRate(Number(e.target.value))}
+                        className="w-12 bg-slate-800 border border-slate-500 rounded px-1 text-center text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                        min="0" max="100"
+                      />
+                      <span className="text-xs text-slate-400">%</span>
+                    </div>
                   )}
-                </tbody>
-              </table>
-
-              {/* Remarks */}
-              <div className="mb-8 p-4 border border-slate-300 rounded print:border-black">
-                <span className="font-bold underline text-sm">หมายเหตุ:</span>
-                {isDocEditable ? (
-                  <textarea value={docConfig.remarks} onChange={e => setDocConfig({ ...docConfig, remarks: e.target.value })} className="w-full mt-1 p-1 border rounded" rows={2} />
-                ) : (
-                  <p className="text-sm mt-1 indent-4">{docConfig.remarks}</p>
-                )}
+                </div>
+                <button onClick={() => setIsDocEditable(!isDocEditable)} className={`px-3 py-1.5 text-xs font-bold rounded-lg border flex items-center gap-1 transition-all ${isDocEditable ? 'bg-amber-500 border-amber-500 text-white' : 'bg-transparent border-slate-600 text-slate-300 hover:border-slate-400'}`}>
+                  <Edit3 className="w-3 h-3" /> {isDocEditable ? 'Editing Mode' : 'Edit Header'}
+                </button>
+                <div className="h-6 w-px bg-slate-600 mx-2"></div>
+                <button onClick={() => window.print()} className="px-4 py-2 bg-white text-slate-900 rounded-lg hover:bg-slate-100 font-bold text-sm flex items-center gap-2">
+                  <Printer className="w-4 h-4" /> พิมพ์ (Print)
+                </button>
+                <button onClick={handleConfirmDocGeneration} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" /> บันทึกและไประดับถัดไป
+                </button>
+                <button onClick={() => setShowDocModal(false)} className="ml-2 p-2 hover:bg-slate-700 rounded-full">
+                  <X className="w-5 h-5" />
+                </button>
               </div>
+            </div>
 
-              {/* Signatures */}
-              <div className="grid grid-cols-3 gap-8 mt-12 print:break-inside-avoid">
-                <div className="text-center">
-                  <div className="border-b border-black border-dotted h-8 w-3/4 mx-auto mb-2"></div>
-                  <div className="text-sm font-bold">{docConfig.signatory1}</div>
-                  <div className="text-xs text-slate-500">วันที่ ...../...../..........</div>
+            {/* Document Content */}
+            <div className="flex-1 overflow-auto bg-slate-100 p-8 print:p-0 print:bg-white print:overflow-visible">
+              <div className="bg-white shadow-lg mx-auto max-w-[210mm] min-h-[297mm] p-[15mm] print:shadow-none print:w-full print:max-w-none print:p-0 relative">
+
+                {/* Header */}
+                <div className="flex border-b-2 border-slate-800 pb-4 mb-6">
+                  <div className="w-[100px] h-[100px] flex items-center justify-center mr-6">
+                    <img src="https://img2.pic.in.th/pic/logo-neo.png" alt="Neo Siam Logo" className="max-w-full max-h-full object-contain" />
+                  </div>
+                  <div className="flex-1">
+                    {isDocEditable ? (
+                      <div className="space-y-1">
+                        <input value={docConfig.companyNameTH} onChange={e => setDocConfig({ ...docConfig, companyNameTH: e.target.value })} className="w-full text-lg font-bold border rounded px-1" />
+                        <input value={docConfig.companyNameEN} onChange={e => setDocConfig({ ...docConfig, companyNameEN: e.target.value })} className="w-full text-sm border rounded px-1" />
+                        <input value={docConfig.address} onChange={e => setDocConfig({ ...docConfig, address: e.target.value })} className="w-full text-xs text-slate-600 border rounded px-1" />
+                        <input value={docConfig.contact} onChange={e => setDocConfig({ ...docConfig, contact: e.target.value })} className="w-full text-xs text-slate-600 border rounded px-1" />
+                      </div>
+                    ) : (
+                      <>
+                        <h1 className="text-xl font-bold text-slate-800">{docConfig.companyNameTH}</h1>
+                        <h2 className="text-sm font-bold text-slate-600">{docConfig.companyNameEN}</h2>
+                        <p className="text-xs text-slate-500 mt-1">{docConfig.address}</p>
+                        <p className="text-xs text-slate-500">{docConfig.contact}</p>
+                      </>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="border inline-block px-4 py-2 rounded text-center mb-2">
+                      <div className="text-[10px] text-slate-500">Document No.</div>
+                      <div className="font-bold font-mono text-lg">{getISODetails(docData.type).code}</div>
+                    </div>
+                    <div className="text-xs text-slate-500">Date: {new Date().toLocaleDateString('th-TH')}</div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="border-b border-black border-dotted h-8 w-3/4 mx-auto mb-2"></div>
-                  <div className="text-sm font-bold">{docConfig.signatory2}</div>
-                  <div className="text-xs text-slate-500">วันที่ ...../...../..........</div>
+
+                {/* Title */}
+                <div className="text-center mb-8">
+                  {isDocEditable ? (
+                    <input value={docConfig.titleTH} onChange={e => setDocConfig({ ...docConfig, titleTH: e.target.value })} className="text-CENTER text-2xl font-bold border rounded px-2 w-full mb-1" />
+                  ) : (
+                    <h2 className="text-2xl font-bold uppercase border-b border-black inline-block px-8 pb-1">{docConfig.titleTH || getISODetails(docData.type).th}</h2>
+                  )}
+                  <p className="text-sm text-slate-500 mt-1 uppercase tracking-wide">{docConfig.titleEN || getISODetails(docData.type).en}</p>
                 </div>
-                <div className="text-center">
-                  <div className="border-b border-black border-dotted h-8 w-3/4 mx-auto mb-2"></div>
-                  <div className="text-sm font-bold">{docConfig.signatory3}</div>
-                  <div className="text-xs text-slate-500">วันที่ ...../...../..........</div>
+
+                {/* Info Block */}
+                <div className="mb-6 text-sm">
+                  {/* To / Via Section - Standard Document Format */}
+                  <div className="p-4 border rounded-lg print:border-none print:p-0">
+                    <div className="grid grid-cols-1 gap-4 leading-loose">
+                      <div className="flex items-end border-b border-dotted border-slate-400 pb-1">
+                        <span className="font-bold w-[60px]">เรียน:</span>
+                        <span className="flex-1 px-2 text-slate-800"></span>
+                      </div>
+                      <div className="flex items-end border-b border-dotted border-slate-400 pb-1">
+                        <span className="font-bold w-[60px]">ผ่าน:</span>
+                        <span className="flex-1 px-2 text-slate-800"></span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Table */}
+                <table className="w-full border-collapse border border-slate-800 text-sm mb-6">
+                  <thead>
+                    <tr className="bg-slate-100 print:bg-slate-200 text-center">
+                      <th className="border border-slate-800 p-2 w-10">#</th>
+                      <th className="border border-slate-800 p-2 w-[120px]">รหัสสินค้า</th>
+                      <th className="border border-slate-800 p-2">รายการสินค้า</th>
+                      <th className="border border-slate-800 p-2 w-[80px]">จำนวน</th>
+                      <th className="border border-slate-800 p-2 w-[60px]">หน่วย</th>
+                      <th className="border border-slate-800 p-2 w-[100px]">สภาพ</th>
+                      <th className="border border-slate-800 p-2 w-[100px]">ราคา/หน่วย</th>
+                      <th className="border border-slate-800 p-2 w-[100px]">รวมเงิน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {docData.items.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="border border-slate-800 p-2 text-center">{idx + 1}</td>
+                        <td className="border border-slate-800 p-2">{item.productCode}</td>
+                        <td className="border border-slate-800 p-2">
+                          <div>{item.productName}</div>
+                          <div className="text-[10px] text-slate-500">Ref: {item.refNo}</div>
+                        </td>
+                        <td className="border border-slate-800 p-2 text-center font-bold">{item.quantity}</td>
+                        <td className="border border-slate-800 p-2 text-center">{item.unit}</td>
+                        <td className="border border-slate-800 p-2 text-center text-xs">{item.condition}</td>
+                        <td className="border border-slate-800 p-2 text-right">{item.priceBill?.toLocaleString()}</td>
+                        <td className="border border-slate-800 p-2 text-right">{((item.priceBill || 0) * item.quantity).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                    {/* Summary Rows */}
+                    <tr className="font-bold bg-slate-50 print:bg-transparent">
+                      <td colSpan={6} rowSpan={3} className="border border-slate-800 p-4 text-center align-middle text-lg italic bg-slate-50 text-slate-600 print:hidden">
+                        ({ThaiBahtText(calculateTotal(docData.items, includeVat).net)})
+                      </td>
+                      <td colSpan={6} rowSpan={includeVat ? 1 : 3} className="border border-slate-800 p-4 text-center align-middle text-lg italic bg-slate-50 text-slate-600 hidden print:table-cell">
+                        ({ThaiBahtText(calculateTotal(docData.items, includeVat).net)})
+                      </td>
+                      <td className="border border-slate-800 p-2 text-right">รวมเป็นเงิน</td>
+                      <td className="border border-slate-800 p-2 text-right">{calculateTotal(docData.items, includeVat).subtotal.toLocaleString()}</td>
+                    </tr>
+                    {includeVat && (
+                      <>
+                        <tr className="font-bold bg-slate-50 print:bg-transparent">
+                          <td className="border border-slate-800 p-2 text-right">VAT 7%</td>
+                          <td className="border border-slate-800 p-2 text-right">{calculateTotal(docData.items, includeVat).vat.toLocaleString([], { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                        <tr className="font-bold bg-slate-100 print:bg-slate-200">
+                          <td className="border border-slate-800 p-2 text-right text-black">ยอดสุทธิ</td>
+                          <td className="border border-slate-800 p-2 text-right text-black">{calculateTotal(docData.items, includeVat).net.toLocaleString([], { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      </>
+                    )}
+                  </tbody>
+                </table>
+
+                {/* Remarks */}
+                <div className="mb-8 p-4 border border-slate-300 rounded print:border-black">
+                  <span className="font-bold underline text-sm">หมายเหตุ:</span>
+                  {isDocEditable ? (
+                    <textarea value={docConfig.remarks} onChange={e => setDocConfig({ ...docConfig, remarks: e.target.value })} className="w-full mt-1 p-1 border rounded" rows={2} />
+                  ) : (
+                    <p className="text-sm mt-1 indent-4">{docConfig.remarks}</p>
+                  )}
+                </div>
+
+                {/* Signatures */}
+                <div className="grid grid-cols-3 gap-8 mt-12 print:break-inside-avoid">
+                  <div className="text-center">
+                    <div className="border-b border-black border-dotted h-8 w-3/4 mx-auto mb-2"></div>
+                    <div className="text-sm font-bold">{docConfig.signatory1}</div>
+                    <div className="text-xs text-slate-500">วันที่ ...../...../..........</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="border-b border-black border-dotted h-8 w-3/4 mx-auto mb-2"></div>
+                    <div className="text-sm font-bold">{docConfig.signatory2}</div>
+                    <div className="text-xs text-slate-500">วันที่ ...../...../..........</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="border-b border-black border-dotted h-8 w-3/4 mx-auto mb-2"></div>
+                    <div className="text-sm font-bold">{docConfig.signatory3}</div>
+                    <div className="text-xs text-slate-500">วันที่ ...../...../..........</div>
+                  </div>
+                </div>
+
               </div>
-
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-    </div>
+    </div >
   );
 };
 

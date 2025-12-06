@@ -36,13 +36,13 @@ export type ReturnStatus = 'Pending' | 'Requested' | 'Received' | 'Approved' | '
 
 // Operational Types
 // Expanded to include specific imperfections under 'Good' category
-export type ItemCondition = 
-  | 'New' 
-  | 'OpenBox' 
-  | 'Damaged' 
-  | 'Defective' 
+export type ItemCondition =
+  | 'New'
+  | 'OpenBox'
+  | 'Damaged'
+  | 'Defective'
   | 'Expired'     // หมดอายุ
-  | 'Unknown' 
+  | 'Unknown'
   | 'BoxDamage'   // มีตำหนิ/บุบ
   | 'WetBox'      // ลังเปียก
   | 'LabelDefect' // ฉลากลอก
@@ -61,7 +61,8 @@ export interface ReturnRecord {
   category: string;
   date: string; // ISO Date string YYYY-MM-DD (General/Initial Date)
   amount: number; // Qty * Price (Total Value)
-  
+  images?: string[]; // Array of image URLs or Base64 strings
+
   // NEW: Fields for detailed tracking
   neoRefNo?: string; // เลขที่เอกสาร Neo Siam
   destinationCustomer?: string; // สถานที่ส่ง (ลูกค้าปลายทาง)
@@ -79,7 +80,7 @@ export interface ReturnRecord {
   priceBill: number; // ราคาหน้าบิล
   priceSell: number; // ราคาขาย
   expiryDate?: string; // วันหมดอายุ
-  
+
   status: ReturnStatus;
   reason: string;
   // Extended fields for Operations
@@ -88,8 +89,29 @@ export interface ReturnRecord {
   notes?: string; // หมายเหตุ
 
   // Problem Details (Intake)
-  problemType?: string; // พบปัญหาที่กระบวนการ
-  rootCause?: string;   // สาเหตุเกิดจาก
+  // Problem Details (Intake)
+  // problemType: string; // DEPRECATED in favor of booleans below, but kept for legacy? (Maybe keep as summary)
+  problemDetail?: string; // รายละเอียด (สำหรับพิมพ์ข้อความ)
+
+  // Problem Boolean Flags
+  problemDamaged?: boolean;
+  problemDamagedInBox?: boolean;
+  problemLost?: boolean;
+  problemMixed?: boolean;
+  problemWrongInv?: boolean;
+  problemLate?: boolean;
+  problemDuplicate?: boolean;
+  problemWrong?: boolean;
+  problemIncomplete?: boolean;
+  problemOver?: boolean;
+  problemWrongInfo?: boolean;
+  problemShortExpiry?: boolean;
+  problemTransportDamage?: boolean;
+  problemAccident?: boolean;
+  problemOther?: boolean;
+  problemOtherText?: string;
+
+  rootCause?: string;   // สาเหตุเกิดจาก (legacy/summary)
   ncrNumber?: string;   // เลขที่ NCR
 
   // Initial Actions (Intake) - การดำเนินการ
@@ -97,26 +119,34 @@ export interface ReturnRecord {
   actionRejectQty?: number;
   actionRejectSort?: boolean;     // คัดแยกของเสียเพื่อส่งคืน
   actionRejectSortQty?: number;
-  
+
   actionRework?: boolean;         // แก้ไข (Rework)
   actionReworkQty?: number;
   actionReworkMethod?: string;    // วิธีการแก้ไข
-  
+
   actionSpecialAcceptance?: boolean;      // ยอมรับกรณีพิเศษ
   actionSpecialAcceptanceQty?: number;
   actionSpecialAcceptanceReason?: string; // เหตุผลในการยอมรับ
-  
+
   actionScrap?: boolean;          // ทำลาย (Scrap)
   actionScrapQty?: number;
   actionScrapReplace?: boolean;   // เปลี่ยนสินค้าใหม่
   actionScrapReplaceQty?: number;
+
+  // Root Cause & Prevention Details
+  causePackaging?: boolean;
+  causeTransport?: boolean;
+  causeOperation?: boolean;
+  causeEnv?: boolean;
+  causeDetail?: string;
+  preventionDetail?: string;
 
   // Disposition Details
   dispositionRoute?: string; // For RTV: สาย 3, Sino, Neo
   sellerName?: string;       // For Sell/Restock
   contactPhone?: string;     // For Sell/Restock
   internalUseDetail?: string; // For InternalUse: Department/Person
-  
+
   // Claim Details
   claimCompany?: string;      // ชื่อบริษัทประกัน
   claimCoordinator?: string;  // ผู้ประสานงาน
