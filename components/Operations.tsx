@@ -13,7 +13,7 @@ interface OperationsProps {
 }
 
 const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData }) => {
-  const { items, addReturnRecord, updateReturnRecord } = useData();
+  const { items, addReturnRecord, updateReturnRecord, addNCRReport, getNextNCRNumber } = useData();
 
   // New 5-Step Workflow
   const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -47,6 +47,7 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
   const [selectionStatus, setSelectionStatus] = useState<DispositionAction | null>(null);
   const [selectionItems, setSelectionItems] = useState<ReturnRecord[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false); // Prevent double submission
 
   // Document Editable Configuration
   const [isDocEditable, setIsDocEditable] = useState(false);
@@ -178,8 +179,13 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
     // If there are items in the list, process them. If strictly empty, check if form has data (optional logic, but let's encourage list usage)
     const itemsToProcess = [...requestItems];
 
-    // If user filled the form but didn't click "Add", include it if valid
+    // Check if form has data that hasn't been added to list
     if (formData.productName && formData.productCode) {
+      // Logic: If the list is empty, assume they want to submit the current form.
+      // If list is NOT empty, this is ambiguous. Is it a forgotten add? Or a duplicate?
+      // Let's safe-guard: If list has items, but form is filled, ASK or just ADD?
+      // For now: Add it, but let's make sure it's not a complete duplicate of the last item in the list?
+      // Simply pushing it is standard behavior for "Save All", but implies the user forgot to click "Add".
       itemsToProcess.push(formData);
     }
 
@@ -188,45 +194,138 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
       return;
     }
 
-    let successCount = 0;
+    if (isSubmitting) return; // Block double clicks
+    setIsSubmitting(true);
 
-    for (const item of itemsToProcess) {
-      const finalProblemType = item.problemType === 'Other' ? customProblemType : item.problemType;
-      const finalRootCause = item.rootCause === 'Other' ? customRootCause : item.rootCause;
+    try {
+      let successCount = 0;
 
-      const record: ReturnRecord = {
-        ...item as ReturnRecord,
-        id: `RT-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000)}`,
-        amount: (item.quantity || 0) * (item.priceBill || 0),
-        reason: item.notes || 'แจ้งคืนสินค้า',
-        status: 'Requested',
-        dateRequested: item.date || new Date().toISOString().split('T')[0],
-        disposition: 'Pending',
-        condition: 'Unknown',
-        productName: item.productName || 'Unknown Product',
-        productCode: item.productCode || 'N/A',
-        customerName: item.customerName || 'Unknown Customer',
-        category: 'General',
-        problemType: finalProblemType,
-        rootCause: finalRootCause,
-        ncrNumber: item.ncrNumber,
-        neoRefNo: item.neoRefNo,
-        destinationCustomer: item.destinationCustomer,
-      };
+      for (const item of itemsToProcess) {
+        const finalProblemType = item.problemType === 'Other' ? customProblemType : item.problemType;
+        const finalRootCause = item.rootCause === 'Other' ? customRootCause : item.rootCause;
 
-      const success = await addReturnRecord(record);
-      if (success) successCount++;
-    }
+        // Generate NCR Number explicitly if not provided
+        let finalNcrNumber = item.ncrNumber;
+        if (!finalNcrNumber) {
+          // We will generate one. Note: fetching sequentially in a loop might be tricky with async/await state, 
+          // but since we await, it should be fine.
+          finalNcrNumber = await getNextNCRNumber();
+        }
 
-    if (successCount > 0) {
-      alert(`บันทึกคำขอคืนเรียบร้อย ${successCount} รายการ! \nรายการจะไปรอที่ขั้นตอน "รับสินค้าเข้า"`);
-      setFormData(initialFormState);
-      setRequestItems([]);
-      setCustomProblemType('');
-      setCustomRootCause('');
-      setIsCustomBranch(false);
+        const record: ReturnRecord = {
+          ...item as ReturnRecord,
+          id: `RT-${new Date().getFullYear()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          amount: (item.quantity || 0) * (item.priceBill || 0),
+          reason: item.notes || 'แจ้งคืนสินค้า',
+          status: 'Requested',
+          dateRequested: item.date || new Date().toISOString().split('T')[0],
+          disposition: 'Pending',
+          condition: 'Unknown',
+          productName: item.productName || 'Unknown Product',
+          productCode: item.productCode || 'N/A',
+          customerName: item.customerName || 'Unknown Customer',
+          category: 'General',
+          problemType: finalProblemType,
+          rootCause: finalRootCause,
+          ncrNumber: finalNcrNumber,
+          neoRefNo: item.neoRefNo,
+          destinationCustomer: item.destinationCustomer,
+        };
+
+        const success = await addReturnRecord(record);
+
+        if (success) {
+          // AUTO-CREATE NCR RECORD
+          // Map ReturnRecord data to NCRRecord structure
+          const ncrRecord: any = { // Use 'any' temporarily or import NCRRecord type if easy
+            id: finalNcrNumber + '-' + record.id,
+            ncrNo: finalNcrNumber,
+            date: record.dateRequested,
+            toDept: 'แผนกควบคุมคุณภาพ',
+            founder: 'Operations Hub', // Default founder
+            poNo: '',
+            copyTo: '',
+
+            // Header Flags - Smart Mapping from Return Data
+            problemDamaged: finalProblemType === 'ชำรุด',
+            problemDamagedInBox: finalProblemType === 'ชำรุดในกล่อง',
+            problemLost: finalProblemType === 'สูญหาย',
+            problemMixed: finalProblemType === 'สินค้าสลับ',
+            problemWrongInv: finalProblemType === 'สินค้าไม่ตรง INV.',
+            problemLate: false, problemDuplicate: false, problemWrong: false, problemIncomplete: false,
+            problemOver: false, problemWrongInfo: false, problemShortExpiry: false,
+            problemTransportDamage: false, problemAccident: false,
+            problemOther: !['ชำรุด', 'ชำรุดในกล่อง', 'สูญหาย', 'สินค้าสลับ', 'สินค้าไม่ตรง INV.'].includes(finalProblemType || ''),
+            problemOtherText: !['ชำรุด', 'ชำรุดในกล่อง', 'สูญหาย', 'สินค้าสลับ', 'สินค้าไม่ตรง INV.'].includes(finalProblemType || '') ? finalProblemType || '' : '',
+
+            problemDetail: record.reason || '',
+
+            // Item Details
+            item: {
+              id: record.id,
+              branch: record.branch,
+              refNo: '',
+              neoRefNo: record.neoRefNo,
+              productCode: record.productCode,
+              productName: record.productName,
+              customerName: record.customerName,
+              destinationCustomer: record.destinationCustomer,
+              quantity: record.quantity,
+              unit: record.unit || 'PCS',
+              priceBill: record.priceBill,
+              expiryDate: record.expiryDate,
+              hasCost: false,
+              costAmount: 0,
+              costResponsible: '',
+              problemSource: finalRootCause || '-'
+            },
+
+            // Action defaults
+            actionReject: false, actionRejectQty: 0, actionRejectSort: false, actionRejectSortQty: 0,
+            actionRework: false, actionReworkQty: 0, actionReworkMethod: '',
+            actionSpecialAccept: false, actionSpecialAcceptQty: 0, actionSpecialAcceptReason: '',
+            actionScrap: false, actionScrapQty: 0, actionReplace: false, actionReplaceQty: 0,
+
+            // Cause defaults - Smart Mapping
+            causePackaging: finalRootCause === 'บรรจุภัณฑ์',
+            causeTransport: finalRootCause === 'การขนส่ง',
+            causeOperation: finalRootCause === 'ปฏิบัติงาน',
+            causeEnv: finalRootCause === 'สิ่งแวดล้อม',
+            causeDetail: '', preventionDetail: '', preventionDueDate: '',
+            responsiblePerson: '', responsiblePosition: '',
+
+            // Closing defaults
+            qaAccept: false, qaReject: false, qaReason: '',
+            dueDate: '', approver: '', approverPosition: '', approverDate: '',
+
+            status: 'Open'
+          };
+
+          // alert(`Debug: Auto-creating NCR Record: ${ncrRecord.ncrNo}`); // Debug
+          const ncrSuccess = await addNCRReport(ncrRecord);
+          if (!ncrSuccess) {
+            alert(`Warning: Failed to create NCR Record for ${record.id}`);
+          }
+          successCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        alert(`บันทึกคำขอคืนเรียบร้อย ${successCount} รายการ! \nรายการจะไปรอที่ขั้นตอน "รับสินค้าเข้า"`);
+        setFormData(initialFormState);
+        setRequestItems([]);
+        setCustomProblemType('');
+        setCustomRootCause('');
+        setIsCustomBranch(false);
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
 
   const handleIntakeReceive = async (id: string) => {
     const today = new Date().toISOString().split('T')[0];
