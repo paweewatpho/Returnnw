@@ -49,7 +49,7 @@ export type ItemCondition =
   | string;       // Custom/Other
 
 export type DispositionAction = 'Restock' | 'RTV' | 'InternalUse' | 'Recycle' | 'Claim' | 'Pending';
-export type BranchName = 'พิษณุโลก' | 'กำแพงเพชร' | 'แม่สอด' | 'เชียงใหม่' | 'EKP ลำปาง' | 'นครสวรรค์';
+export type BranchName = 'พิษณุโลก' | 'กำแพงเพชร' | 'แม่สอด' | 'เชียงใหม่' | 'EKP ลำปาง' | 'นครสวรรค์' | 'สาย 3' | 'คลอง 13' | 'ซีโน่' | 'ประดู่';
 
 export interface ReturnRecord {
   id: string; // Used as Return ID or Barcode

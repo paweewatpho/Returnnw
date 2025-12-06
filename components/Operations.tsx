@@ -9,12 +9,71 @@ interface OperationsProps {
   onClearInitialData?: () => void;
 }
 
+// Custom Autocomplete Component for smarter suggestions
+interface AutocompleteProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+  required?: boolean;
+}
+
+const AutocompleteInput: React.FC<AutocompleteProps> = ({ label, value, onChange, options, placeholder, required }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = options.filter(opt => opt.toLowerCase().includes(value.toLowerCase()));
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label} {required && <span className="text-red-500">*</span>}</label>
+      <input
+        type="text"
+        className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setIsOpen(true); }}
+        onFocus={() => setIsOpen(true)}
+        placeholder={placeholder}
+        required={required}
+      />
+      {isOpen && filtered.length > 0 && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+          {filtered.map((opt, i) => (
+            <button
+              key={i}
+              type="button"
+              className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-slate-700 block border-b border-slate-50 last:border-0"
+              onClick={() => { onChange(opt); setIsOpen(false); }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData }) => {
   const { items, addReturnRecord, updateReturnRecord, addNCRReport, getNextNCRNumber } = useData();
 
   // New 5-Step Workflow
   const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [isCustomBranch, setIsCustomBranch] = useState(false);
+
+
 
   // QC State
   const [qcSelectedItem, setQcSelectedItem] = useState<ReturnRecord | null>(null);
@@ -118,6 +177,31 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
   const [customProblemType, setCustomProblemType] = useState('');
   const [customRootCause, setCustomRootCause] = useState('');
 
+  // Autocomplete Data - Merging DB items and local current session items
+  const uniqueCustomers = React.useMemo(() => {
+    const dbValues = items.map(i => i.customerName).filter(Boolean);
+    const localValues = requestItems.map(i => i.customerName).filter(Boolean);
+    return Array.from(new Set([...dbValues, ...localValues])).sort();
+  }, [items, requestItems]);
+
+  const uniqueDestinations = React.useMemo(() => {
+    const dbValues = items.map(i => i.destinationCustomer).filter(Boolean);
+    const localValues = requestItems.map(i => i.destinationCustomer).filter(Boolean);
+    return Array.from(new Set([...dbValues, ...localValues])).sort();
+  }, [items, requestItems]);
+
+  const uniqueProductCodes = React.useMemo(() => {
+    const dbValues = items.map(i => i.productCode).filter(Boolean);
+    const localValues = requestItems.map(i => i.productCode).filter(Boolean);
+    return Array.from(new Set([...dbValues, ...localValues])).sort();
+  }, [items, requestItems]);
+
+  const uniqueProductNames = React.useMemo(() => {
+    const dbValues = items.map(i => i.productName).filter(Boolean);
+    const localValues = requestItems.map(i => i.productName).filter(Boolean);
+    return Array.from(new Set([...dbValues, ...localValues])).sort();
+  }, [items, requestItems]);
+
   useEffect(() => {
     if (initialData) {
       setActiveStep(1);
@@ -167,7 +251,7 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
             images: [...(prev.images || []), reader.result as string]
           }));
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(file as Blob);
       });
     }
   };
@@ -639,12 +723,43 @@ const Operations: React.FC<OperationsProps> = ({ initialData, onClearInitialData
 
           <form onSubmit={handleAddItem} className="space-y-6"> <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> <div> <label className="block text-sm font-medium text-slate-700 mb-1">สาขาต้นทาง</label> <select required value={isCustomBranch ? 'Other' : formData.branch} onChange={e => { const val = e.target.value; if (val === 'Other') { setIsCustomBranch(true); setFormData({ ...formData, branch: '' }); } else { setIsCustomBranch(false); setFormData({ ...formData, branch: val }); } }} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm"> {BRANCH_LIST.map(b => <option key={b} value={b}>{b}</option>)} <option value="Other">อื่นๆ</option> </select> {isCustomBranch && <input type="text" placeholder="ระบุชื่อสาขา..." value={formData.branch} onChange={e => setFormData({ ...formData, branch: e.target.value })} className="w-full mt-2 p-2 border rounded-lg text-sm" />} </div> <div><label className="block text-sm font-medium text-slate-700 mb-1">วันที่แจ้ง</label><input type="date" required value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div> </div> <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div><label className="block text-sm font-medium text-slate-700 mb-1">เลขที่เอกสาร Neo Siam</label><input type="text" value={formData.neoRefNo} onChange={e => setFormData({ ...formData, neoRefNo: e.target.value })} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div>
-            <div className=""><label className="block text-sm font-medium text-slate-700 mb-1">ชื่อลูกค้า</label><input type="text" required value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div>
-            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">สถานที่ส่ง (ลูกค้าปลายทาง)</label><input type="text" value={formData.destinationCustomer} onChange={e => setFormData({ ...formData, destinationCustomer: e.target.value })} className="w-full p-2.5 border border-slate-300 rounded-lg text-sm" /></div>
+            <div className="">
+              <AutocompleteInput
+                label="ชื่อลูกค้า"
+                required
+                value={formData.customerName || ''}
+                onChange={(val) => setFormData({ ...formData, customerName: val })}
+                options={uniqueCustomers}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <AutocompleteInput
+                label="สถานที่ส่ง (ลูกค้าปลายทาง)"
+                value={formData.destinationCustomer || ''}
+                onChange={(val) => setFormData({ ...formData, destinationCustomer: val })}
+                options={uniqueDestinations}
+              />
+            </div>
           </div> <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-4"> <h4 className="text-sm font-bold text-slate-600 flex items-center gap-2"><Box className="w-4 h-4" /> ข้อมูลสินค้า</h4> <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div><label className="text-xs text-slate-500 block mb-1">เลขที่เอกสารอ้างอิง</label><input type="text" required value={formData.refNo} onChange={e => setFormData({ ...formData, refNo: e.target.value })} className="w-full p-2 border rounded text-sm" /></div>
-            <div><label className="text-xs text-slate-500 block mb-1">รหัสสินค้า</label><input type="text" required value={formData.productCode} onChange={e => setFormData({ ...formData, productCode: e.target.value })} className="w-full p-2 border rounded text-sm" /></div>
-            <div className="md:col-span-2"><label className="text-xs text-slate-500 block mb-1">ชื่อสินค้า</label><input type="text" required value={formData.productName} onChange={e => setFormData({ ...formData, productName: e.target.value })} className="w-full p-2 border rounded text-sm" /></div>
+            <div>
+              <AutocompleteInput
+                label="รหัสสินค้า"
+                required
+                value={formData.productCode || ''}
+                onChange={(val) => setFormData({ ...formData, productCode: val })}
+                options={uniqueProductCodes}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <AutocompleteInput
+                label="ชื่อสินค้า"
+                required
+                value={formData.productName || ''}
+                onChange={(val) => setFormData({ ...formData, productName: val })}
+                options={uniqueProductNames}
+              />
+            </div>
           </div>
 
               <div className="grid grid-cols-3 gap-4">
