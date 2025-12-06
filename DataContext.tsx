@@ -197,11 +197,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // Item checks (handle both nested and potential flat structures for backward compat)
             const itemData = report.item || report;
-            if (!itemData || typeof itemData !== 'object') return false;
-
-            if (typeof itemData.productName !== 'string') {
-              console.warn("🛡️ Data Hardening: Filtering out invalid NCR (bad product name).", report);
+            if (!itemData || typeof itemData !== 'object') {
+              console.warn("🛡️ Data Hardening: Invalid NCR Item structure.", report);
               return false;
+            }
+
+            // Relaxed check: Log warning but allow if product name is missing/invalid type
+            if (typeof itemData.productName !== 'string') {
+              console.warn("⚠️ Data Warning: NCR report missing valid productName.", report);
+              // Do not return false; attempt to display it anyway
             }
 
             return true;
