@@ -171,7 +171,28 @@ const NCRSystem: React.FC = () => {
                     rootCause: item.problemSource,
                     reason: `Created via NCR System (${formData.problemDetail})`,
                     amount: 0, // Default
-                    neoRefNo: item.neoRefNo
+                    neoRefNo: item.neoRefNo,
+                    // Pass Problem Boolean Flags to ReturnRecord
+                    problemDamaged: formData.problemDamaged,
+                    problemDamagedInBox: formData.problemDamagedInBox,
+                    problemLost: formData.problemLost,
+                    problemMixed: formData.problemMixed,
+                    problemWrongInv: formData.problemWrongInv,
+                    problemLate: formData.problemLate,
+                    problemDuplicate: formData.problemDuplicate,
+                    problemWrong: formData.problemWrong,
+                    problemIncomplete: formData.problemIncomplete,
+                    problemOver: formData.problemOver,
+                    problemWrongInfo: formData.problemWrongInfo,
+                    problemShortExpiry: formData.problemShortExpiry,
+                    problemTransportDamage: formData.problemTransportDamage,
+                    problemAccident: formData.problemAccident,
+                    problemPOExpired: formData.problemPOExpired,
+                    problemNoBarcode: formData.problemNoBarcode,
+                    problemNotOrdered: formData.problemNotOrdered,
+                    problemOther: formData.problemOther,
+                    problemOtherText: formData.problemOtherText,
+                    problemDetail: formData.problemDetail
                 };
 
                 await addReturnRecord(returnRecord);
