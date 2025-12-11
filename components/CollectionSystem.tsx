@@ -316,15 +316,15 @@ const CollectionSystem: React.FC = () => {
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                     <div className="flex justify-between items-center mb-4">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-800">2. จ่ายงานให้สาขา (Dispatch to Branch)</h3>
-                            <p className="text-sm text-slate-500">รวบรวมงานรอจ่ายไปยังสาขาที่ระบุ (Assign to Branch)</p>
+                            <h3 className="text-lg font-bold text-slate-800">2. รับงาน (Receive Job)</h3>
+                            <p className="text-sm text-slate-500">เลือกรายการเพื่อรับงานเข้าสาขา (Receive Orders)</p>
                         </div>
                         {selectedRmas.length > 0 && (
                             <button
                                 onClick={() => setShowCreateModal(true)}
                                 className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 animate-bounce-short shadow-md hover:bg-blue-700 transition"
                             >
-                                <Truck className="w-5 h-5" /> จ่ายงาน ({selectedRmas.length})
+                                <Truck className="w-5 h-5" /> รับงาน ({selectedRmas.length})
                             </button>
                         )}
                     </div>
@@ -342,7 +342,7 @@ const CollectionSystem: React.FC = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {pendingRmas.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">ไม่มีรายการรอจ่ายงาน</td></tr>
+                                <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">ไม่มีรายการรอรับงาน</td></tr>
                             ) : pendingRmas.map(rma => (
                                 <tr key={rma.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => {
                                     setSelectedRmas(prev => prev.includes(rma.id) ? prev.filter(id => id !== rma.id) : [...prev, rma.id]);
@@ -540,7 +540,7 @@ const CollectionSystem: React.FC = () => {
                         1. สร้างใบงาน (Create)
                     </button>
                     <button onClick={() => setCurrentStep(2)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 2 ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                        2. จ่ายงาน (Dispatch)
+                        2. รับงาน (Orders)
                     </button>
                     <button onClick={() => setCurrentStep(3)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 3 ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                         3. สาขา (Branch)
