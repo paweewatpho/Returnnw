@@ -20,8 +20,7 @@ export enum AppView {
   OPERATIONS = 'OPERATIONS',
   NCR = 'NCR',
   NCR_REPORT = 'NCR_REPORT',
-  INVENTORY = 'INVENTORY',
-  STOCK_SUMMARY = 'STOCK_SUMMARY'
+  INVENTORY = 'INVENTORY'
 }
 
 export interface ChatMessage {
