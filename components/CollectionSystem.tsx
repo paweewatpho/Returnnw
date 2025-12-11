@@ -83,7 +83,7 @@ const CollectionSystem: React.FC = () => {
         if (syncCount > 0) console.log(`[Sync] Updated ${syncCount} NCR Records to ${newStatus}`);
     };
 
-    const [returnRequestsImpl, setReturnRequestsImpl] = useState<ReturnRequest[]>([]); // To force re-render if needed, but we rely on derived state
+
     const [collectionOrders, setCollectionOrders] = useState<CollectionOrder[]>([]);
     const [shipments, setShipments] = useState<ShipmentManifest[]>([]);
 
@@ -108,7 +108,8 @@ const CollectionSystem: React.FC = () => {
                 tmNo: item.tmNo || '-',
                 customerCode: item.productCode === 'GEN-MIX' ? '(Mixed)' : item.productCode, // Mapping productCode to customerCode temporarily or extra field? 
                 // Actually customerCode field missing in ReturnRecord. We can put it in notes or ignore. 
-                customerCode: '-',
+                // customerCode property already defined above
+
                 customerName: item.customerName,
                 customerAddress: '', // Not in ReturnRecord main view, maybe fetch or ignore
                 province: '', // Not in ReturnRecord
@@ -237,6 +238,9 @@ const CollectionSystem: React.FC = () => {
                 invoiceNo: manualReq.invoiceNo || '-',
                 date: manualReq.controlDate || new Date().toISOString().split('T')[0],
                 tmNo: manualReq.tmNo || '-',
+                category: '',
+                amount: 0,
+
                 customerName: manualReq.customerName || '-',
                 productCode: manualReq.customerCode || 'GEN-MIX', // Use productCode for CustomerCode? Or just generic.
                 productName: manualReq.notes || 'สินค้าทั่วไป',
@@ -484,7 +488,24 @@ const CollectionSystem: React.FC = () => {
             }
 
             // SYNC to NCR Report
-            const order = collectionOrders.find(o => o.id === orderId);
+            // Reuse the same order variable logic or just use updatedOrder if valid, but let's re-find to be safe or just use the same variable name if scope allows?
+            // Actually 'order' is declared with const in the block above. 'order' was declared at line 479.
+            // We can just reuse it or rename. Since it's block scoped inside if (order) block? No, it's inside if (action === 'COLLECT') block.
+
+            // The previous 'const order' is at line 479. 
+            // We mistakenly pasted the code block twice or reused the name.
+            // Let's just use the existing 'order' variable from line 479 if it's still in scope.
+            // Actually, wait, the previous block was:
+            // const order = collectionOrders.find...
+            // if (order) { ... }
+
+            // The code I added was:
+            // const order = collectionOrders.find...
+            // if (order) { ... }
+
+            // This is definitely a duplicate declaration in the same scope.
+            // I will remove the redeclaration.
+
             if (order) {
                 await syncLogisticsStatusToNCR(order.linkedRmaIds, 'PickedUp');
             }
