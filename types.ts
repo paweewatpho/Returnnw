@@ -30,12 +30,25 @@ export type CollectionStatus = 'PENDING' | 'ASSIGNED' | 'COLLECTED' | 'CONSOLIDA
 
 // 1. Commercial Document (RMA)
 export interface ReturnRequest {
-  id: string; // e.g., "RMA-001"
+  id: string; // e.g., "RMA-001" - matches documentNo (R No.) ideally
+
+  // User Requested Fields
+  branch: string; // Dropdown
+  invoiceNo: string;
+  controlDate: string; // วันที่ใบคุมรถ
+  documentNo: string; // เลขที่เอกสาร (เลข R)
   customerName: string;
+  customerCode: string; // รหัสลูกค้า
   customerAddress: string;
+  province: string;
+  tmNo: string; // เลขที่ใบคุม (TM NO)
+  notes?: string; // หมายเหตุ
+
+  // Essential Logistics Info (retained/adapted)
   contactPerson: string;
   contactPhone: string;
-  itemsSummary: string; // e.g., "Mouse x10, Keyboard x5"
+  itemsSummary: string; // e.g., "Mouse x10, Keyboard x5" - kept as it's useful context
+
   status: 'APPROVED_FOR_PICKUP' | 'PICKUP_SCHEDULED' | 'RECEIVED_AT_HQ';
 }
 

@@ -42,12 +42,19 @@ const CollectionSystem: React.FC = () => {
     const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
 
     // Form State (Step 1: Manual Request)
-    const [manualReq, setManualReq] = useState({
+    const [manualReq, setManualReq] = useState<Partial<ReturnRequest>>({
+        branch: '',
+        invoiceNo: '',
+        controlDate: new Date().toISOString().split('T')[0],
+        documentNo: '', // R No.
         customerName: '',
+        customerCode: '',
         customerAddress: '',
+        province: '',
+        tmNo: '', // TM NO
         contactPerson: '',
         contactPhone: '',
-        itemsSummary: ''
+        notes: ''
     });
 
     // Form State (Step 2: Dispatch/Collection)
@@ -63,20 +70,37 @@ const CollectionSystem: React.FC = () => {
     // --- ACTIONS ---
 
     const handleCreateManualRequest = () => {
-        if (!manualReq.customerName || !manualReq.contactPhone) return;
+        if (!manualReq.customerName || !manualReq.branch) {
+            alert('กรุณาระบุชื่อลูกค้าและสาขา (Please fill required fields)');
+            return;
+        }
 
+        // @ts-ignore
         const newReq: ReturnRequest = {
-            id: `RMA-${new Date().getFullYear()}-${String(returnRequests.length + 100).padStart(3, '0')}`,
-            customerName: manualReq.customerName,
-            customerAddress: manualReq.customerAddress || 'ไม่ระบุ',
+            id: manualReq.documentNo || `RMA-${new Date().getFullYear()}-${String(returnRequests.length + 100).padStart(3, '0')}`,
+            documentNo: manualReq.documentNo || '-',
+            // @ts-ignore
+            branch: manualReq.branch || '-',
+            invoiceNo: manualReq.invoiceNo || '-',
+            controlDate: manualReq.controlDate || '-',
+            tmNo: manualReq.tmNo || '-',
+            customerCode: manualReq.customerCode || '-',
+            customerName: manualReq.customerName || '',
+            customerAddress: manualReq.customerAddress || '',
+            province: manualReq.province || '',
             contactPerson: manualReq.contactPerson || '-',
-            contactPhone: manualReq.contactPhone,
-            itemsSummary: manualReq.itemsSummary || 'สินค้าทั่วไป',
+            contactPhone: manualReq.contactPhone || '-',
+            itemsSummary: manualReq.notes || 'สินค้าทั่วไป', // Mapping Notes to ItemsSummary
+            notes: manualReq.notes || '',
             status: 'APPROVED_FOR_PICKUP'
         };
 
         setReturnRequests([newReq, ...returnRequests]);
-        setManualReq({ customerName: '', customerAddress: '', contactPerson: '', contactPhone: '', itemsSummary: '' });
+        setManualReq({
+            branch: '', invoiceNo: '', controlDate: new Date().toISOString().split('T')[0],
+            documentNo: '', customerName: '', customerCode: '', customerAddress: '',
+            province: '', tmNo: '', contactPerson: '', contactPhone: '', notes: ''
+        });
         setCurrentStep(2); // Move to Dispatch view to see it
     };
 
@@ -168,42 +192,85 @@ const CollectionSystem: React.FC = () => {
     const renderCreateRequestView = () => (
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-600" /> 1. ใบสั่งงานรับกลับ (Create Return Request)
+                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b pb-2">
+                    <FileText className="w-6 h-6 text-blue-600" /> 1. ใบสั่งงานรับกลับ (Create Return Request)
                 </h3>
-                <p className="text-sm text-slate-500 mb-6">แอดมินคีย์ข้อมูลสินค้าที่ต้องไปรับกลับ (Manual Entry)</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">ชื่อร้านค้า / ลูกค้า (Store/Customer Name) <span className="text-red-500">*</span></label>
-                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
-                            value={manualReq.customerName} onChange={e => setManualReq({ ...manualReq, customerName: e.target.value })} placeholder="ระบุชื่อลูกค้า..." />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Row 1 */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">สาขาที่รับสินค้ากลับ (Branch) <span className="text-red-500">*</span></label>
+                        <select className="w-full p-2 border border-slate-300 rounded-lg bg-slate-50"
+                            value={manualReq.branch} onChange={e => setManualReq({ ...manualReq, branch: e.target.value })}>
+                            <option value="">-- เลือกสาขา --</option>
+                            {['พิษณุโลก', 'กำแพงเพชร', 'แม่สอด', 'เชียงใหม่', 'EKP ลำปาง', 'นครสวรรค์', 'สาย 3', 'คลอง 13', 'ซีโน่', 'ประดู่'].map(b => (
+                                <option key={b} value={b}>{b}</option>
+                            ))}
+                        </select>
                     </div>
-                    <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">เบอร์โทรศัพท์ (Phone) <span className="text-red-500">*</span></label>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">เลข Invoice</label>
                         <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
-                            value={manualReq.contactPhone} onChange={e => setManualReq({ ...manualReq, contactPhone: e.target.value })} placeholder="08x-xxx-xxxx" />
+                            value={manualReq.invoiceNo} onChange={e => setManualReq({ ...manualReq, invoiceNo: e.target.value })} placeholder="INV-xxxx" />
                     </div>
-                    <div className="col-span-2 md:col-span-1">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">ผู้ติดต่อ (Contact Person)</label>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">วันที่ใบคุมรถ</label>
+                        <input type="date" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.controlDate} onChange={e => setManualReq({ ...manualReq, controlDate: e.target.value })} />
+                    </div>
+
+                    {/* Row 2 */}
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">เลขที่เอกสาร (เลข R)</label>
                         <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
-                            value={manualReq.contactPerson} onChange={e => setManualReq({ ...manualReq, contactPerson: e.target.value })} />
+                            value={manualReq.documentNo} onChange={e => setManualReq({ ...manualReq, documentNo: e.target.value })} placeholder="R-xxxx" />
                     </div>
-                    <div className="col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">ที่อยู่รับสินค้า (Pickup Address)</label>
-                        <textarea className="w-full p-2 border border-slate-300 rounded-lg h-20"
-                            value={manualReq.customerAddress} onChange={e => setManualReq({ ...manualReq, customerAddress: e.target.value })} placeholder="ระบุที่อยู่..." />
-                    </div>
-                    <div className="col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">รายการสินค้า (Items Summary)</label>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">เลขที่ใบคุม (TM NO)</label>
                         <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
-                            value={manualReq.itemsSummary} onChange={e => setManualReq({ ...manualReq, itemsSummary: e.target.value })} placeholder="เช่น Mouse x10, Keyboard x5" />
+                            value={manualReq.tmNo} onChange={e => setManualReq({ ...manualReq, tmNo: e.target.value })} placeholder="TM-xxxx" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">รหัสลูกค้า</label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.customerCode} onChange={e => setManualReq({ ...manualReq, customerCode: e.target.value })} placeholder="CUS-xxxx" />
+                    </div>
+
+                    {/* Row 3: Customer Info */}
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">ชื่อลูกค้า (Customer Name) <span className="text-red-500">*</span></label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.customerName} onChange={e => setManualReq({ ...manualReq, customerName: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-1">จังหวัด (Province)</label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.province} onChange={e => setManualReq({ ...manualReq, province: e.target.value })} />
+                    </div>
+
+                    {/* Row 4: Address */}
+                    <div className="md:col-span-3">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">ที่อยู่ (Address)</label>
+                        <textarea className="w-full p-2 border border-slate-300 rounded-lg h-20 resize-none"
+                            value={manualReq.customerAddress} onChange={e => setManualReq({ ...manualReq, customerAddress: e.target.value })} />
+                    </div>
+
+                    {/* Row 5: Notes */}
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">หมายเหตุ (Notes)</label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.notes} onChange={e => setManualReq({ ...manualReq, notes: e.target.value })} placeholder="ระบุรายะละเอียดสินค้า หรือหมายเหตุอื่นๆ..." />
+                    </div>
+                    <div className="md:col-span-1">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">เบอร์โทรศัพท์ (ติดต่อ)</label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.contactPhone} onChange={e => setManualReq({ ...manualReq, contactPhone: e.target.value })} placeholder="Optional for driver..." />
                     </div>
                 </div>
 
-                <div className="flex justify-end mt-6 pt-6 border-t border-slate-100">
-                    <button onClick={handleCreateManualRequest} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2">
-                        <Plus className="w-5 h-5" /> บันทึกและส่งต่อ (Save & Next)
+                <div className="flex justify-end mt-8 border-t border-slate-100 pt-6">
+                    <button onClick={handleCreateManualRequest} className="bg-blue-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-blue-700 shadow-lg flex items-center gap-2 transition-all transform hover:scale-105">
+                        <Plus className="w-5 h-5" /> บันทึกใบงาน (Save Request)
                     </button>
                 </div>
             </div>
