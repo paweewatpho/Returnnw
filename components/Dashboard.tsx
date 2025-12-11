@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../DataContext';
 import { db } from '../firebase';
 import { ref, remove, set } from 'firebase/database';
@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import {
   Truck, CheckCircle, Clock, FileText, Package, AlertOctagon, DollarSign, Trash2, MapPin, Box,
-  TrendingUp, Activity, AlertTriangle
+  TrendingUp, Activity, AlertTriangle, Lock, X
 } from 'lucide-react';
 import { mockReturnRequests, mockCollectionOrders, mockShipments } from '../data/mockCollectionData';
 
@@ -24,6 +24,30 @@ const COLORS = {
 
 const Dashboard: React.FC = () => {
   const { items, ncrReports } = useData();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authPassword, setAuthPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleAuthSubmit = async () => {
+    if (authPassword !== '1234') {
+      alert('รหัสผ่านไม่ถูกต้อง (Incorrect Password)');
+      return;
+    }
+
+    if (confirm("คำเตือนครั้งสุดท้าย: ข้อมูลทั้งหมดจะถูกลบถาวร! ยืนยันทำรายการหรือไม่?")) {
+      setIsResetting(true);
+      try {
+        await remove(ref(db, 'return_records'));
+        await remove(ref(db, 'ncr_reports'));
+        await set(ref(db, 'ncr_counter'), 0);
+        location.reload();
+      } catch (error) {
+        console.error(error);
+        alert("เกิดข้อผิดพลาดในการลบข้อมูล");
+        setIsResetting(false);
+      }
+    }
+  };
 
   // 1. Operation Pipeline Metrics (Aligned with New 6-Step Workflow)
   const pipeline = useMemo(() => {
@@ -438,22 +462,49 @@ const Dashboard: React.FC = () => {
           <Trash2 className="w-5 h-5" /> DATA FACTORY RESET
         </h3>
         <button
-          onClick={async () => {
-            if (confirm("คำเตือน: คุณต้องการลบข้อมูลทั้งหมดใช่หรือไม่?")) {
-              const code = prompt("ใส่รหัสผ่าน (1234):");
-              if (code === '1234') {
-                await remove(ref(db, 'return_records'));
-                await remove(ref(db, 'ncr_reports'));
-                await set(ref(db, 'ncr_counter'), 0);
-                location.reload();
-              }
-            }
-          }}
+          onClick={() => setShowAuthModal(true)}
           className="text-red-600 underline text-xs cursor-pointer hover:text-red-800"
         >
           ล้างข้อมูลตัวอย่างทั้งหมด
         </button>
       </div>
+
+      {/* Password Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white p-6 rounded-xl shadow-2xl w-96 transform scale-100 transition-all">
+            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-amber-500" />
+                ยืนยันสิทธิ์ (Authentication)
+              </h3>
+              <button onClick={() => setShowAuthModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">รหัสผ่าน (Password)</label>
+                <input
+                  type="password"
+                  className="w-full p-2 border border-slate-300 rounded-lg text-lg tracking-widest outline-none focus:ring-2 focus:ring-amber-500"
+                  autoFocus
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAuthSubmit()}
+                  placeholder="Enter password..."
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowAuthModal(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold">ยกเลิก</button>
+                <button onClick={handleAuthSubmit} disabled={isResetting} className="px-4 py-2 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 shadow-md flex items-center gap-2">
+                  {isResetting ? 'กำลังล้าง...' : 'ยืนยันลบข้อมูล'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div >
   );

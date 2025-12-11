@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useData, NCRRecord, NCRItem } from '../DataContext';
 import { ReturnRecord } from '../types';
-import { Save, Printer, Image as ImageIcon, AlertTriangle, Plus, Trash2, X, Loader, CheckCircle, XCircle, HelpCircle, Download } from 'lucide-react';
+import { Save, Printer, Image as ImageIcon, AlertTriangle, Plus, Trash2, X, Loader, CheckCircle, XCircle, HelpCircle, Download, Lock, PenTool } from 'lucide-react';
 import { RESPONSIBLE_MAPPING } from './operations/utils';
 import { LineAutocomplete } from './LineAutocomplete';
 import { exportNCRToExcel } from './NCRExcelExport';
@@ -43,6 +43,51 @@ const NCRSystem: React.FC = () => {
         const founders = new Set(ncrReports.map(r => r.founder).filter(Boolean));
         return Array.from(founders).sort();
     }, [ncrReports]);
+
+    // Auth Modal State
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authAction, setAuthAction] = useState<'EDIT' | 'DELETE' | null>(null);
+    const [authTargetId, setAuthTargetId] = useState<string | null>(null);
+    const [authPassword, setAuthPassword] = useState('');
+
+    const handleAuthSubmit = () => {
+        if (authPassword !== '1234') {
+            alert('รหัสผ่านไม่ถูกต้อง');
+            return;
+        }
+
+        if (authAction === 'DELETE' && authTargetId) {
+            setNcrItems(ncrItems.filter(i => i.id !== authTargetId));
+        } else if (authAction === 'EDIT' && authTargetId) {
+            const item = ncrItems.find(i => i.id === authTargetId);
+            if (item) {
+                setNewItem(item);
+                // For editing, we remove the old one and re-open the form with its data
+                setNcrItems(ncrItems.filter(i => i.id !== authTargetId));
+                setShowItemModal(true);
+                // Note: Complex sourceSelection state is not automatically restored here, 
+                // deeper implementation would be needed for full edit fidelity of those specific dropdowns.
+                // This provides basic edit capability (restore values to inputs).
+            }
+        }
+
+        setShowAuthModal(false);
+        setAuthPassword('');
+        setAuthAction(null);
+        setAuthTargetId(null);
+    };
+
+    const confirmDelete = (id: string) => {
+        setAuthAction('DELETE');
+        setAuthTargetId(id);
+        setShowAuthModal(true);
+    };
+
+    const confirmEdit = (id: string) => {
+        setAuthAction('EDIT');
+        setAuthTargetId(id);
+        setShowAuthModal(true);
+    };
 
 
     useEffect(() => {
@@ -488,7 +533,24 @@ const NCRSystem: React.FC = () => {
                         <table className="w-full text-xs text-left print-text-sm">
                             <thead className="bg-slate-100 print:bg-transparent border-b border-black font-bold"><tr><th className="p-2 border-r border-black print-border">สาขาต้นทาง</th><th className="p-2 border-r border-black print-border">Ref/Neo Ref</th><th className="p-2 border-r border-black print-border">สินค้า/ลูกค้า</th><th className="p-2 border-r border-black text-center print-border">จำนวน</th><th className="p-2 border-r border-black text-right print-border">ราคา/วันหมดอายุ</th><th className="p-2 border-r border-black print-border">วิเคราะห์ปัญหา/ค่าใช้จ่าย</th><th className="p-2 text-center print:hidden w-10">ลบ</th></tr></thead>
                             <tbody className="divide-y divide-black">
-                                {ncrItems.length === 0 ? (<tr><td colSpan={7} className="p-4 text-center text-slate-400 italic">ยังไม่มีรายการสินค้า (กดปุ่ม '+ เพิ่มรายการ')</td></tr>) : (ncrItems.map(item => (<tr key={item.id}><td className="p-2 border-r border-black align-top print-border text-sm"><div>{item.branch}</div></td><td className="p-2 border-r border-black align-top print-border"><div>Ref: {item.refNo}</div><div className="text-slate-500">Neo: {item.neoRefNo}</div></td><td className="p-2 border-r border-black align-top print-border"><div className="font-bold">{item.productCode}</div><div className="text-slate-600 font-medium">{item.productName}</div><div className="text-slate-500">{item.customerName}</div>{item.destinationCustomer && (<div className="text-xs text-blue-600 mt-1">ปลายทาง: {item.destinationCustomer}</div>)}</td><td className="p-2 border-r border-black text-center align-top print-border">{item.quantity} {item.unit}</td><td className="p-2 border-r border-black text-right align-top print-border"><div>{item.priceBill.toLocaleString()} บ.</div><div className="text-red-500">Exp: {item.expiryDate}</div></td><td className="p-2 border-r border-black align-top print-border"><div className="font-medium">{item.problemSource}</div>{item.hasCost && (<div className="text-red-600 font-bold mt-1">Cost: {item.costAmount?.toLocaleString()} บ.<div className="text-xs text-slate-500 font-normal">({item.costResponsible})</div></div>)}</td><td className="p-2 text-center align-top print:hidden"><button onClick={() => handleDeleteItem(item.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button></td></tr>)))}
+                                {ncrItems.length === 0 ? (<tr><td colSpan={7} className="p-4 text-center text-slate-400 italic">ยังไม่มีรายการสินค้า (กดปุ่ม '+ เพิ่มรายการ')</td></tr>) : (ncrItems.map(item => (<tr key={item.id}><td className="p-2 border-r border-black align-top print-border text-sm"><div>{item.branch}</div></td><td className="p-2 border-r border-black align-top print-border"><div>Ref: {item.refNo}</div><div className="text-slate-500">Neo: {item.neoRefNo}</div></td><td className="p-2 border-r border-black align-top print-border"><div className="font-bold">{item.productCode}</div><div className="text-slate-600 font-medium">{item.productName}</div><div className="text-slate-500">{item.customerName}</div>{item.destinationCustomer && (<div className="text-xs text-blue-600 mt-1">ปลายทาง: {item.destinationCustomer}</div>)}</td><td className="p-2 border-r border-black text-center align-top print-border">{item.quantity} {item.unit}</td><td className="p-2 border-r border-black text-right align-top print-border"><div>{item.priceBill.toLocaleString()} บ.</div><div className="text-red-500">Exp: {item.expiryDate}</div></td><td className="p-2 border-r border-black align-top print-border"><div className="font-medium">{item.problemSource}</div>{item.hasCost && (<div className="text-red-600 font-bold mt-1">Cost: {item.costAmount?.toLocaleString()} บ.<div className="text-xs text-slate-500 font-normal">({item.costResponsible})</div></div>)}</td><td className="p-2 text-center align-top print:hidden">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <button
+                                            onClick={() => confirmEdit(item.id)}
+                                            className="p-1 text-slate-400 hover:text-amber-500 transition-colors"
+                                            title="แก้ไข (Edit)"
+                                        >
+                                            <PenTool className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => confirmDelete(item.id)}
+                                            className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                            title="ลบ (Delete)"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </td></tr>)))}
                             </tbody>
                         </table>
                     </div>
@@ -629,151 +691,36 @@ const NCRSystem: React.FC = () => {
                 <div className="text-right text-xs mt-4 font-mono text-slate-400">FM-OP01-06 Rev.00</div>
             </div>
 
-            {/* MODAL - Add Item */}
-            {showItemModal && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="p-4 bg-slate-800 text-white flex justify-between items-center shrink-0"><h3 className="font-bold">เพิ่มรายการสินค้า (Add Item)</h3><button onClick={() => setShowItemModal(false)}><X className="w-5 h-5" /></button></div>
-                        <div className="p-6 overflow-y-auto space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-2">
-                                    <label className="block text-xs font-bold text-slate-500 mb-2">สาขา (แจ้งปัญหา) *</label>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm bg-slate-50 p-3 rounded border border-slate-200">{REPORTING_BRANCHES.map(branch => (<label key={branch} className="flex items-center gap-1 cursor-pointer"><input type="radio" name="reportingBranch" checked={newItem.branch === branch} onChange={() => { setNewItem({ ...newItem, branch: branch }); setIsCustomReportBranch(false); }} />{branch}</label>))}<label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="reportingBranch" checked={isCustomReportBranch} onChange={() => { setNewItem({ ...newItem, branch: '' }); setIsCustomReportBranch(true); }} />อื่นๆ (พิมพ์ข้อความ)</label></div>
-                                    {isCustomReportBranch && (<input type="text" className="w-full border border-slate-300 rounded p-2 text-sm mt-2 focus:ring-1 focus:ring-blue-500" placeholder="ระบุสาขา..." value={newItem.branch} onChange={e => setNewItem({ ...newItem, branch: e.target.value })} />)}
-                                </div>
-                                <div><label className="block text-xs font-bold text-slate-500 mb-1">รหัสสินค้า *</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm focus:ring-1 focus:ring-blue-500" value={newItem.productCode} onChange={e => setNewItem({ ...newItem, productCode: e.target.value })} /></div>
-                                <div><label className="block text-xs font-bold text-slate-500 mb-1">ชื่อสินค้า</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.productName} onChange={e => setNewItem({ ...newItem, productName: e.target.value })} /></div>
-                                <div><label className="block text-xs font-bold text-slate-500 mb-1">ชื่อลูกค้า</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.customerName} onChange={e => setNewItem({ ...newItem, customerName: e.target.value })} /></div>
-                                <div><label className="block text-xs font-bold text-slate-500 mb-1">สถานที่ส่ง (ลูกค้าปลายทาง)</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.destinationCustomer} onChange={e => setNewItem({ ...newItem, destinationCustomer: e.target.value })} /></div>
-                                <div><label className="block text-xs font-bold text-slate-500 mb-1">เลขที่เอกสารอ้างอิง</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.refNo} onChange={e => setNewItem({ ...newItem, refNo: e.target.value })} /></div>
-                                <div><label className="block text-xs font-bold text-slate-500 mb-1">เลขที่เอกสาร Neo Siam</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.neoRefNo} onChange={e => setNewItem({ ...newItem, neoRefNo: e.target.value })} /></div>
-                                <div className="grid grid-cols-3 gap-2 col-span-2">
-                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">จำนวน</label><input type="number" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.quantity || ''} onChange={e => setNewItem({ ...newItem, quantity: parseInt(e.target.value, 10) || 0 })} /></div>
-                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">หน่วย</label><input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} /></div>
-                                    <div><label className="block text-xs font-bold text-slate-500 mb-1">วันหมดอายุ</label><input type="date" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.expiryDate} onChange={e => setNewItem({ ...newItem, expiryDate: e.target.value })} /></div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 mb-1">ราคาหน้าบิล</label>
-                                        <input type="number" className="w-full border border-slate-300 rounded p-2 text-sm" value={newItem.priceBill || ''} onChange={e => setNewItem({ ...newItem, priceBill: parseFloat(e.target.value) || 0 })} />
-                                    </div>
-                                    <div className="flex items-end">
-                                        <label className={`flex items-center gap-2 cursor-pointer font-bold text-sm px-4 py-2 rounded-lg border w-full h-[38px] transition-all ${newItem.hasCost ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
-                                            <input type="checkbox" checked={newItem.hasCost} onChange={e => setNewItem({ ...newItem, hasCost: e.target.checked })} className="w-4 h-4 text-red-600 rounded focus:ring-red-500" />
-                                            <AlertTriangle className={`w-4 h-4 ${newItem.hasCost ? 'text-red-600' : 'text-slate-400'}`} />
-                                            <span>มีค่าใช้จ่าย (Has Cost)</span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                {newItem.hasCost && (
-                                    <div className="mt-4 p-4 bg-red-50/50 rounded-lg border border-red-100 animate-fade-in">
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                            <div className="col-span-1">
-                                                <label className="block text-xs font-bold text-slate-700 mb-1">สาเหตุความเสียหาย (Problem Source)</label>
-                                                <select
-                                                    className="w-full border border-slate-300 rounded p-2 text-sm focus:ring-1 focus:ring-red-500 bg-white"
-                                                    value={newItem.problemSource || ''}
-                                                    onChange={e => setNewItem({ ...newItem, problemSource: e.target.value })}
-                                                >
-                                                    <option value="">-- ระบุสาเหตุ --</option>
-                                                    {Object.keys(RESPONSIBLE_MAPPING).map(key => (
-                                                        <option key={key} value={key}>{key}</option>
-                                                    ))}
-                                                    <option value="Other">อื่นๆ (Other)</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-span-1">
-                                                <label className="block text-xs font-bold text-slate-700 mb-1">ค่าใช้จ่าย (บาท)</label>
-                                                <input
-                                                    type="number"
-                                                    className="w-full border border-slate-300 rounded p-2 text-sm bg-white"
-                                                    value={newItem.costAmount || ''}
-                                                    onChange={e => setNewItem({ ...newItem, costAmount: parseFloat(e.target.value) || 0 })}
-                                                    placeholder="0.00"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-700 mb-1">ผู้รับผิดชอบ (Responsible)</label>
-                                            <input
-                                                type="text"
-                                                className="w-full border border-slate-200 bg-slate-100/50 rounded p-2 text-sm text-slate-600"
-                                                value={newItem.costResponsible || ''}
-                                                placeholder="ระบบจะระบุให้อัตโนมัติ หรือกรอกเอง"
-                                                onChange={e => setNewItem({ ...newItem, costResponsible: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                <label className="block text-sm font-bold text-slate-700 mb-3 border-b border-slate-200 pb-1">วิเคราะห์ปัญหาเกิดจาก</label>
-                                <div className="flex flex-wrap gap-4 mb-4 text-sm">
-                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="sourceCat" checked={sourceSelection.category === 'Customer'} onChange={() => setSourceSelection({ ...sourceSelection, category: 'Customer', problemScenario: '' })} /> ลูกค้าต้นทาง (Source Customer)</label>
-                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="sourceCat" checked={sourceSelection.category === 'DestinationCustomer'} onChange={() => setSourceSelection({ ...sourceSelection, category: 'DestinationCustomer', problemScenario: '' })} /> ลูกค้าปลายทาง (Destination Customer)</label>
-                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="sourceCat" checked={sourceSelection.category === 'Accounting'} onChange={() => setSourceSelection({ ...sourceSelection, category: 'Accounting', problemScenario: '' })} /> บัญชี (Accounting)</label>
-                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="sourceCat" checked={sourceSelection.category === 'Keying'} onChange={() => setSourceSelection({ ...sourceSelection, category: 'Keying', problemScenario: '' })} /> พนักงานคีย์ข้อมูลผิด (Keying)</label>
-                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="sourceCat" checked={sourceSelection.category === 'Warehouse'} onChange={() => setSourceSelection({ ...sourceSelection, category: 'Warehouse', problemScenario: '' })} /> ภายในคลังสินค้า (Warehouse)</label>
-                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="sourceCat" checked={sourceSelection.category === 'Transport'} onChange={() => setSourceSelection({ ...sourceSelection, category: 'Transport', problemScenario: '' })} /> ระหว่างขนส่ง (Transport)</label>
-                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="sourceCat" checked={sourceSelection.category === 'Other'} onChange={() => setSourceSelection({ ...sourceSelection, category: 'Other', problemScenario: '' })} /> อื่นๆ (Other)</label>
-                                </div>
-                                <div className="pl-2 space-y-3">
-                                    {sourceSelection.category === 'Warehouse' && (
-                                        <div className="space-y-3 animate-fade-in">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                <div>
-                                                    <label className="text-xs font-bold text-slate-500 mb-1 block">เลือกสาขา/หน่วยงาน</label>
-                                                    <select className="w-full border rounded p-1.5 text-sm" value={sourceSelection.whBranch} onChange={e => setSourceSelection({ ...sourceSelection, whBranch: e.target.value })}>
-                                                        <option value="">-- เลือกสาขา --</option>
-                                                        {WAREHOUSE_BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold text-slate-500 mb-1 block">ระบุสาเหตุ (Cause)</label>
-                                                    <div className="flex flex-wrap gap-2 text-sm mt-1">
-                                                        {WAREHOUSE_CAUSES.map(c => (
-                                                            <label key={c} className="flex items-center gap-1 cursor-pointer"><input type="radio" name="whCause" checked={sourceSelection.whCause === c} onChange={() => setSourceSelection({ ...sourceSelection, whCause: c })} />{c}</label>
-                                                        ))}
-                                                    </div>
-                                                    {sourceSelection.whCause === 'อื่นๆ' && <input type="text" className="border-b border-slate-400 outline-none text-sm w-full mt-1" placeholder="ระบุ..." value={sourceSelection.whOtherText} onChange={e => setSourceSelection({ ...sourceSelection, whOtherText: e.target.value })} />}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {sourceSelection.category === 'Transport' && (
-                                        <div className="space-y-3 animate-fade-in bg-white p-3 rounded border border-slate-200">
-                                            <div className="flex gap-4 mb-2 text-sm font-bold text-slate-700">
-                                                <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="transType" checked={sourceSelection.transType === 'Company'} onChange={() => setSourceSelection({ ...sourceSelection, transType: 'Company' })} /> พนักงานขับรถบริษัท</label>
-                                                <label className="flex items-center gap-1 cursor-pointer"><input type="radio" name="transType" checked={sourceSelection.transType === 'Joint'} onChange={() => setSourceSelection({ ...sourceSelection, transType: 'Joint' })} /> รถขนส่งร่วม</label>
-                                            </div>
-                                            {sourceSelection.transType && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    <input type="text" placeholder="ชื่อพนักงาน/คนขับ" className="border p-1.5 rounded text-sm" value={sourceSelection.transName} onChange={e => setSourceSelection({ ...sourceSelection, transName: e.target.value })} />
-                                                    <input type="text" placeholder="ทะเบียนรถ" className="border p-1.5 rounded text-sm" value={sourceSelection.transPlate} onChange={e => setSourceSelection({ ...sourceSelection, transPlate: e.target.value })} />
-                                                    <input type="text" placeholder="ประเภทรถ" className="border p-1.5 rounded text-sm" value={sourceSelection.transVehicleType} onChange={e => setSourceSelection({ ...sourceSelection, transVehicleType: e.target.value })} />
-                                                    <input type="text" placeholder="สังกัด (สาขา/หน่วยงาน)" className="border p-1.5 rounded text-sm" value={sourceSelection.transAffiliation} onChange={e => setSourceSelection({ ...sourceSelection, transAffiliation: e.target.value })} />
-                                                    {sourceSelection.transType === 'Joint' && (
-                                                        <input type="text" placeholder="บริษัท (Company)" className="border p-1.5 rounded text-sm md:col-span-2" value={sourceSelection.transCompany} onChange={e => setSourceSelection({ ...sourceSelection, transCompany: e.target.value })} />
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    {sourceSelection.category === 'Other' && (
-                                        <div className="animate-fade-in">
-                                            <input type="text" className="w-full border border-slate-300 rounded p-2 text-sm" placeholder="ระบุรายละเอียดอื่นๆ..." value={sourceSelection.otherText} onChange={e => setSourceSelection({ ...sourceSelection, otherText: e.target.value })} />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+            {/* Password Modal */}
+            {showAuthModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white p-6 rounded-xl shadow-2xl w-96 transform scale-100 transition-all">
+                        <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <Lock className="w-5 h-5 text-amber-500" />
+                                ยืนยันสิทธิ์ (Authentication)
+                            </h3>
+                            <button onClick={() => setShowAuthModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
-                        <div className="p-4 border-t flex justify-end gap-2 bg-slate-50 shrink-0">
-                            <button onClick={() => setShowItemModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">ยกเลิก</button>
-                            <button onClick={() => handleAddItem(false)} className="px-4 py-2 border border-blue-600 text-blue-600 font-bold rounded hover:bg-blue-50">บันทึก & เพิ่มต่อ</button>
-                            <button onClick={() => handleAddItem(true)} className="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">บันทึก & ปิด</button>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">รหัสผ่าน (Password)</label>
+                                <input
+                                    type="password"
+                                    className="w-full p-2 border border-slate-300 rounded-lg text-lg tracking-widest outline-none focus:ring-2 focus:ring-amber-500"
+                                    autoFocus
+                                    value={authPassword}
+                                    onChange={(e) => setAuthPassword(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAuthSubmit()}
+                                    placeholder="Enter password..."
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button onClick={() => setShowAuthModal(false)} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold"> ยกเลิก</button>
+                                <button onClick={handleAuthSubmit} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md">ยืนยัน</button>
+                            </div>
                         </div>
                     </div>
                 </div>
