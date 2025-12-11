@@ -13,7 +13,7 @@ interface NCRReportProps {
 }
 
 const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
-  const { ncrReports, items, updateNCRReport, deleteNCRReport } = useData();
+  const { ncrReports, items, updateNCRReport, deleteNCRReport, updateReturnRecord, deleteReturnRecord } = useData();
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printItem, setPrintItem] = useState<NCRRecord | null>(null);
 
@@ -291,10 +291,22 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
   const handleVerifyPasswordAndDelete = async () => {
     if (passwordInput === '1234') {
       if (pendingDeleteItemId) {
+        // Find the NCR Record first to get ncrNo
+        const ncrToDelete = ncrReports.find(r => r.id === pendingDeleteItemId);
+
         // This now calls the "cancel" (soft delete) function
         const success = await deleteNCRReport(pendingDeleteItemId);
         if (success) {
-          alert(`ยกเลิกรายการ NCR สำเร็จ`);
+          // SYNC: Also Delete Linked Return Record (Hard Delete to make it "disappear")
+          if (ncrToDelete && ncrToDelete.ncrNo) {
+            const correspondingReturn = items.find(r => r.ncrNumber === ncrToDelete.ncrNo);
+            if (correspondingReturn) {
+              await deleteReturnRecord(correspondingReturn.id);
+              console.log(`Synced Delete: Removed ReturnRecord ${correspondingReturn.id}`);
+            }
+          }
+
+          alert(`ยกเลิกรายการ NCR และลบข้อมูลที่เกี่ยวข้องสำเร็จ`);
         } else {
           alert('การยกเลิกล้มเหลว กรุณาตรวจสอบสิทธิ์');
         }
@@ -402,6 +414,24 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
 
     const success = await updateNCRReport(ncrFormItem.id, ncrFormItem);
     if (success) {
+      // SYNC: Update Linked Return Record (Operations Hub)
+      const correspondingReturn = items.find(item => item.ncrNumber === ncrFormItem.ncrNo);
+      if (correspondingReturn) {
+        const itemData = ncrFormItem.item || (ncrFormItem as any);
+        const returnUpdateData: Partial<ReturnRecord> = {
+          branch: itemData.branch,
+          customerName: itemData.customerName,
+          productName: itemData.productName,
+          productCode: itemData.productCode,
+          quantity: itemData.quantity,
+          unit: itemData.unit,
+          problemDetail: ncrFormItem.problemDetail,
+          rootCause: itemData.problemSource,
+        };
+        await updateReturnRecord(correspondingReturn.id, returnUpdateData);
+        console.log(`Synced Edit: Updated ReturnRecord ${correspondingReturn.id}`);
+      }
+
       alert('บันทึกการแก้ไขเรียบร้อย');
       setShowNCRFormModal(false);
       setIsEditMode(false);
