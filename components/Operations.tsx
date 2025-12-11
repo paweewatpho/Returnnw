@@ -24,14 +24,16 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
   const { state, actions, derived } = useOperationsLogic(initialData, onClearInitialData);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Updated Menu for 6-Step Workflow
+  // Updated Menu for 8-Step Workflow (New User Defined Flow)
   const MENU_ITEMS = [
-    { id: 1, label: 'แจ้งคืนสินค้า', icon: FileInput, count: derived.requestedItems.length || undefined, color: 'text-blue-600' },
-    { id: 2, label: 'รวบรวม & ขนส่ง', icon: Truck, count: derived.logisticItems.length || undefined, color: 'text-orange-500' }, // New Step
-    { id: 3, label: 'รับสินค้าเข้า Hub', icon: LayoutGrid, count: derived.hubReceiveItems.length || undefined, color: 'text-amber-500' },
-    { id: 4, label: 'ตรวจสอบคุณภาพ', icon: Activity, count: derived.hubQCItems.length || undefined, color: 'text-blue-500' },
-    { id: 5, label: 'เอกสารส่งคืน', icon: ClipboardList, count: derived.hubDocItems.length || undefined, color: 'text-slate-600' },
-    { id: 6, label: 'ติดตาม & ปิดงาน', icon: CheckCircle, count: derived.closureItems.length || undefined, color: 'text-green-600' }
+    { id: 1, label: '1. แจ้งคืนสินค้า (Request)', icon: FileInput, count: derived.requestedItems.length || undefined, color: 'text-blue-600' },
+    { id: 2, label: '2. รับงาน (Receive Job)', icon: ClipboardList, color: 'text-slate-400' },
+    { id: 3, label: '3. รับสินค้า (Branch Rx)', icon: Activity, color: 'text-slate-400' },
+    { id: 4, label: '4. รวมสินค้า (Consolidate)', icon: LayoutGrid, color: 'text-slate-400' },
+    { id: 5, label: '5. ขนส่ง (Logistics)', icon: Truck, count: derived.logisticItems.length || undefined, color: 'text-orange-500' },
+    { id: 6, label: '6. รับสินค้าเข้า Hub', icon: LayoutGrid, count: derived.hubReceiveItems.length || undefined, color: 'text-amber-500' },
+    { id: 7, label: '7. เอกสาร (Docs)', icon: FileText, count: derived.hubDocItems.length || undefined, color: 'text-purple-500' },
+    { id: 8, label: '8. ปิดงาน (Closure)', icon: CheckCircle, count: derived.closureItems.length || undefined, color: 'text-green-600' }
   ];
 
   const renderContent = () => {
@@ -62,28 +64,30 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
           />
         );
       case 2:
+      case 3:
+      case 4:
+        return (
+          <div className="flex flex-col items-center justify-center h-full text-slate-400">
+            <Activity className="w-16 h-16 mb-4 opacity-30" />
+            <h3 className="text-xl font-bold mb-2">Step {state.activeStep} อยู่ระหว่างการพัฒนา</h3>
+            <p>(This step is under construction)</p>
+          </div>
+        );
+      case 5:
         return (
           <Step2Logistics
             onConfirm={actions.handleLogisticsSubmit}
           />
         );
-      case 3:
+      case 6:
         return (
           <Step3HubReceive />
         );
-      case 4:
+      case 7:
         return (
-          <Step4HubQC />
+          <Step5HubDocs />
         );
-      case 5:
-        return (
-          <Step5HubDocs
-            processedItems={derived.hubDocItems}
-            onPrintClick={actions.handlePrintClick}
-            onSplitClick={actions.handleDocItemClick}
-          />
-        );
-      case 6:
+      case 8:
         return (
           <Step6Closure
             documentedItems={derived.closureItems}
