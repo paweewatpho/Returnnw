@@ -11,13 +11,15 @@ interface KanbanColumnProps {
     onPrintClick: (status: DispositionAction, list: ReturnRecord[]) => void;
     onItemClick?: (item: ReturnRecord) => void;
     onSplitClick?: (item: ReturnRecord) => void;
+    overrideFilter?: boolean;
 }
 
-export const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, status, icon: Icon, color, items, onPrintClick, onItemClick, onSplitClick }) => {
+export const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, status, icon: Icon, color, items, onPrintClick, onItemClick, onSplitClick, overrideFilter }) => {
     // Filter items for this column - Memoized for performance
     const columnItems = useMemo(() => {
+        if (overrideFilter) return items;
         return items.filter(i => i.disposition === status && (status === 'RTV' ? !i.documentNo : true));
-    }, [items, status]);
+    }, [items, status, overrideFilter]);
 
     return (
         <div className="min-w-[300px] bg-slate-100 rounded-xl p-4 flex flex-col h-full border border-slate-200">

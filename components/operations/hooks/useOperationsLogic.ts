@@ -481,8 +481,34 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
 
 
     const handleIntakeReceive = async (id: string) => { // Now handles Step 3 receiving
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
         const today = new Date().toISOString().split('T')[0];
-        await updateReturnRecord(id, { status: 'ReceivedAtHub', dateReceived: today });
+
+        // Check for Collection Item (COL/RMA ID)
+        // Check refNo, neoRefNo, or if ID itself implies collection source
+        const isCollectionItem = (
+            item.refNo?.startsWith('R-') || item.refNo?.startsWith('COL-') || item.refNo?.startsWith('RT-') ||
+            item.neoRefNo?.startsWith('R-') || item.neoRefNo?.startsWith('COL-')
+        );
+
+        if (isCollectionItem) {
+            // Auto-Pass QC -> Go to Step 5 (Docs)
+            // User Request: Skip QC, Generate Return Note (RTV), then Pending Completion
+            await updateReturnRecord(id, {
+                status: 'Graded', // Skip 'ReceivedAtHub', go straight to Graded (Step 5 Queue)
+                dateReceived: today,
+                dateGraded: today,
+                disposition: 'RTV', // Default to RTV (Return to Vendor/Source) as requested "ใบส่งคืน"
+                condition: 'Good', // Default Assumption
+                notes: (item.notes || '') + ' [Auto-Pass QC: Collection Item]'
+            });
+            alert('รับสินค้าเรียบร้อย! (รายการ Collection ข้ามขั้นตอน QC ไปยังเอกสารส่งคืน)');
+        } else {
+            // Standard Flow -> Go to QC
+            await updateReturnRecord(id, { status: 'ReceivedAtHub', dateReceived: today });
+        }
     };
 
     const handleQCSubmit = async () => { // Now handles Step 4 QC
