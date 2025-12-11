@@ -103,6 +103,22 @@ const CollectionSystem: React.FC = () => {
             return;
         }
 
+        // Check for duplicate Document No (R)
+        let noteSuffix = '';
+        if (manualReq.documentNo) {
+            const duplicates = returnRequests.filter(r => r.documentNo === manualReq.documentNo);
+            if (duplicates.length > 0) {
+                const confirmed = confirm(
+                    `พบเลขที่เอกสาร (R) ซ้ำ: "${manualReq.documentNo}"\n` +
+                    `มีอยู่ในระบบแล้ว ${duplicates.length} รายการ\n\n` +
+                    `ยืนยันที่จะบันทึกซ้ำหรือไม่?\n` +
+                    `(ระบบจะระบุ "ครั้งที่ ${duplicates.length + 1}" ในหมายเหตุ)`
+                );
+                if (!confirmed) return;
+                noteSuffix = ` (เลขที่เอกสาร (เลข R) ครั้งที่ ${duplicates.length + 1})`;
+            }
+        }
+
         // Generate ID: COL-[BRANCH]-[YEAR]-[RUNNING]
         const branchCode = getBranchCode(manualReq.branch || '');
         const year = new Date().getFullYear();
@@ -129,7 +145,7 @@ const CollectionSystem: React.FC = () => {
             contactPerson: manualReq.contactPerson || '-',
             contactPhone: manualReq.contactPhone || '-',
             itemsSummary: manualReq.notes || 'สินค้าทั่วไป',
-            notes: manualReq.notes || '',
+            notes: (manualReq.notes || '') + noteSuffix,
             status: 'APPROVED_FOR_PICKUP'
         };
 
