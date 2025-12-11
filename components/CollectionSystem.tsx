@@ -33,30 +33,55 @@ const CollectionSystem: React.FC = () => {
     const [shipments, setShipments] = useState<ShipmentManifest[]>(mockShipments);
 
     // View State
-    const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1); // 1: Dispatch, 2: Driver, 3: Consolidation
+    const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+    // 1: Create Request, 2: Dispatch, 3: Driver, 4: Consolidation
+
     const [selectedRmas, setSelectedRmas] = useState<string[]>([]);
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [showManifestModal, setShowManifestModal] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false); // Modal for Dispatch (Step 2)
+    const [showManifestModal, setShowManifestModal] = useState(false); // Modal for Manifest (Step 4)
     const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
 
-    // Form State (Create Collection)
+    // Form State (Step 1: Manual Request)
+    const [manualReq, setManualReq] = useState({
+        customerName: '',
+        customerAddress: '',
+        contactPerson: '',
+        contactPhone: '',
+        itemsSummary: ''
+    });
+
+    // Form State (Step 2: Dispatch/Collection)
     const [formDriverId, setFormDriverId] = useState('');
     const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
     const [formBoxes, setFormBoxes] = useState(1);
     const [formDesc, setFormDesc] = useState('');
 
-    // Form State (Create Manifest)
+    // Form State (Step 4: Manifest)
     const [formCarrier, setFormCarrier] = useState('');
     const [formTracking, setFormTracking] = useState('');
 
     // --- ACTIONS ---
 
+    const handleCreateManualRequest = () => {
+        if (!manualReq.customerName || !manualReq.contactPhone) return;
+
+        const newReq: ReturnRequest = {
+            id: `RMA-${new Date().getFullYear()}-${String(returnRequests.length + 100).padStart(3, '0')}`,
+            customerName: manualReq.customerName,
+            customerAddress: manualReq.customerAddress || 'ไม่ระบุ',
+            contactPerson: manualReq.contactPerson || '-',
+            contactPhone: manualReq.contactPhone,
+            itemsSummary: manualReq.itemsSummary || 'สินค้าทั่วไป',
+            status: 'APPROVED_FOR_PICKUP'
+        };
+
+        setReturnRequests([newReq, ...returnRequests]);
+        setManualReq({ customerName: '', customerAddress: '', contactPerson: '', contactPhone: '', itemsSummary: '' });
+        setCurrentStep(2); // Move to Dispatch view to see it
+    };
+
     const handleCreateCollection = () => {
         if (!formDriverId || selectedRmas.length === 0) return;
-
-        // Group selected RMAs (Assuming they are from same location for this MVP, or logic to group)
-        // For simplicity, we create one collection order for the selected RMAs.
-        // In real world, we might validate same address.
 
         // Find first RMA to get location info
         const firstRma = returnRequests.find(r => r.id === selectedRmas[0]);
@@ -109,8 +134,11 @@ const CollectionSystem: React.FC = () => {
 
         setShipments([newManifest, ...shipments]);
 
-        // Update Collection Orders status
+        // Update Collection Orders status to CONSOLIDATED
         setCollectionOrders(prev => prev.map(c => selectedCollectionIds.includes(c.id) ? { ...c, status: 'CONSOLIDATED' } : c));
+
+        // Simulate sending to "Return Operations Hub"
+        // In a real app, this would trigger an API call to sync data.
 
         setSelectedCollectionIds([]);
         setShowManifestModal(false);
@@ -136,24 +164,70 @@ const CollectionSystem: React.FC = () => {
 
     // --- RENDERERS ---
 
-    // 1. DISPATCHER VIEW
+    // 1. CREATE REQUEST VIEW (New Step)
+    const renderCreateRequestView = () => (
+        <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" /> 1. ใบสั่งงานรับกลับ (Create Return Request)
+                </h3>
+                <p className="text-sm text-slate-500 mb-6">แอดมินคีย์ข้อมูลสินค้าที่ต้องไปรับกลับ (Manual Entry)</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">ชื่อร้านค้า / ลูกค้า (Store/Customer Name) <span className="text-red-500">*</span></label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.customerName} onChange={e => setManualReq({ ...manualReq, customerName: e.target.value })} placeholder="ระบุชื่อลูกค้า..." />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">เบอร์โทรศัพท์ (Phone) <span className="text-red-500">*</span></label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.contactPhone} onChange={e => setManualReq({ ...manualReq, contactPhone: e.target.value })} placeholder="08x-xxx-xxxx" />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">ผู้ติดต่อ (Contact Person)</label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.contactPerson} onChange={e => setManualReq({ ...manualReq, contactPerson: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">ที่อยู่รับสินค้า (Pickup Address)</label>
+                        <textarea className="w-full p-2 border border-slate-300 rounded-lg h-20"
+                            value={manualReq.customerAddress} onChange={e => setManualReq({ ...manualReq, customerAddress: e.target.value })} placeholder="ระบุที่อยู่..." />
+                    </div>
+                    <div className="col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">รายการสินค้า (Items Summary)</label>
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={manualReq.itemsSummary} onChange={e => setManualReq({ ...manualReq, itemsSummary: e.target.value })} placeholder="เช่น Mouse x10, Keyboard x5" />
+                    </div>
+                </div>
+
+                <div className="flex justify-end mt-6 pt-6 border-t border-slate-100">
+                    <button onClick={handleCreateManualRequest} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2">
+                        <Plus className="w-5 h-5" /> บันทึกและส่งต่อ (Save & Next)
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
+    // 2. DISPATCHER VIEW
     const renderDispatchView = () => {
         const pendingRmas = returnRequests.filter(r => r.status === 'APPROVED_FOR_PICKUP');
 
         return (
-            <div className="space-y-6">
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-fade-in">
+            <div className="space-y-6 animate-fade-in">
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                     <div className="flex justify-between items-center mb-4">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-800">1. งานรอจ่าย (Pending Pickups)</h3>
-                            <p className="text-sm text-slate-500">ใบคำร้องรอการจ่ายงานให้รถขนส่ง (Source: Approved RMAs)</p>
+                            <h3 className="text-lg font-bold text-slate-800">2. งานรอจ่าย (Pending Pickups)</h3>
+                            <p className="text-sm text-slate-500">เลือกรายการเพื่อจ่ายงานให้คนขับ (Assign Driver)</p>
                         </div>
                         {selectedRmas.length > 0 && (
                             <button
                                 onClick={() => setShowCreateModal(true)}
                                 className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 animate-bounce-short shadow-md hover:bg-blue-700 transition"
                             >
-                                <Truck className="w-5 h-5" /> สร้างใบสั่งงาน ({selectedRmas.length} รายการ)
+                                <Truck className="w-5 h-5" /> สร้างใบสั่งงาน ({selectedRmas.length})
                             </button>
                         )}
                     </div>
@@ -170,7 +244,7 @@ const CollectionSystem: React.FC = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {pendingRmas.length === 0 ? (
-                                <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">ไม่มีรายการรอจ่ายงาน (No pending items)</td></tr>
+                                <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">ไม่มีรายการรอจ่ายงาน</td></tr>
                             ) : pendingRmas.map(rma => (
                                 <tr key={rma.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => {
                                     setSelectedRmas(prev => prev.includes(rma.id) ? prev.filter(id => id !== rma.id) : [...prev, rma.id]);
@@ -199,18 +273,18 @@ const CollectionSystem: React.FC = () => {
         );
     };
 
-    // 2. DRIVER VIEW
+    // 3. DRIVER VIEW
     const renderDriverView = () => {
         // Show PENDING or ASSIGNED orders
         const myTasks = collectionOrders.filter(o => o.status === 'PENDING' || o.status === 'ASSIGNED');
 
         return (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <Truck className="w-5 h-5" /> รายการงานคนขับ (Driver Tasks)
+                        <Truck className="w-5 h-5" /> 3. รายการงานคนขับ (Driver Tasks)
                     </h3>
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">มุมมองคนขับ (Driver View)</span>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">มุมมองคนขับ</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -254,30 +328,30 @@ const CollectionSystem: React.FC = () => {
                             </div>
                         </div>
                     ))}
-                    {myTasks.length === 0 && <div className="col-span-full py-12 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">ไม่มีงานค้าง (No active tasks)</div>}
+                    {myTasks.length === 0 && <div className="col-span-full py-12 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">ไม่มีงานค้าง</div>}
                 </div>
             </div>
         );
     };
 
-    // 3. CONSOLIDATION VIEW
+    // 4. CONSOLIDATION VIEW
     const renderConsolidationView = () => {
         const collectedOrders = collectionOrders.filter(o => o.status === 'COLLECTED');
 
         return (
-            <div className="space-y-6">
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-fade-in">
+            <div className="space-y-6 animate-fade-in">
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                     <div className="flex justify-between items-center mb-4">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-800">3. จุดพักสินค้า (Hub Consolidation)</h3>
-                            <p className="text-sm text-slate-500">รวมสินค้าเพื่อส่งกลับ HQ (Items at Hub)</p>
+                            <h3 className="text-lg font-bold text-slate-800">4. Hub Consolidation (จุดพักสินค้า)</h3>
+                            <p className="text-sm text-slate-500">รวมสินค้าส่ง Hub / ส่งตรง & ส่งข้อมูลเข้า Return Operations Hub</p>
                         </div>
                         {selectedCollectionIds.length > 0 && (
                             <button
                                 onClick={() => setShowManifestModal(true)}
                                 className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 animate-bounce-short shadow-md hover:bg-purple-700 transition"
                             >
-                                <Ship className="w-5 h-5" /> สร้าง Shipment ({selectedCollectionIds.length} รายการ)
+                                <Ship className="w-5 h-5" /> รวมสินค้า ({selectedCollectionIds.length})
                             </button>
                         )}
                     </div>
@@ -338,7 +412,9 @@ const CollectionSystem: React.FC = () => {
                                         <span>จำนวน: {shipment.collectionOrderIds.length} ใบงาน</span>
                                     </div>
                                 </div>
-                                <StatusBadge status={shipment.status} />
+                                <div className="text-xs text-green-600 font-bold border border-green-200 bg-green-50 px-2 py-1 rounded">
+                                    Sent to HQ
+                                </div>
                             </div>
                         ))}
                         {shipments.length === 0 && <div className="text-slate-400 italic text-sm">ยังไม่มีประวัติการส่ง</div>}
@@ -354,26 +430,29 @@ const CollectionSystem: React.FC = () => {
             <div className="bg-white border-b border-slate-200 px-6 py-4">
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-xl font-bold text-slate-800">ระบบงานรับสินค้า (Inbound Logistics)</h2>
-                    <span className="text-xs text-slate-400 font-mono">Module: LOG-INBOUND-01</span>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => setCurrentStep(1)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 1 ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                        1. จ่ายงาน (Dispatch)
+                    <button onClick={() => setCurrentStep(1)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 1 ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                        1. สร้างใบงาน (Create)
                     </button>
-                    <button onClick={() => setCurrentStep(2)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 2 ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                        2. คนขับรับของ (Driver)
+                    <button onClick={() => setCurrentStep(2)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 2 ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                        2. จ่ายงาน (Dispatch)
                     </button>
-                    <button onClick={() => setCurrentStep(3)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 3 ? 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                        3. รวมของส่ง HQ (Hub)
+                    <button onClick={() => setCurrentStep(3)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 3 ? 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                        3. คนขับ (Driver)
+                    </button>
+                    <button onClick={() => setCurrentStep(4)} className={`flex-1 py-3 px-4 rounded-lg border text-sm font-bold transition-all ${currentStep === 4 ? 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                        4. จุดพักสินค้า (Hub)
                     </button>
                 </div>
             </div>
 
             {/* CONTENT AREA */}
             <div className="flex-grow p-6 overflow-y-auto">
-                {currentStep === 1 && renderDispatchView()}
-                {currentStep === 2 && renderDriverView()}
-                {currentStep === 3 && renderConsolidationView()}
+                {currentStep === 1 && renderCreateRequestView()}
+                {currentStep === 2 && renderDispatchView()}
+                {currentStep === 3 && renderDriverView()}
+                {currentStep === 4 && renderConsolidationView()}
             </div>
 
             {/* MODALS */}
