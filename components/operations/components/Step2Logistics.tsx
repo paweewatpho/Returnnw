@@ -262,8 +262,21 @@ export const Step2Logistics: React.FC<Step2LogisticsProps> = ({ items, onConfirm
                                                 <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => handleToggle(item.id)} />
                                             </td>
                                             <td className="p-3">
-                                                <div className="font-bold text-slate-800">{item.productName}</div>
-                                                <div className="text-xs text-slate-500">{item.productCode}</div>
+                                                <div className="flex flex-col items-start gap-1 mb-1">
+                                                    {item.id.startsWith('NCR') ? (
+                                                        <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-orange-100 text-orange-700 border border-orange-300 shadow-sm flex items-center gap-1">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                                            NCR: {item.id}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-100 text-indigo-700 border border-indigo-300 shadow-sm flex items-center gap-1">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                                            COL ID: {item.refNo || item.id}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="font-bold text-slate-800 text-sm">{item.productName}</div>
+                                                <div className="text-xs text-slate-500 mt-0.5">{item.productCode}</div>
                                             </td>
                                             <td className="p-3 font-mono">
                                                 <span className="font-bold text-blue-600">{item.quantity}</span> {item.unit}
