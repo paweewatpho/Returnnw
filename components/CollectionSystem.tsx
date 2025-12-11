@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import {
     Truck, CheckCircle2, Clock, MapPin, Package, FileText,
     ArrowRight, Plus, Search, User, Phone, X, Save,
-    Camera, PenTool, Printer, Boxes, Ship, LayoutGrid, List
+    Camera, PenTool, Printer, Boxes, Ship, LayoutGrid, List, Trash2
 } from 'lucide-react';
 import { CollectionOrder, ReturnRequest, ShipmentManifest, CollectionStatus } from '../types';
 import { mockCollectionOrders, mockReturnRequests, mockDrivers, mockShipments } from '../data/mockCollectionData';
@@ -95,6 +95,10 @@ const CollectionSystem: React.FC = () => {
     const [failReasonType, setFailReasonType] = useState<'RESCHEDULE' | 'REFUSED'>('RESCHEDULE');
     const [failRescheduleDate, setFailRescheduleDate] = useState(new Date().toISOString().split('T')[0]);
 
+    // Edit Mode State
+    const [isEditing, setIsEditing] = useState(false);
+    const [editTargetId, setEditTargetId] = useState<string | null>(null);
+
     // --- ACTIONS ---
 
     const handleCreateManualRequest = () => {
@@ -103,59 +107,125 @@ const CollectionSystem: React.FC = () => {
             return;
         }
 
-        // Check for duplicate Document No (R)
-        let noteSuffix = '';
-        if (manualReq.documentNo) {
-            const duplicates = returnRequests.filter(r => r.documentNo === manualReq.documentNo);
-            if (duplicates.length > 0) {
-                const confirmed = confirm(
-                    `พบเลขที่เอกสาร (R) ซ้ำ: "${manualReq.documentNo}"\n` +
-                    `มีอยู่ในระบบแล้ว ${duplicates.length} รายการ\n\n` +
-                    `ยืนยันที่จะบันทึกซ้ำหรือไม่?\n` +
-                    `(ระบบจะระบุ "ครั้งที่ ${duplicates.length + 1}" ในหมายเหตุ)`
-                );
-                if (!confirmed) return;
-                noteSuffix = ` (เลขที่เอกสาร (เลข R) ครั้งที่ ${duplicates.length + 1})`;
+        if (isEditing && editTargetId) {
+            // UPDATE EXISTING
+            setReturnRequests(prev => prev.map(r => r.id === editTargetId ? {
+                ...r,
+                // Update fields
+                // @ts-ignore
+                branch: manualReq.branch || '-',
+                invoiceNo: manualReq.invoiceNo || '-',
+                controlDate: manualReq.controlDate || '-',
+                documentNo: manualReq.documentNo || r.documentNo,
+                tmNo: manualReq.tmNo || '-',
+                customerCode: manualReq.customerCode || '-',
+                customerName: manualReq.customerName || '',
+                customerAddress: manualReq.customerAddress || '',
+                province: manualReq.province || '',
+                contactPerson: manualReq.contactPerson || '-',
+                contactPhone: manualReq.contactPhone || '-',
+                itemsSummary: manualReq.notes || 'สินค้าทั่วไป',
+                notes: manualReq.notes || '',
+            } : r));
+
+            setIsEditing(false);
+            setEditTargetId(null);
+            alert('แก้ไขข้อมูลเรียบร้อย');
+        } else {
+            // CREATE NEW
+            // Check for duplicate Document No (R)
+            let noteSuffix = '';
+            if (manualReq.documentNo) {
+                const duplicates = returnRequests.filter(r => r.documentNo === manualReq.documentNo);
+                if (duplicates.length > 0) {
+                    const confirmed = confirm(
+                        `พบเลขที่เอกสาร (R) ซ้ำ: "${manualReq.documentNo}"\n` +
+                        `มีอยู่ในระบบแล้ว ${duplicates.length} รายการ\n\n` +
+                        `ยืนยันที่จะบันทึกซ้ำหรือไม่?\n` +
+                        `(ระบบจะระบุ "ครั้งที่ ${duplicates.length + 1}" ในหมายเหตุ)`
+                    );
+                    if (!confirmed) return;
+                    noteSuffix = ` (เลขที่เอกสาร (เลข R) ครั้งที่ ${duplicates.length + 1})`;
+                }
             }
+
+            // Generate ID: COL-[BRANCH]-[YEAR]-[RUNNING]
+            const branchCode = getBranchCode(manualReq.branch || '');
+            const year = new Date().getFullYear();
+            const prefix = `COL-${branchCode}-${year}`;
+
+            // Count existing requests with this prefix to generate running number
+            const existingCount = returnRequests.filter(r => r.id.startsWith(prefix)).length;
+            const runningNo = String(existingCount + 1).padStart(4, '0');
+            const generatedId = `${prefix}-${runningNo}`;
+
+            // @ts-ignore
+            const newReq: ReturnRequest = {
+                id: generatedId,
+                documentNo: manualReq.documentNo || generatedId,
+                // @ts-ignore
+                branch: manualReq.branch || '-',
+                invoiceNo: manualReq.invoiceNo || '-',
+                controlDate: manualReq.controlDate || '-',
+                tmNo: manualReq.tmNo || '-',
+                customerCode: manualReq.customerCode || '-',
+                customerName: manualReq.customerName || '',
+                customerAddress: manualReq.customerAddress || '',
+                province: manualReq.province || '',
+                contactPerson: manualReq.contactPerson || '-',
+                contactPhone: manualReq.contactPhone || '-',
+                itemsSummary: manualReq.notes || 'สินค้าทั่วไป',
+                notes: (manualReq.notes || '') + noteSuffix,
+                status: 'APPROVED_FOR_PICKUP'
+            };
+            setReturnRequests([newReq, ...returnRequests]);
         }
 
-        // Generate ID: COL-[BRANCH]-[YEAR]-[RUNNING]
-        const branchCode = getBranchCode(manualReq.branch || '');
-        const year = new Date().getFullYear();
-        const prefix = `COL-${branchCode}-${year}`;
-
-        // Count existing requests with this prefix to generate running number
-        const existingCount = returnRequests.filter(r => r.id.startsWith(prefix)).length;
-        const runningNo = String(existingCount + 1).padStart(4, '0');
-        const generatedId = `${prefix}-${runningNo}`;
-
-        // @ts-ignore
-        const newReq: ReturnRequest = {
-            id: generatedId,
-            documentNo: manualReq.documentNo || generatedId, // Use generated ID if doc no is blank
-            // @ts-ignore
-            branch: manualReq.branch || '-',
-            invoiceNo: manualReq.invoiceNo || '-',
-            controlDate: manualReq.controlDate || '-',
-            tmNo: manualReq.tmNo || '-',
-            customerCode: manualReq.customerCode || '-',
-            customerName: manualReq.customerName || '',
-            customerAddress: manualReq.customerAddress || '',
-            province: manualReq.province || '',
-            contactPerson: manualReq.contactPerson || '-',
-            contactPhone: manualReq.contactPhone || '-',
-            itemsSummary: manualReq.notes || 'สินค้าทั่วไป',
-            notes: (manualReq.notes || '') + noteSuffix,
-            status: 'APPROVED_FOR_PICKUP'
-        };
-
-        setReturnRequests([newReq, ...returnRequests]);
+        // Reset Form
         setManualReq({
             branch: '', invoiceNo: '', controlDate: new Date().toISOString().split('T')[0],
             documentNo: '', customerName: '', customerCode: '', customerAddress: '',
             province: '', tmNo: '', contactPerson: '', contactPhone: '', notes: ''
         });
-        setCurrentStep(2);
+        setCurrentStep(2); // Go to Receive Job
+    };
+
+    const handleDeleteRma = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        const pwd = prompt("กรุณาใส่รหัสผ่านเพื่อลบ (Password):");
+        if (pwd === '1234') {
+            if (confirm('ยืนยันลบรายการนี้?')) {
+                setReturnRequests(prev => prev.filter(r => r.id !== id));
+            }
+        } else if (pwd !== null) {
+            alert("รหัสผ่านไม่ถูกต้อง");
+        }
+    };
+
+    const handleEditRma = (e: React.MouseEvent, rma: ReturnRequest) => {
+        e.stopPropagation();
+        const pwd = prompt("กรุณาใส่รหัสผ่านเพื่อแก้ไข (Password):");
+        if (pwd === '1234') {
+            setManualReq({
+                branch: rma.branch || '',
+                invoiceNo: rma.invoiceNo || '',
+                controlDate: rma.controlDate || '',
+                documentNo: rma.documentNo || '',
+                customerName: rma.customerName || '',
+                customerCode: rma.customerCode || '',
+                customerAddress: rma.customerAddress || '',
+                province: rma.province || '',
+                tmNo: rma.tmNo || '',
+                contactPerson: rma.contactPerson || '',
+                contactPhone: rma.contactPhone || '',
+                notes: rma.notes || ''
+            });
+            setEditTargetId(rma.id);
+            setIsEditing(true);
+            setCurrentStep(1); // Go to Edit View (Step 1 form)
+        } else if (pwd !== null) {
+            alert("รหัสผ่านไม่ถูกต้อง");
+        }
     };
 
     const handleCreateCollection = () => {
@@ -381,9 +451,15 @@ const CollectionSystem: React.FC = () => {
                 </div>
 
                 <div className="flex justify-end mt-8 border-t border-slate-100 pt-6">
-                    <button onClick={handleCreateManualRequest} className="bg-blue-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-blue-700 shadow-lg flex items-center gap-2 transition-all transform hover:scale-105">
-                        <Plus className="w-5 h-5" /> บันทึกใบงาน (Save Request)
+                    <button onClick={handleCreateManualRequest} className={`${isEditing ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-8 py-2.5 rounded-lg font-bold shadow-lg flex items-center gap-2 transition-all transform hover:scale-105`}>
+                        {isEditing ? <Save className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                        {isEditing ? 'บันทึกการแก้ไข (Update Request)' : 'บันทึกใบงาน (Save Request)'}
                     </button>
+                    {isEditing && (
+                        <button onClick={() => { setIsEditing(false); setEditTargetId(null); setManualReq({ branch: '', invoiceNo: '', controlDate: new Date().toISOString().split('T')[0], documentNo: '', customerName: '', customerCode: '', customerAddress: '', province: '', tmNo: '', contactPerson: '', contactPhone: '', notes: '' }); setCurrentStep(2); }} className="ml-4 text-slate-500 hover:text-slate-700 font-bold">
+                            ยกเลิก (Cancel)
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -426,11 +502,12 @@ const CollectionSystem: React.FC = () => {
                                     <th className="p-3">เลขที่ใบคุม (TM)</th>
                                     <th className="p-3">รหัสลูกค้า</th>
                                     <th className="p-3">หมายเหตุ</th>
+                                    <th className="p-3 text-center">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {pendingRmas.length === 0 ? (
-                                    <tr><td colSpan={11} className="p-8 text-center text-slate-400 italic">ไม่มีรายการรอรับงาน</td></tr>
+                                    <tr><td colSpan={12} className="p-8 text-center text-slate-400 italic">ไม่มีรายการรอรับงาน</td></tr>
                                 ) : pendingRmas.map(rma => (
                                     <tr key={rma.id} className="hover:bg-slate-50 transition-colors cursor-pointer text-sm" onClick={() => {
                                         setSelectedRmas(prev => prev.includes(rma.id) ? prev.filter(id => id !== rma.id) : [...prev, rma.id]);
@@ -452,7 +529,26 @@ const CollectionSystem: React.FC = () => {
                                         <td className="p-3 text-slate-700">{rma.province || '-'}</td>
                                         <td className="p-3 text-slate-700">{rma.tmNo || '-'}</td>
                                         <td className="p-3 text-slate-700">{rma.customerCode || '-'}</td>
+                                        <td className="p-3 text-slate-700">{rma.customerCode || '-'}</td>
                                         <td className="p-3 text-slate-500 italic max-w-[150px] truncate">{rma.notes || '-'}</td>
+                                        <td className="p-3 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={(e) => handleEditRma(e, rma)}
+                                                    className="p-1 text-slate-400 hover:text-amber-500 transition-colors"
+                                                    title="แก้ไข (Edit)"
+                                                >
+                                                    <PenTool className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleDeleteRma(e, rma.id)}
+                                                    className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                    title="ลบ (Delete)"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
