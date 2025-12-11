@@ -26,44 +26,64 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 // --- MAIN COMPONENT ---
 
+// Helper to map branch names to codes
+const getBranchCode = (branchName: string) => {
+    const map: { [key: string]: string } = {
+        'เชียงใหม่': 'CNX',
+        'พิษณุโลก': 'PLK',
+        'กำแพงเพชร': 'KPP',
+        'แม่สอด': 'MSD',
+        'EKP ลำปาง': 'LPG',
+        'นครสวรรค์': 'NSW',
+        'สาย 3': 'SAI3',
+        'คลอง 13': 'K13',
+        'ซีโน่': 'CNO',
+        'ประดู่': 'PRD'
+    };
+    return map[branchName] || 'GEN';
+};
+
 const CollectionSystem: React.FC = () => {
-    // Data State
+    // ... existing state ...
+    // Note: Re-declaring component efficiently to target the function update location. 
+    // Just targeting the handleCreateManualRequest function and ensuring getBranchCode is available.
+
+    // (We will place getBranchCode outside or inside. Placing outside for cleanliness, but for this edit I need to be careful with context)
+    // Actually, I'll put it inside handleCreateManualRequest or just above component if I can target the top. 
+    // But replace_file_content works on lines. 
+    // The previous view shows imports up to line 9, then sub-components. 
+    // I can stick getBranchCode before CollectionSystem definition or inside handleCreateManualRequest. 
+    // Putting it inside handleCreateManualRequest is safest for a localized edit.
+
+    // ...
+
     const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>(mockReturnRequests);
     const [collectionOrders, setCollectionOrders] = useState<CollectionOrder[]>(mockCollectionOrders);
     const [shipments, setShipments] = useState<ShipmentManifest[]>(mockShipments);
-
-    // View State
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
-    // 1: Create Request, 2: Dispatch, 3: Driver, 4: Consolidation
-
     const [selectedRmas, setSelectedRmas] = useState<string[]>([]);
-    const [showCreateModal, setShowCreateModal] = useState(false); // Modal for Dispatch (Step 2)
-    const [showManifestModal, setShowManifestModal] = useState(false); // Modal for Manifest (Step 4)
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showManifestModal, setShowManifestModal] = useState(false);
     const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
-
-    // Form State (Step 1: Manual Request)
     const [manualReq, setManualReq] = useState<Partial<ReturnRequest>>({
         branch: '',
         invoiceNo: '',
         controlDate: new Date().toISOString().split('T')[0],
-        documentNo: '', // R No.
+        documentNo: '',
         customerName: '',
         customerCode: '',
         customerAddress: '',
         province: '',
-        tmNo: '', // TM NO
+        tmNo: '',
         contactPerson: '',
         contactPhone: '',
         notes: ''
     });
-
-    // Form State (Step 2: Dispatch/Collection)
+    // ... other states ...
     const [formDriverId, setFormDriverId] = useState('');
     const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
     const [formBoxes, setFormBoxes] = useState(1);
     const [formDesc, setFormDesc] = useState('');
-
-    // Form State (Step 4: Manifest)
     const [formCarrier, setFormCarrier] = useState('');
     const [formTracking, setFormTracking] = useState('');
 
@@ -75,10 +95,20 @@ const CollectionSystem: React.FC = () => {
             return;
         }
 
+        // Generate ID: COL-[BRANCH]-[YEAR]-[RUNNING]
+        const branchCode = getBranchCode(manualReq.branch || '');
+        const year = new Date().getFullYear();
+        const prefix = `COL-${branchCode}-${year}`;
+
+        // Count existing requests with this prefix to generate running number
+        const existingCount = returnRequests.filter(r => r.id.startsWith(prefix)).length;
+        const runningNo = String(existingCount + 1).padStart(4, '0');
+        const generatedId = `${prefix}-${runningNo}`;
+
         // @ts-ignore
         const newReq: ReturnRequest = {
-            id: manualReq.documentNo || `RMA-${new Date().getFullYear()}-${String(returnRequests.length + 100).padStart(3, '0')}`,
-            documentNo: manualReq.documentNo || '-',
+            id: generatedId,
+            documentNo: manualReq.documentNo || generatedId, // Use generated ID if doc no is blank
             // @ts-ignore
             branch: manualReq.branch || '-',
             invoiceNo: manualReq.invoiceNo || '-',
@@ -90,7 +120,7 @@ const CollectionSystem: React.FC = () => {
             province: manualReq.province || '',
             contactPerson: manualReq.contactPerson || '-',
             contactPhone: manualReq.contactPhone || '-',
-            itemsSummary: manualReq.notes || 'สินค้าทั่วไป', // Mapping Notes to ItemsSummary
+            itemsSummary: manualReq.notes || 'สินค้าทั่วไป',
             notes: manualReq.notes || '',
             status: 'APPROVED_FOR_PICKUP'
         };
@@ -101,7 +131,7 @@ const CollectionSystem: React.FC = () => {
             documentNo: '', customerName: '', customerCode: '', customerAddress: '',
             province: '', tmNo: '', contactPerson: '', contactPhone: '', notes: ''
         });
-        setCurrentStep(2); // Move to Dispatch view to see it
+        setCurrentStep(2);
     };
 
     const handleCreateCollection = () => {
