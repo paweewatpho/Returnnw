@@ -208,17 +208,16 @@ const CollectionSystem: React.FC = () => {
 
     const handleDriverAction = (orderId: string, action: 'COLLECT' | 'FAIL', reason?: string) => {
         if (action === 'COLLECT') {
-            if (confirm('สาขา: ยืนยันการรับสินค้า? (จำลองการถ่ายรูป/เซ็นชื่อ)')) {
-                setCollectionOrders(prev => prev.map(o => o.id === orderId ? {
-                    ...o,
-                    status: 'COLLECTED',
-                    proofOfCollection: {
-                        timestamp: new Date().toISOString(),
-                        signatureUrl: 'signed_mock',
-                        photoUrls: ['mock_photo_url']
-                    }
-                } : o));
-            }
+            // Auto-confirm success (removed confirm dialog)
+            setCollectionOrders(prev => prev.map(o => o.id === orderId ? {
+                ...o,
+                status: 'COLLECTED',
+                proofOfCollection: {
+                    timestamp: new Date().toISOString(),
+                    signatureUrl: 'signed_mock',
+                    photoUrls: ['mock_photo_url']
+                }
+            } : o));
         } else if (action === 'FAIL') {
             setFailActionId(orderId);
             setFailReasonType('RESCHEDULE'); // Default
