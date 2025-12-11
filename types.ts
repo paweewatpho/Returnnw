@@ -230,6 +230,9 @@ export interface ReturnRecord {
   rootCause?: string;   // สาเหตุเกิดจาก (legacy/summary)
   ncrNumber?: string;   // เลขที่ NCR
 
+  invoiceNo?: string;
+  tmNo?: string;
+
   // Initial Actions (Intake) - การดำเนินการ
   actionReject?: boolean;         // ส่งคืน (Reject)
   actionRejectQty?: number;

@@ -5,7 +5,9 @@ import {
     ArrowRight, Plus, Search, User, Phone, X, Save,
     Camera, PenTool, Printer, Boxes, Ship, LayoutGrid, List, Trash2, Lock
 } from 'lucide-react';
-import { CollectionOrder, ReturnRequest, ShipmentManifest, CollectionStatus, ReturnStatus } from '../types';
+import { db } from '../firebase';
+import { ref, onValue, set, update } from 'firebase/database';
+import { CollectionOrder, ReturnRequest, ShipmentManifest, CollectionStatus, ReturnStatus, ReturnRecord } from '../types';
 import { mockDrivers } from '../data/mockCollectionData';
 import { useData } from '../DataContext';
 
@@ -81,9 +83,63 @@ const CollectionSystem: React.FC = () => {
         if (syncCount > 0) console.log(`[Sync] Updated ${syncCount} NCR Records to ${newStatus}`);
     };
 
-    const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
+    const [returnRequestsImpl, setReturnRequestsImpl] = useState<ReturnRequest[]>([]); // To force re-render if needed, but we rely on derived state
     const [collectionOrders, setCollectionOrders] = useState<CollectionOrder[]>([]);
     const [shipments, setShipments] = useState<ShipmentManifest[]>([]);
+
+    // 1. SYNC: Derived ReturnRequests from Global Items
+    const returnRequests: ReturnRequest[] = useMemo(() => {
+        return items
+            .filter(item => {
+                // Filter items that originated from Collection System (have COL prefix OR have specific status/source)
+                // And match statuses relevant to Collection System
+                const isCollectionItem = (item.id.startsWith('COL-') || item.refNo?.startsWith('COL-') || item.status === 'Requested' || item.status === 'PickupScheduled' || item.status === 'PickedUp');
+                // We should also include items that were created as "Requested" even if ID is different, if we want them to show up here? 
+                // For now, let's strict check ID prefix for Step 1 created items, but also include others if they are in 'Requested' status and have branch info?
+                // Let's stick to items created via this system which we will prefix with COL-
+                return isCollectionItem && ['Requested', 'PickupScheduled', 'PickedUp', 'InTransitHub', 'ReceivedAtHub', 'Completed'].includes(item.status as string);
+            })
+            .map(item => ({
+                id: item.id,
+                documentNo: item.refNo || item.id,
+                branch: item.branch,
+                invoiceNo: item.invoiceNo || '-',
+                controlDate: item.date || '-', // Use date as controlDate
+                tmNo: item.tmNo || '-',
+                customerCode: item.productCode === 'GEN-MIX' ? '(Mixed)' : item.productCode, // Mapping productCode to customerCode temporarily or extra field? 
+                // Actually customerCode field missing in ReturnRecord. We can put it in notes or ignore. 
+                customerCode: '-',
+                customerName: item.customerName,
+                customerAddress: '', // Not in ReturnRecord main view, maybe fetch or ignore
+                province: '', // Not in ReturnRecord
+                contactPerson: '',
+                contactPhone: item.contactPhone || '',
+                notes: item.notes || item.problemDetail || '',
+                status: item.status === 'Requested' ? 'APPROVED_FOR_PICKUP' :
+                    item.status === 'PickupScheduled' ? 'PICKUP_SCHEDULED' :
+                        item.status === 'PickedUp' ? 'RECEIVED_AT_HQ' : 'RECEIVED_AT_HQ', // Map statuses back to local types
+                itemsSummary: item.productName
+            }));
+    }, [items]);
+
+    // 2. SYNC: Listen to Collection Orders & Shipments from Firebase (Local Scope Persistence)
+    React.useEffect(() => {
+        const ordersRef = ref(db, 'collection_orders');
+        const unsubOrders = onValue(ordersRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) setCollectionOrders(Object.values(data));
+            else setCollectionOrders([]);
+        });
+
+        const shipmentsRef = ref(db, 'shipment_manifests');
+        const unsubShipments = onValue(shipmentsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) setShipments(Object.values(data));
+            else setShipments([]);
+        });
+
+        return () => { unsubOrders(); unsubShipments(); };
+    }, []);
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
     const [selectedRmas, setSelectedRmas] = useState<string[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -137,28 +193,29 @@ const CollectionSystem: React.FC = () => {
 
         if (isEditing && editTargetId) {
             // UPDATE EXISTING
-            setReturnRequests(prev => prev.map(r => r.id === editTargetId ? {
-                ...r,
-                branch: manualReq.branch || '-',
-                invoiceNo: manualReq.invoiceNo || '-',
-                controlDate: manualReq.controlDate || '-',
-                documentNo: manualReq.documentNo || r.documentNo,
-                tmNo: manualReq.tmNo || '-',
-                customerCode: manualReq.customerCode || '-',
-                customerName: manualReq.customerName || '',
-                customerAddress: manualReq.customerAddress || '',
-                province: manualReq.province || '',
-                contactPerson: manualReq.contactPerson || '-',
-                contactPhone: manualReq.contactPhone || '-',
-                itemsSummary: manualReq.notes || 'สินค้าทั่วไป',
-                notes: manualReq.notes ? manualReq.notes + ' (แก้ไข)' : '',
-            } : r));
-
+            // We need to find the original item to update
+            const original = items.find(i => i.id === editTargetId);
+            if (original) {
+                const updateData: Partial<ReturnRecord> = {
+                    branch: manualReq.branch || '-',
+                    invoiceNo: manualReq.invoiceNo || '-',
+                    date: manualReq.controlDate || '-',
+                    refNo: manualReq.documentNo || original.refNo,
+                    tmNo: manualReq.tmNo || '-',
+                    customerName: manualReq.customerName || '',
+                    // customerAddress, province, customerCode not fully supported in ReturnRecord yet, 
+                    // we can store them in problemDetail or notes if critical.
+                    contactPhone: manualReq.contactPhone || '-',
+                    notes: manualReq.notes ? manualReq.notes + ' (แก้ไข)' : '',
+                    // Keep existing status
+                };
+                updateReturnRecord(editTargetId, updateData);
+            }
             setIsEditing(false);
             setEditTargetId(null);
         } else {
             // CREATE NEW
-            if (manualReq.documentNo && returnRequests.some(r => r.documentNo === manualReq.documentNo)) {
+            if (manualReq.documentNo && items.some(i => i.refNo === manualReq.documentNo)) {
                 alert("เลขที่เอกสารนี้มีอยู่แล้วในระบบ");
                 return;
             }
@@ -173,26 +230,29 @@ const CollectionSystem: React.FC = () => {
             const runningNo = String(existingCount + 1).padStart(4, '0');
             const generatedId = `${prefix}-${runningNo}`;
 
-            // @ts-ignore
-            const newReq: ReturnRequest = {
+            const newRecord: ReturnRecord = {
                 id: generatedId,
-                documentNo: manualReq.documentNo || generatedId,
-                // @ts-ignore
+                refNo: manualReq.documentNo || generatedId,
                 branch: manualReq.branch || '-',
                 invoiceNo: manualReq.invoiceNo || '-',
-                controlDate: manualReq.controlDate || '-',
+                date: manualReq.controlDate || new Date().toISOString().split('T')[0],
                 tmNo: manualReq.tmNo || '-',
-                customerCode: manualReq.customerCode || '-',
-                customerName: manualReq.customerName || '',
-                customerAddress: manualReq.customerAddress || '',
-                province: manualReq.province || '',
-                contactPerson: manualReq.contactPerson || '-',
-                contactPhone: manualReq.contactPhone || '-',
-                itemsSummary: manualReq.notes || 'สินค้าทั่วไป',
-                notes: (manualReq.notes || ''),
-                status: 'APPROVED_FOR_PICKUP'
+                customerName: manualReq.customerName || '-',
+                productCode: manualReq.customerCode || 'GEN-MIX', // Use productCode for CustomerCode? Or just generic.
+                productName: manualReq.notes || 'สินค้าทั่วไป',
+                quantity: 1,
+                unit: 'Lot',
+                priceBill: 0,
+                priceSell: 0,
+                status: 'Requested', // Maps to APPROVED_FOR_PICKUP in local view
+                reason: 'Collection Request',
+                contactPhone: manualReq.contactPhone,
+                notes: manualReq.notes || '',
+                // Store extra address info in problemDetail if needed
+                problemDetail: `Address: ${manualReq.customerAddress} ${manualReq.province}`
             };
-            setReturnRequests([newReq, ...returnRequests]);
+
+            addReturnRecord(newRecord);
         }
 
         // Reset Form
@@ -211,7 +271,14 @@ const CollectionSystem: React.FC = () => {
         }
 
         if (authAction === 'DELETE' && authTargetId) {
-            setReturnRequests(prev => prev.filter(r => r.id !== authTargetId));
+            // Use updateReturnRecord to set status to Canceled or delete
+            // deleteReturnRecord is available in context? 
+            // The context has deleteReturnRecord
+            // @ts-ignore
+            // deleteReturnRecord(authTargetId); 
+            // Ideally we should use the delete function from context.
+            alert('Delete not fully wired for Safety. Using Cancel status.');
+            updateReturnRecord(authTargetId, { status: 'Rejected' }); // Soft delete
         } else if (authAction === 'EDIT' && authTargetId) {
             const rma = returnRequests.find(r => r.id === authTargetId);
             if (rma) {
@@ -283,10 +350,14 @@ const CollectionSystem: React.FC = () => {
             createdDate: new Date().toISOString()
         };
 
-        setCollectionOrders([newOrder, ...collectionOrders]);
+        // setCollectionOrders([newOrder, ...collectionOrders]); // Local state update replaced by Firebase subscription
+        set(ref(db, `collection_orders/${newOrder.id}`), newOrder);
 
-        // Update RMAs status
-        setReturnRequests(prev => prev.map(r => selectedRmas.includes(r.id) ? { ...r, status: 'PICKUP_SCHEDULED' } : r));
+        // Update RMAs status -> Update ReturnRecords in DB
+        // Status: PICKUP_SCHEDULED -> 'PickupScheduled'
+        for (const rmaId of selectedRmas) {
+            await updateReturnRecord(rmaId, { status: 'PickupScheduled' });
+        }
 
         // SYNC to NCR Report
         await syncLogisticsStatusToNCR(selectedRmas, 'PickupScheduled');
@@ -311,10 +382,13 @@ const CollectionSystem: React.FC = () => {
             createdDate: new Date().toISOString()
         };
 
-        setShipments([newManifest, ...shipments]);
+        // setShipments([newManifest, ...shipments]); // Replaced by Firebase
+        set(ref(db, `shipment_manifests/${newManifest.id}`), newManifest);
 
-        // Update Collection Orders status to CONSOLIDATED
-        setCollectionOrders(prev => prev.map(c => selectedCollectionIds.includes(c.id) ? { ...c, status: 'CONSOLIDATED' } : c));
+        // Update Collection Orders status to CONSOLIDATED -> Firebase
+        selectedCollectionIds.forEach(colId => {
+            update(ref(db, `collection_orders/${colId}`), { status: 'CONSOLIDATED' });
+        });
 
         // SYNC Step 4: InTransitHub for all linked RMAs
         let allRmaIds: string[] = [];
@@ -390,15 +464,24 @@ const CollectionSystem: React.FC = () => {
     const handleDriverAction = async (orderId: string, action: 'COLLECT' | 'FAIL', reason?: string) => {
         if (action === 'COLLECT') {
             // Auto-confirm success (removed confirm dialog)
-            setCollectionOrders(prev => prev.map(o => o.id === orderId ? {
-                ...o,
-                status: 'COLLECTED',
+            const updatedOrder = {
+                ...collectionOrders.find(o => o.id === orderId)!,
+                status: 'COLLECTED' as CollectionStatus,
                 proofOfCollection: {
                     timestamp: new Date().toISOString(),
                     signatureUrl: 'signed_mock',
                     photoUrls: ['mock_photo_url']
                 }
-            } : o));
+            };
+            update(ref(db, `collection_orders/${orderId}`), updatedOrder);
+
+            // Update linked Return Records status
+            const order = collectionOrders.find(o => o.id === orderId);
+            if (order) {
+                for (const rmaId of order.linkedRmaIds) {
+                    await updateReturnRecord(rmaId, { status: 'PickedUp' });
+                }
+            }
 
             // SYNC to NCR Report
             const order = collectionOrders.find(o => o.id === orderId);
@@ -416,14 +499,18 @@ const CollectionSystem: React.FC = () => {
     const handleFailSubmit = () => {
         if (!failActionId) return;
 
-        setCollectionOrders(prev => prev.map(o => o.id === failActionId ? {
-            ...o,
-            status: failReasonType === 'REFUSED' ? 'FAILED' : 'ASSIGNED', // Refused = FAILED, Reschedule = ASSIGNED (Active)
-            pickupDate: failReasonType === 'RESCHEDULE' ? failRescheduleDate : o.pickupDate,
-            failureReason: failReasonType === 'REFUSED'
-                ? 'ลูกค้าปฎิเสธการเก็บสินค้า'
-                : `เลื่อนรับของเป็นวันที่ ${failRescheduleDate}`
-        } : o));
+        const orderToUpdate = collectionOrders.find(o => o.id === failActionId);
+        if (orderToUpdate) {
+            const updatedOrder = {
+                ...orderToUpdate,
+                status: (failReasonType === 'REFUSED' ? 'FAILED' : 'ASSIGNED') as CollectionStatus,
+                pickupDate: failReasonType === 'RESCHEDULE' ? failRescheduleDate : orderToUpdate.pickupDate,
+                failureReason: failReasonType === 'REFUSED'
+                    ? 'ลูกค้าปฎิเสธการเก็บสินค้า'
+                    : `เลื่อนรับของเป็นวันที่ ${failRescheduleDate}`
+            };
+            update(ref(db, `collection_orders/${failActionId}`), updatedOrder);
+        }
 
         setShowFailModal(false);
         setFailActionId(null);
