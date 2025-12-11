@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Truck, MapPin, Printer, ArrowRight, Package, Box, Calendar } from 'lucide-react';
+import { Truck, MapPin, Printer, ArrowRight, Package, Box, Calendar, Layers } from 'lucide-react';
 import { ReturnRecord } from '../../../types';
 
 interface Step2LogisticsProps {
@@ -280,63 +280,46 @@ export const Step2Logistics: React.FC<Step2LogisticsProps> = ({ items, onConfirm
                                             {/* Content Area */}
                                             <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4">
 
-                                                {/* Product Info (Span 8) */}
-                                                <div className="md:col-span-7">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        {/* Badge */}
-                                                        {isNCR ? (
-                                                            <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-blue-200">
-                                                                <Package size={12} /> NCR: {displayID}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="inline-flex items-center gap-1.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-indigo-200">
-                                                                <Package size={12} /> COL: {displayID}
-                                                            </span>
-                                                        )}
-                                                        <span className="text-[10px] text-slate-400 font-mono border-l pl-2 border-slate-200">
-                                                            Code: {item.productCode || '-'}
-                                                        </span>
-                                                    </div>
-                                                    <h4 className="font-bold text-slate-800 text-sm mb-1">{item.productName}</h4>
-                                                    {item.problemDetail && (
-                                                        <p className="text-xs text-slate-500 line-clamp-1 flex items-center gap-1">
-                                                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                                            {item.problemDetail}
-                                                        </p>
-                                                    )}
-                                                </div>
-
-                                                {/* Meta Info (Span 4) */}
-                                                <div className="md:col-span-5 flex flex-col justify-center gap-2 md:border-l md:pl-4 border-slate-100 text-xs text-slate-600">
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div className="flex items-center gap-2" title="จำนวน">
-                                                            <Box size={14} className="text-slate-400" />
-                                                            <span className="font-bold text-slate-800">{item.quantity} {item.unit}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2" title="สาขาต้นทาง">
-                                                            <MapPin size={14} className="text-slate-400" />
-                                                            <span className="truncate">{item.branch}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2" title="วันที่แจ้ง">
-                                                            <Calendar size={14} className="text-slate-400" />
-                                                            <span>{item.dateRequested || '-'}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2" title="ปลายทาง">
-                                                            <ArrowRight size={14} className="text-slate-400" />
-                                                            <span className="truncate text-blue-600 font-medium">{item.destinationCustomer || '-'}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
+                                                <h4 className="font-bold text-slate-800 text-sm mb-1">{item.productName}</h4>
+                                                {item.problemDetail && (
+                                                    <p className="text-xs text-slate-500 line-clamp-1 flex items-center gap-1">
+                                                        <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                        {item.problemDetail}
+                                                    </p>
+                                                )}
                                             </div>
+
+                                            {/* Meta Info (Span 4) */}
+                                            <div className="md:col-span-5 flex flex-col justify-center gap-2 md:border-l md:pl-4 border-slate-100 text-xs text-slate-600">
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="flex items-center gap-2" title="จำนวน">
+                                                        <Box size={14} className="text-slate-400" />
+                                                        <span className="font-bold text-slate-800">{item.quantity} {item.unit}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2" title="สาขาต้นทาง">
+                                                        <MapPin size={14} className="text-slate-400" />
+                                                        <span className="truncate">{item.branch}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2" title="วันที่แจ้ง">
+                                                        <Calendar size={14} className="text-slate-400" />
+                                                        <span>{item.dateRequested || '-'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2" title="ปลายทาง">
+                                                        <ArrowRight size={14} className="text-slate-400" />
+                                                        <span className="truncate text-blue-600 font-medium">{item.destinationCustomer || '-'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                         </div>
-                                    );
+                                        </div>
+                        );
                                 })}
-                            </div>
-                        )}
                     </div>
+                        )}
                 </div>
             </div>
         </div>
+        </div >
     );
 };
