@@ -120,6 +120,7 @@ export type ReturnStatus =
   | 'ReceivedAtHub'     // Step 3 (Route A): Arrived at Hub
   | 'QCPassed'          // Step 4 (Route A)
   | 'QCFailed'          // Step 4 (Route A)
+  | 'QCCompleted'       // Step 4 (Complete)
   | 'Documented'        // Step 5 (Route A) - Legacy Name, effectively ReturnToSupplier preparation
   | 'Completed'         // Step 6: Closed
   | 'Received'          // Legacy
