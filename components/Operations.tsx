@@ -73,37 +73,7 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
         );
       case 4:
         return (
-          <Step4HubQC
-            receivedItems={derived.hubQCItems}
-            qcSelectedItem={state.qcSelectedItem}
-            customInputType={state.customInputType}
-            selectedDisposition={state.selectedDisposition}
-            dispositionDetails={state.dispositionDetails}
-            isCustomRoute={state.isCustomRoute}
-            showSplitMode={state.showSplitMode}
-            isBreakdownUnit={state.isBreakdownUnit}
-            conversionRate={state.conversionRate}
-            newUnitName={state.newUnitName}
-            splitQty={state.splitQty}
-            splitCondition={state.splitCondition}
-            splitDisposition={state.splitDisposition}
-            selectQCItem={actions.selectQCItem}
-            setQcSelectedItem={actions.setQcSelectedItem}
-            handleConditionSelect={actions.handleConditionSelect}
-            setSelectedDisposition={actions.setSelectedDisposition}
-            setIsCustomRoute={actions.setIsCustomRoute}
-            handleDispositionDetailChange={actions.handleDispositionDetailChange}
-            setShowSplitMode={actions.setShowSplitMode}
-            setIsBreakdownUnit={actions.setIsBreakdownUnit}
-            setConversionRate={actions.setConversionRate}
-            setNewUnitName={actions.setNewUnitName}
-            setSplitQty={actions.setSplitQty}
-            setSplitCondition={actions.setSplitCondition}
-            setSplitDisposition={actions.setSplitDisposition}
-            handleSplitSubmit={actions.handleSplitSubmit}
-            handleQCSubmit={actions.handleQCSubmit}
-            toggleSplitMode={actions.toggleSplitMode}
-          />
+          <Step4HubQC />
         );
       case 5:
         return (

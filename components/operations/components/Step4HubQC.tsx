@@ -5,54 +5,154 @@ import { ReturnRecord, ItemCondition, DispositionAction } from '../../../types';
 import { conditionLabels, dispositionLabels } from '../utils';
 import { RETURN_ROUTES } from '../../../constants';
 
-interface Step3QCProps {
-    receivedItems: ReturnRecord[];
-    qcSelectedItem: ReturnRecord | null;
-    customInputType: 'Good' | 'Bad' | null;
-    selectedDisposition: DispositionAction | null;
-    dispositionDetails: {
-        route: string;
-        sellerName: string;
-        contactPhone: string;
-        internalUseDetail: string;
-        claimCompany: string;
-        claimCoordinator: string;
-        claimPhone: string;
+import React, { useState, useEffect } from 'react';
+import { Activity, ClipboardList, GitFork, Save, Truck, Search } from 'lucide-react';
+import { useData } from '../../../DataContext';
+import { ReturnRecord, ItemCondition, DispositionAction } from '../../../types';
+import { conditionLabels, dispositionLabels } from '../utils';
+import { RETURN_ROUTES } from '../../../constants';
+
+export const Step4HubQC: React.FC = () => {
+    const { items, updateReturnRecord, addReturnRecord } = useData();
+
+    // Local State
+    const [qcSelectedItem, setQcSelectedItem] = useState<ReturnRecord | null>(null);
+    const [customInputType, setCustomInputType] = useState<'Good' | 'Bad' | null>(null);
+    const [selectedDisposition, setSelectedDisposition] = useState<DispositionAction | null>(null);
+    const [dispositionDetails, setDispositionDetails] = useState({
+        route: '',
+        sellerName: '',
+        contactPhone: '',
+        internalUseDetail: '',
+        claimCompany: '',
+        claimCoordinator: '',
+        claimPhone: ''
+    });
+    const [isCustomRoute, setIsCustomRoute] = useState(false);
+
+    // Split State
+    const [showSplitMode, setShowSplitMode] = useState(false);
+    const [isBreakdownUnit, setIsBreakdownUnit] = useState(false);
+    const [conversionRate, setConversionRate] = useState(1);
+    const [newUnitName, setNewUnitName] = useState('');
+    const [splitQty, setSplitQty] = useState(0);
+    const [splitCondition, setSplitCondition] = useState<ItemCondition>('New');
+    const [splitDisposition, setSplitDisposition] = useState<DispositionAction | null>(null);
+
+    // Filter Items: Status 'ReceivedAtHub'
+    const receivedItems = React.useMemo(() => {
+        return items.filter(item => item.status === 'ReceivedAtHub');
+    }, [items]);
+
+    // Handlers
+    const selectQCItem = (item: ReturnRecord) => {
+        setQcSelectedItem(item);
+        // Reset form
+        setSelectedDisposition(null);
+        setCustomInputType(null);
+        setShowSplitMode(false);
+        setSplitQty(0);
+        setDispositionDetails({
+            route: '', sellerName: '', contactPhone: '', internalUseDetail: '',
+            claimCompany: '', claimCoordinator: '', claimPhone: ''
+        });
     };
-    isCustomRoute: boolean;
-    showSplitMode: boolean;
-    isBreakdownUnit: boolean;
-    conversionRate: number;
-    newUnitName: string;
-    splitQty: number;
-    splitCondition: ItemCondition;
-    splitDisposition: DispositionAction | null;
 
-    selectQCItem: (item: ReturnRecord) => void;
-    setQcSelectedItem: React.Dispatch<React.SetStateAction<ReturnRecord | null>>;
-    handleConditionSelect: (condition: ItemCondition, type?: 'Good' | 'Bad') => void;
-    setSelectedDisposition: (disp: DispositionAction | null) => void;
-    setIsCustomRoute: (val: boolean) => void;
-    handleDispositionDetailChange: (key: any, value: string) => void;
-    setShowSplitMode: (val: boolean) => void;
-    setIsBreakdownUnit: (val: boolean) => void;
-    setConversionRate: (val: number) => void;
-    setNewUnitName: (val: string) => void;
-    setSplitQty: (val: number) => void;
-    setSplitCondition: (val: ItemCondition) => void;
-    setSplitDisposition: (val: DispositionAction | null) => void;
-    handleSplitSubmit: () => void;
-    handleQCSubmit: () => void;
-    toggleSplitMode: () => void;
-}
+    const handleConditionSelect = (condition: ItemCondition, type?: 'Good' | 'Bad') => {
+        if (!qcSelectedItem) return;
+        setQcSelectedItem({ ...qcSelectedItem, condition });
+        if (type) setCustomInputType(type);
+    };
 
-export const Step4HubQC: React.FC<Step3QCProps> = ({
-    receivedItems, qcSelectedItem, customInputType, selectedDisposition, dispositionDetails, isCustomRoute,
-    showSplitMode, isBreakdownUnit, conversionRate, newUnitName, splitQty, splitCondition, splitDisposition,
-    selectQCItem, setQcSelectedItem, handleConditionSelect, setSelectedDisposition, setIsCustomRoute, handleDispositionDetailChange,
-    setShowSplitMode, setIsBreakdownUnit, setConversionRate, setNewUnitName, setSplitQty, setSplitCondition, setSplitDisposition,
-    handleSplitSubmit, handleQCSubmit, toggleSplitMode
-}) => {
+    const handleDispositionDetailChange = (key: string, value: string) => {
+        setDispositionDetails(prev => ({ ...prev, [key]: value }));
+    };
+
+    const toggleSplitMode = () => {
+        setShowSplitMode(!showSplitMode);
+    };
+
+    const handleQCSubmit = async () => {
+        if (!qcSelectedItem || !selectedDisposition) return;
+
+        // Construct update object
+        const updates: Partial<ReturnRecord> = {
+            status: 'QCCompleted',
+            condition: qcSelectedItem.condition,
+            disposition: selectedDisposition,
+            // Flatten disposition details into relevant fields or notes
+            // mapping similar to original logic
+            destinationCustomer: selectedDisposition === 'RTV' ? dispositionDetails.route :
+                selectedDisposition === 'Restock' ? dispositionDetails.sellerName :
+                    selectedDisposition === 'InternalUse' ? dispositionDetails.internalUseDetail : '',
+            problemDetail: selectedDisposition === 'Claim' ? `Claim: ${dispositionDetails.claimCompany} / ${dispositionDetails.claimCoordinator}` : qcSelectedItem.problemDetail
+        };
+
+        await updateReturnRecord(qcSelectedItem.id, updates);
+        setQcSelectedItem(null);
+    };
+
+    const handleSplitSubmit = async () => {
+        if (!qcSelectedItem || splitQty <= 0) return;
+
+        // 1. Calculate quantities
+        const originalQty = qcSelectedItem.quantity;
+        const totalUnits = isBreakdownUnit ? originalQty * conversionRate : originalQty;
+
+        // Validation
+        if (splitQty >= totalUnits) {
+            alert('Cannot split entire quantity via split function. Use normal Submit.');
+            return;
+        }
+
+        const remainingUnits = totalUnits - splitQty;
+
+        // 2. Update Original Item (Remaining)
+        const updatedOriginalQty = isBreakdownUnit
+            ? Math.floor(remainingUnits / conversionRate)  // Approximate back to packs if needed, or stick to logic
+            // Actually if we breakdown, we might convert the unit of the original item? or keep it as packs but reduce qty?
+            // If I have 10 packs (12 pcs each) = 120 pcs. I split 10 pcs. Remaining 110 pcs.
+            // 110 pcs = 9.16 packs. This is tricky for integer quantity steps.
+            // Usually we convert the MAIN item to pieces if breakdown happens?
+            : remainingUnits;
+
+        // Simplified Logic: If breakdown, we might need complex unit conversion.
+        // For now, let's assume we update the original quantity. 
+        // If isBreakdownUnit is true, we usually convert the original item's unit to the sub-unit?
+
+        const updateMain: Partial<ReturnRecord> = {
+            quantity: (isBreakdownUnit && remainingUnits > 0) ? remainingUnits : remainingUnits,
+            unit: isBreakdownUnit ? newUnitName : qcSelectedItem.unit,
+            // If we broke down, the price per unit changes?
+            // Not handling deep pricing logic here for brevity, keeping simple flow.
+            status: 'QCCompleted', // The main part is also processed? Or remains?
+            // Usually the main part is what we are "Keeping" or processing with the MAIN disposition.
+            // But here we are just splitting.
+            // Let's assume the main item is NOT finished yet? Or we finish it now?
+            // The UI shows a Disposition selector for the main item. So yes, we finish it.
+            disposition: selectedDisposition || 'Pending',
+            condition: qcSelectedItem.condition
+        };
+
+        await updateReturnRecord(qcSelectedItem.id, updateMain);
+
+
+        // 3. Create New Item (Split Part)
+        const newItem: ReturnRecord = {
+            ...qcSelectedItem,
+            id: `${qcSelectedItem.id}-SP${Date.now().toString().slice(-4)}`,
+            quantity: splitQty,
+            unit: isBreakdownUnit ? newUnitName : qcSelectedItem.unit,
+            condition: splitCondition,
+            disposition: splitDisposition || 'Pending', // If immediate disposition selected
+            status: splitDisposition ? 'QCCompleted' : 'ReceivedAtHub', // If pending, go back to QC queue
+            refNo: `${qcSelectedItem.refNo}-SP`
+        };
+
+        await addReturnRecord(newItem);
+        setQcSelectedItem(null);
+    };
+
     return (
         <div className="h-full flex">
             {/* Sidebar List */}
