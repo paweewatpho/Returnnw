@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Truck, MapPin, Printer, ArrowRight, Package, Box, Calendar, Layers } from 'lucide-react';
+import { useData } from '../../../DataContext';
 import { ReturnRecord } from '../../../types';
 
 interface Step2LogisticsProps {
-    items: ReturnRecord[];
+    // items: ReturnRecord[]; // Removed as we use global state
     onConfirm: (selectedIds: string[], routeType: 'Hub' | 'Direct', transportInfo: any) => void;
 }
 
-export const Step2Logistics: React.FC<Step2LogisticsProps> = ({ items, onConfirm }) => {
+export const Step2Logistics: React.FC<Step2LogisticsProps> = ({ onConfirm }) => {
+    const { items, updateReturnRecord } = useData();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [transportInfo, setTransportInfo] = useState({
         driverName: '',
@@ -20,11 +22,16 @@ export const Step2Logistics: React.FC<Step2LogisticsProps> = ({ items, onConfirm
     const [customDestination, setCustomDestination] = useState<string>('');
     const [selectedBranch, setSelectedBranch] = useState<string>('All');
 
-    // Filter Logic
-    const uniqueBranches = Array.from(new Set(items.map(i => i.branch))).filter(Boolean);
-    const filteredItems = items.filter(item =>
+    // Filter Logic: Global Items -> Status 'Requested'
+    const logisticsItems = useMemo(() => {
+        return items.filter(i => i.status === 'Requested');
+    }, [items]);
+
+    const uniqueBranches = useMemo(() => Array.from(new Set(logisticsItems.map(i => i.branch))).filter(Boolean), [logisticsItems]);
+
+    const filteredItems = useMemo(() => logisticsItems.filter(item =>
         selectedBranch === 'All' || item.branch === selectedBranch
-    );
+    ), [logisticsItems, selectedBranch]);
 
     const handleToggle = (id: string) => {
         const newSet = new Set(selectedIds);
@@ -47,7 +54,7 @@ export const Step2Logistics: React.FC<Step2LogisticsProps> = ({ items, onConfirm
         }
     };
 
-    const confirmSelection = () => {
+    const confirmSelection = async () => {
         if (selectedIds.size === 0) {
             alert('กรุณาเลือกรายการสินค้าอย่างน้อย 1 รายการ');
             return;
@@ -72,11 +79,42 @@ export const Step2Logistics: React.FC<Step2LogisticsProps> = ({ items, onConfirm
         }
 
         const confirmMsg = routeType === 'Hub'
-            ? 'ยืนยันการส่งสินค้าเข้าศูนย์กระจายสินค้า (Hub นครสวรรค์)?'
+            ? 'ยืนยันการเปลี่ยนสถานะเป็น "รอรถรับ" (PickupScheduled) และบันทึกข้อมูลรถ?'
             : `ยืนยันการส่งคืนตรงผู้ผลิต (Direct Return) ไปยัง "${finalDestination}"?`;
 
         if (window.confirm(confirmMsg)) {
+            // Update Records Directly
+            const driverDetails = `Driver: ${transportInfo.driverName}, Plate: ${transportInfo.plateNumber}, Transport: ${transportInfo.transportCompany}`;
+
+            for (const id of Array.from(selectedIds)) {
+                if (routeType === 'Hub') {
+                    await updateReturnRecord(id, {
+                        status: 'PickupScheduled',
+                        // Store driver info in notes or relevant field
+                        notes: `[Logistics] ${driverDetails}`,
+                        // problemDetail: `${driverDetails}` 
+                    });
+                } else {
+                    // Direct Return Logic (Might default to Completed or Documented?)
+                    // User asked for "DriverAssigned", usually leading to Hub. Direct might just skip?
+                    // For Direct, let's assume it goes to 'Documented' or remains 'Requested' but with notes?
+                    // Adhering to User Request: "Update... to 'DriverAssigned' (or 'CollectionScheduled')"
+                    // Assuming this is for Hub route mainly. for Direct, maybe 'ReturnToSupplier'?
+                    // Let's stick to user request for status update.
+                    await updateReturnRecord(id, {
+                        status: 'ReturnToSupplier', // Direct return usually skips Hub logic
+                        disposition: 'RTV',
+                        destinationCustomer: finalDestination,
+                        notes: `[Direct Logistics] ${driverDetails}`
+                    });
+                }
+            }
+
+            // Call onConfirm to notify parent (maybe to clear selection or show success msg)
             onConfirm(Array.from(selectedIds), routeType, { ...transportInfo, destination: finalDestination });
+
+            // Clear selection
+            setSelectedIds(new Set());
         }
     };
 

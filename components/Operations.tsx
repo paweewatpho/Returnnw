@@ -64,7 +64,6 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
       case 2:
         return (
           <Step2Logistics
-            items={derived.logisticItems}
             onConfirm={actions.handleLogisticsSubmit}
           />
         );
