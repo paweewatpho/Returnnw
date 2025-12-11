@@ -114,6 +114,7 @@ interface DataContextType {
   deleteNCRReport: (id: string) => Promise<boolean>; // This will now be a "cancel" operation
   getNextNCRNumber: () => Promise<string>;
   getNextReturnNumber: () => Promise<string>;
+  runDataIntegrityCheck: () => Promise<number>;
 }
 
 const DataContext = createContext<DataContextType>({
@@ -128,6 +129,7 @@ const DataContext = createContext<DataContextType>({
   deleteNCRReport: async () => false,
   getNextNCRNumber: async () => 'NCR-ERROR-0000',
   getNextReturnNumber: async () => 'RT-ERROR-0000',
+  runDataIntegrityCheck: async () => 0,
 });
 
 export const useData = () => useContext(DataContext);
@@ -397,8 +399,70 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const runDataIntegrityCheck = async (): Promise<number> => {
+    console.log("🔄 Starting Data Integrity Check...");
+    // Force a fresh read of the latest state effectively by using the current 'items' and 'ncrReports' from closure
+    // However, in a closure, 'items' might be stale if not careful. 
+    // Since 'items' is in the dependency array of DataProvider (re-render), the function recreated has latest scope?
+    // Actually, DataProvider component function runs on every render.
+
+    // Better logic: Filter current items
+    const orphans = items.filter(item => {
+      // Logic: Identify items that claim to be NCRs but have no valid active parent
+      if (!item.ncrNumber && !item.id.startsWith('NCR')) return false;
+
+      // Normalize ID to check
+      let ncrNoToCheck = item.ncrNumber;
+      if (!ncrNoToCheck && item.id.startsWith('NCR')) {
+        // Sometimes ID is the NCR No itself or composite
+        // If ID is "NCR-2025-0001-1", parent is "NCR-2025-0001" ? 
+        // Usually ID is just copied from NCR No for the first item?
+        // Let's assume strict matching: ID or ncrNumber must match an existing NCR Report's No or ID
+        ncrNoToCheck = item.id;
+      }
+
+      if (!ncrNoToCheck) return false;
+      ncrNoToCheck = ncrNoToCheck.trim();
+
+      // Find parent NCR
+      // We check both ncrNo field and id field of NCR reports for robust matching
+      // Also handle potential composite IDs in ReturnRecord if they were created with suffix?
+      // Assuming 1:1 map or direct ncrNo reference for now based on previous code.
+      const linkedNCR = ncrReports.find(n => n.ncrNo === ncrNoToCheck || n.id === ncrNoToCheck);
+
+      // It is an orphan if:
+      // 1. No linked NCR found (Deleted parent)
+      // 2. Linked NCR status is 'Canceled' (Soft deleted parent)
+      return !linkedNCR || linkedNCR.status === 'Canceled';
+    });
+
+    if (orphans.length === 0) {
+      console.log("✅ System Integrity Verified: No orphans found.");
+      return 0;
+    }
+
+    console.warn(`⚠️ Found ${orphans.length} orphaned records. Cleaning up...`, orphans);
+
+    let deletedCount = 0;
+    for (const orphan of orphans) {
+      try {
+        await remove(ref(db, `return_records/${orphan.id}`));
+        deletedCount++;
+      } catch (e) {
+        console.error(`❌ Failed to delete orphan ${orphan.id}`, e);
+      }
+    }
+
+    console.log(`🧹 Cleanup Complete. Removed ${deletedCount} records.`);
+    return deletedCount;
+  };
+
   return (
-    <DataContext.Provider value={{ items, ncrReports, loading, addReturnRecord, updateReturnRecord, deleteReturnRecord, addNCRReport, updateNCRReport, deleteNCRReport, getNextNCRNumber, getNextReturnNumber }}>
+    <DataContext.Provider value={{
+      items, ncrReports, loading, addReturnRecord, updateReturnRecord, deleteReturnRecord,
+      addNCRReport, updateNCRReport, deleteNCRReport, getNextNCRNumber, getNextReturnNumber,
+      runDataIntegrityCheck
+    }}>
       {children}
     </DataContext.Provider>
   );

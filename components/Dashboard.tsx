@@ -23,7 +23,7 @@ const COLORS = {
 };
 
 const Dashboard: React.FC = () => {
-  const { items, ncrReports } = useData();
+  const { items, ncrReports, runDataIntegrityCheck } = useData();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authPassword, setAuthPassword] = useState('');
   const [isResetting, setIsResetting] = useState(false);
@@ -50,45 +50,13 @@ const Dashboard: React.FC = () => {
   };
 
   const handleIntegrityCheck = async () => {
-    const orphans = items.filter(item => {
-      // Check only NCR related items (either has ncrNumber or ID starts with NCR)
-      if (!item.ncrNumber && !item.id.startsWith('NCR')) return false;
-
-      // Case 1: Has explicit ncrNumber field
-      if (item.ncrNumber) {
-        const linkedNCR = ncrReports.find(n => n.ncrNo === item.ncrNumber);
-        return !linkedNCR || linkedNCR.status === 'Canceled';
+    if (confirm("ต้องการตรวจสอบระบบและล้างข้อมูลตกค้างหรือไม่? (Start Data Integrity Scan?)")) {
+      const count = await runDataIntegrityCheck();
+      if (count > 0) {
+        alert(`ดำเนินการเสร็จสิ้น: ลบข้อมูลตกค้าง (Orphaned Records) ไปทั้งสิ้น ${count} รายการ`);
+      } else {
+        alert("ระบบปกติ: ไม่พบข้อมูลตกค้าง");
       }
-
-      // Case 2: ID starts with NCR (Implicit linkage for some records)
-      if (item.id.startsWith('NCR')) {
-        const linkedNCR = ncrReports.find(n => n.ncrNo === item.id || n.id === item.id);
-        return !linkedNCR || linkedNCR.status === 'Canceled';
-      }
-
-      return false;
-    });
-
-    if (orphans.length === 0) {
-      alert("ไม่พบข้อมูลผิดปกติ (System Stable - No orphans found)");
-      return;
-    }
-
-    const confirmMsg = `พบข้อมูลตกค้างใน Operations Hub (Orphaned): ${orphans.length} รายการ\n` +
-      orphans.map(i => `- ${i.id} / ${i.ncrNumber || ''} (${i.productName})`).join('\n') +
-      `\n\nต้องการลบข้อมูลเหล่านี้ออกจากระบบหรือไม่?`;
-
-    if (confirm(confirmMsg)) {
-      let deletedCount = 0;
-      for (const orphan of orphans) {
-        try {
-          await remove(ref(db, `return_records/${orphan.id}`));
-          deletedCount++;
-        } catch (e) {
-          console.error("Failed to delete orphan", orphan.id);
-        }
-      }
-      alert(`ซ่อมแซมข้อมูลสำเร็จ ลบไป ${deletedCount} รายการ`);
     }
   };
 
@@ -502,15 +470,15 @@ const Dashboard: React.FC = () => {
       {/* MAINTENANCE ZONE */}
       <div className="flex flex-col md:flex-row gap-4 justify-center mt-12 mb-8 opacity-70 hover:opacity-100 transition-opacity">
 
-        {/* Integrity Check */}
-        <div className="border border-slate-200 bg-slate-50 rounded-lg p-6 flex flex-col items-center w-64 hover:shadow-md transition-shadow">
-          <h3 className="text-slate-700 font-bold text-sm mb-2 flex items-center gap-2">
-            <RotateCcw className="w-4 h-4 text-blue-500" /> System Integrity
+        {/* Sync & Cleanup */}
+        <div className="border border-blue-200 bg-blue-50 rounded-lg p-6 flex flex-col items-center w-64 hover:shadow-md transition-shadow">
+          <h3 className="text-blue-700 font-bold text-sm mb-2 flex items-center gap-2">
+            <RotateCcw className="w-4 h-4" /> Sync & Cleanup Data
           </h3>
-          <button onClick={handleIntegrityCheck} className="text-blue-600 underline text-xs cursor-pointer hover:text-blue-800">
-            ตรวจสอบและซ่อมแซมข้อมูล
+          <button onClick={handleIntegrityCheck} className="text-blue-600 underline text-xs cursor-pointer hover:text-blue-800 font-semibold">
+            ตรวจสอบและล้างข้อมูลขยะ
           </button>
-          <div className="text-[10px] text-slate-400 mt-1">Scan for orphaned records</div>
+          <div className="text-[10px] text-blue-400 mt-1">Remove orphaned NCR records</div>
         </div>
 
         {/* Factory Reset */}
