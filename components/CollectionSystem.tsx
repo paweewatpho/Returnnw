@@ -329,49 +329,51 @@ const CollectionSystem: React.FC = () => {
                         )}
                     </div>
 
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold border-b border-slate-200">
-                            <tr>
-                                <th className="p-3 w-10"><input type="checkbox" disabled /></th>
-                                <th className="p-3">เลขที่เอกสาร</th>
-                                <th className="p-3">สาขา (Branch)</th>
-                                <th className="p-3">ลูกค้า / สถานที่</th>
-                                <th className="p-3">สินค้า</th>
-                                <th className="p-3 text-right">สถานะ</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {pendingRmas.length === 0 ? (
-                                <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">ไม่มีรายการรอรับงาน</td></tr>
-                            ) : pendingRmas.map(rma => (
-                                <tr key={rma.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => {
-                                    setSelectedRmas(prev => prev.includes(rma.id) ? prev.filter(id => id !== rma.id) : [...prev, rma.id]);
-                                }}>
-                                    <td className="p-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedRmas.includes(rma.id)}
-                                            onChange={() => { }}
-                                            className="accent-blue-600 w-4 h-4 cursor-pointer"
-                                        />
-                                    </td>
-                                    <td className="p-3 text-sm font-bold text-blue-600">
-                                        <div>{rma.documentNo || rma.id}</div>
-                                        {rma.invoiceNo && <div className="text-xs text-slate-400 font-normal">INV: {rma.invoiceNo}</div>}
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                        <div className="font-bold text-slate-700 badge bg-slate-100 inline-block px-2 py-1 rounded">{rma.branch || 'N/A'}</div>
-                                    </td>
-                                    <td className="p-3 text-sm">
-                                        <div className="font-bold text-slate-700">{rma.customerName}</div>
-                                        <div className="text-xs text-slate-500 truncate max-w-[200px]">{rma.customerAddress}</div>
-                                    </td>
-                                    <td className="p-3 text-sm text-slate-600">{rma.itemsSummary}</td>
-                                    <td className="p-3 text-right"><StatusBadge status={rma.status} /></td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left whitespace-nowrap">
+                            <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-bold border-b border-slate-200">
+                                <tr>
+                                    <th className="p-3 w-10"><input type="checkbox" disabled /></th>
+                                    <th className="p-3">เลข Invoice</th>
+                                    <th className="p-3">วันที่ใบคุมรถ</th>
+                                    <th className="p-3">เลขที่เอกสาร (R)</th>
+                                    <th className="p-3">ชื่อลูกค้า</th>
+                                    <th className="p-3">ที่อยู่</th>
+                                    <th className="p-3">จังหวัด</th>
+                                    <th className="p-3">เลขที่ใบคุม (TM)</th>
+                                    <th className="p-3">รหัสลูกค้า</th>
+                                    <th className="p-3">หมายเหตุ</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {pendingRmas.length === 0 ? (
+                                    <tr><td colSpan={10} className="p-8 text-center text-slate-400 italic">ไม่มีรายการรอรับงาน</td></tr>
+                                ) : pendingRmas.map(rma => (
+                                    <tr key={rma.id} className="hover:bg-slate-50 transition-colors cursor-pointer text-sm" onClick={() => {
+                                        setSelectedRmas(prev => prev.includes(rma.id) ? prev.filter(id => id !== rma.id) : [...prev, rma.id]);
+                                    }}>
+                                        <td className="p-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedRmas.includes(rma.id)}
+                                                onChange={() => { }}
+                                                className="accent-blue-600 w-4 h-4 cursor-pointer"
+                                            />
+                                        </td>
+                                        <td className="p-3 text-slate-700">{rma.invoiceNo || '-'}</td>
+                                        <td className="p-3 text-slate-700">{rma.controlDate || '-'}</td>
+                                        <td className="p-3 font-bold text-blue-600">{rma.documentNo || '-'}</td>
+                                        <td className="p-3 font-bold text-slate-700">{rma.customerName}</td>
+                                        <td className="p-3 text-slate-600 max-w-[200px] truncate" title={rma.customerAddress}>{rma.customerAddress}</td>
+                                        <td className="p-3 text-slate-700">{rma.province || '-'}</td>
+                                        <td className="p-3 text-slate-700">{rma.tmNo || '-'}</td>
+                                        <td className="p-3 text-slate-700">{rma.customerCode || '-'}</td>
+                                        <td className="p-3 text-slate-500 italic max-w-[150px] truncate">{rma.notes || '-'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         );
