@@ -236,7 +236,7 @@ const CollectionSystem: React.FC = () => {
 
     const handleCreateCollection = () => {
 
-        if (!formDriverId || selectedRmas.length === 0) return;
+        if (selectedRmas.length === 0) return;
 
         // Find first RMA to get location info
         const firstRma = returnRequests.find(r => r.id === selectedRmas[0]);
@@ -244,7 +244,7 @@ const CollectionSystem: React.FC = () => {
 
         const newOrder: CollectionOrder = {
             id: `COL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(collectionOrders.length + 1).padStart(3, '0')}`,
-            driverId: formDriverId,
+            driverId: formDriverId || 'UNASSIGNED',
             linkedRmaIds: selectedRmas,
             pickupLocation: {
                 name: firstRma.customerName,
@@ -254,8 +254,8 @@ const CollectionSystem: React.FC = () => {
             },
             pickupDate: formDate,
             packageSummary: {
-                totalBoxes: formBoxes,
-                description: formDesc || 'สินค้าทั่วไป'
+                totalBoxes: 1,
+                description: `รวม ${selectedRmas.length} รายการ`
             },
             status: 'PENDING',
             vehiclePlate: mockDrivers.find(d => d.id === formDriverId)?.plate,
@@ -784,33 +784,46 @@ const CollectionSystem: React.FC = () => {
             {/* MODALS */}
 
             {/* Create Collection Modal */}
+            {/* Create Collection Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 animate-scale-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl p-6 animate-scale-in">
                         <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Truck className="w-6 h-6 text-blue-600" /> ยืนยันการรับงาน (Confirm Job Receipt)</h3>
                         <p className="text-sm text-slate-500 mb-6">รวม {selectedRmas.length} รายการ</p>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">ผู้รับผิดชอบ / สาขา (Assignee)</label>
-                                <select className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={formDriverId} onChange={e => setFormDriverId(e.target.value)}>
-                                    <option value="">-- ระบุผู้ดำเนินการ (Optional) --</option>
-                                    {mockDrivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">วันที่เข้ารับ (Pickup Date)</label>
                                 <input type="date" className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={formDate} onChange={e => setFormDate(e.target.value)} />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">จำนวนกล่อง (ประมาณ)</label>
-                                    <input type="number" min="1" className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" value={formBoxes} onChange={e => setFormBoxes(parseInt(e.target.value))} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">รายละเอียดสินค้า</label>
-                                    <input type="text" className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="เช่น อุปกรณ์คอมพิวเตอร์" value={formDesc} onChange={e => setFormDesc(e.target.value)} />
-                                </div>
+
+                            <div className="border rounded-lg overflow-hidden overflow-x-auto">
+                                <table className="w-full text-left text-sm whitespace-nowrap">
+                                    <thead className="bg-slate-50 border-b">
+                                        <tr>
+                                            <th className="p-2">เลข Invoice</th>
+                                            <th className="p-2">วันที่ใบคุมรถ</th>
+                                            <th className="p-2">เลขที่เอกสาร (R)</th>
+                                            <th className="p-2">เลขที่ใบคุม (TM)</th>
+                                            <th className="p-2">ชื่อลูกค้า</th>
+                                            <th className="p-2">ที่อยู่</th>
+                                            <th className="p-2">หมายเหตุ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {returnRequests.filter(r => selectedRmas.includes(r.id)).map(r => (
+                                            <tr key={r.id} className="hover:bg-slate-50">
+                                                <td className="p-2">{r.invoiceNo || '-'}</td>
+                                                <td className="p-2">{r.controlDate || '-'}</td>
+                                                <td className="p-2">{r.documentNo || '-'}</td>
+                                                <td className="p-2">{r.tmNo || '-'}</td>
+                                                <td className="p-2 font-bold text-slate-700">{r.customerName}</td>
+                                                <td className="p-2 truncate max-w-[200px]" title={r.customerAddress}>{r.customerAddress}</td>
+                                                <td className="p-2 italic text-slate-500 truncate max-w-[150px]">{r.notes || '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
