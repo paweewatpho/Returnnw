@@ -8,9 +8,10 @@ import {
   PieChart, Pie, Legend, AreaChart, Area
 } from 'recharts';
 import {
-  TrendingUp, Activity, AlertTriangle,
-  Truck, CheckCircle, Clock, FileText, Package, AlertOctagon, DollarSign, Trash2
+  Truck, CheckCircle, Clock, FileText, Package, AlertOctagon, DollarSign, Trash2, MapPin, Box,
+  TrendingUp, Activity, AlertTriangle
 } from 'lucide-react';
+import { mockReturnRequests, mockCollectionOrders, mockShipments } from '../data/mockCollectionData';
 
 const COLORS = {
   Restock: '#22c55e', // Green
@@ -77,6 +78,17 @@ const Dashboard: React.FC = () => {
       directReturn: items.filter(i => i.disposition === 'RTV' && !i.dateGraded && (i.dateDocumented || i.dateCompleted)).length
     };
   }, [items]);
+
+  // 1.2 Inbound Collection Stats (Mock Data / System 1)
+  const collectionStats = useMemo(() => {
+    return {
+      requests: mockReturnRequests.filter(r => r.status === 'APPROVED_FOR_PICKUP').length,
+      assigned: mockCollectionOrders.filter(c => c.status === 'ASSIGNED' || c.status === 'PENDING').length,
+      collected: mockCollectionOrders.filter(c => c.status === 'COLLECTED').length,
+      consolidated: mockCollectionOrders.filter(c => c.status === 'CONSOLIDATED').length,
+      transit: mockShipments.filter(s => s.status === 'IN_TRANSIT').length
+    };
+  }, []);
 
   // 2. Financial Metrics & Cost Analysis
   const financials = useMemo(() => {
@@ -217,10 +229,24 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 1. PIPELINE FLOW (Updated to 6 Steps matching Operations Hub) */}
+      {/* 1. INBOUND COLLECTION PIPELINE (New) */}
+      <div>
+        <h3 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <Truck className="w-4 h-4" /> ระบบงานรับสินค้า (Inbound Collection System)
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <PipelineCard step="1" title="ใบสั่งงาน (Request)" count={collectionStats.requests} icon={FileText} color="bg-teal-50 text-teal-600 border-teal-200" desc="รอจ่ายงาน" />
+          <PipelineCard step="2" title="รับงาน (Job)" count={collectionStats.assigned} icon={MapPin} color="bg-teal-50 text-teal-600 border-teal-200" desc="รถเข้ารับ" />
+          <PipelineCard step="3" title="รับของ (Collected)" count={collectionStats.collected} icon={Box} color="bg-teal-50 text-teal-600 border-teal-200" desc="เข้าสาขา" />
+          <PipelineCard step="4" title="จุดพัก (Hub)" count={collectionStats.consolidated} icon={Package} color="bg-indigo-50 text-indigo-600 border-indigo-200" desc="รอขนส่ง" />
+          <PipelineCard step="5" title="ขนส่ง (Transit)" count={collectionStats.transit} icon={Truck} color="bg-blue-50 text-blue-600 border-blue-200" desc="เข้า Ops Hub" />
+        </div>
+      </div>
+
+      {/* 2. OPERATIONS HUB PIPELINE */}
       <div>
         <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Activity className="w-4 h-4" /> สถานะงานคงค้าง (Operations Hub Pipeline)
+          <Activity className="w-4 h-4" /> ศูนย์ปฏิบัติการคืนสินค้า (Return Operations Hub)
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <PipelineCard step="1" title="แจ้งคืน (Request)" count={pipeline.requests} icon={FileText} color="bg-slate-100 text-slate-600" desc="รออนุมัติ" />
