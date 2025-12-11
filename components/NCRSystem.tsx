@@ -381,7 +381,7 @@ const NCRSystem: React.FC = () => {
 
 
     return (
-        <div className="p-8 h-full overflow-auto bg-slate-100 flex flex-col items-center print:p-0 print:m-0 print:bg-white print:h-auto print:overflow-visible print:block">
+        <div className="p-8 h-full overflow-auto bg-slate-50 flex flex-col items-center print:p-0 print:m-0 print:bg-white print:h-auto print:overflow-visible print:block">
             <style>{`
                 @media screen {
                     .a4-paper {
@@ -395,10 +395,7 @@ const NCRSystem: React.FC = () => {
                         /* Border for visual feedback of edges */
                         border: 1px solid #e2e8f0; 
                     }
-                    /* Ensure background is dark/contrast to show the paper */
-                    .bg-slate-100 {
-                        background-color: #525659 !important; /* Adobe Reader gray */
-                    }
+                    /* Removed dark background override for consistency */
                 }
 
                 @media print {
@@ -498,7 +495,7 @@ const NCRSystem: React.FC = () => {
                 </div>
 
                 {/* SECTION 1: PROBLEM */}
-                <table className="w-full border-2 border-black print-border-2 mb-6"><thead><tr className="border-b-2 border-black print-border-2 bg-slate-50 print:bg-transparent"><th className="border-r-2 border-black print-border w-1/3 py-2 text-slate-900 print-text-readable">รูปภาพ / เอกสาร</th><th className="py-2 text-slate-900 print-text-readable">รายละเอียดของปัญหาที่พบ (ผู้พบปัญหา)</th></tr></thead><tbody><tr><td className="border-r-2 border-black print-border p-4 text-center align-middle h-64 relative bg-white"><div className="flex flex-col items-center justify-center text-red-500 opacity-50 print:opacity-100 print:text-black"><h2 className="text-3xl font-bold mb-2">รูปภาพ / เอกสาร</h2><h2 className="text-3xl font-bold">ตามแนบ</h2><ImageIcon className="w-16 h-16 mt-4 print:hidden" /></div><input type="file" className="absolute inset-0 opacity-0 cursor-pointer print:hidden" title="Upload Image" /></td><td className="p-4 align-top text-sm bg-white"><div className="mb-2 font-bold underline text-slate-900 print-text-readable">พบปัญหาที่กระบวนการ <span className="text-red-500 no-print">*</span></div><div className="grid grid-cols-2 gap-2 mb-4 text-slate-700 print-text-sm">
+                <table className="w-full border-2 border-black print-border-2 mb-6"><thead><tr className="border-b-2 border-black print-border-2 bg-slate-200 print:bg-transparent"><th className="border-r-2 border-black print-border w-1/3 py-2 text-slate-900 print-text-readable">รูปภาพ / เอกสาร</th><th className="py-2 text-slate-900 print-text-readable">รายละเอียดของปัญหาที่พบ (ผู้พบปัญหา)</th></tr></thead><tbody><tr><td className="border-r-2 border-black print-border p-4 text-center align-middle h-64 relative bg-white"><div className="flex flex-col items-center justify-center text-red-500 opacity-50 print:opacity-100 print:text-black"><h2 className="text-3xl font-bold mb-2">รูปภาพ / เอกสาร</h2><h2 className="text-3xl font-bold">ตามแนบ</h2><ImageIcon className="w-16 h-16 mt-4 print:hidden" /></div><input type="file" className="absolute inset-0 opacity-0 cursor-pointer print:hidden" title="Upload Image" /></td><td className="p-4 align-top text-sm bg-white"><div className="mb-2 font-bold underline text-slate-900 print-text-readable">พบปัญหาที่กระบวนการ <span className="text-red-500 no-print">*</span></div><div className="grid grid-cols-2 gap-2 mb-4 text-slate-700 print-text-sm">
                     <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemDamaged} onChange={() => handleProblemSelection('problemDamaged')} /> ชำรุด</label>
                     <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemDamagedInBox} onChange={() => handleProblemSelection('problemDamagedInBox')} /> ชำรุดในกล่อง</label>
                     <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded"><input type="checkbox" checked={formData.problemLost} onChange={() => handleProblemSelection('problemLost')} /> สูญหาย</label>
@@ -523,7 +520,7 @@ const NCRSystem: React.FC = () => {
 
                 {/* SECTION 2: ACTION (GRID LAYOUT) */}
                 <table className="w-full border-2 border-black mb-6 text-sm bg-white print-border-2">
-                    <thead><tr className="bg-slate-50 print:bg-transparent border-b-2 border-black print-border-2"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">การดำเนินการ</th></tr></thead>
+                    <thead><tr className="bg-slate-200 print:bg-transparent border-b-2 border-black print-border-2"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">การดำเนินการ</th></tr></thead>
                     <tbody className="divide-y divide-black border-b-2 border-black print-border-2">
                         <tr>
                             <td className="p-2 border-r border-black w-1/2 print-border"><div className="flex items-center gap-2"><input type="checkbox" checked={formData.actionReject} onChange={() => handleActionSelection('actionReject')} /> <span className="font-bold">ส่งคืน (Reject)</span><span className="ml-auto text-slate-600">จำนวน:</span><input type="number" className="w-20 border-b border-dotted border-black text-center bg-transparent print:border-none outline-none" value={formData.actionRejectQty || ''} onChange={e => setFormData({ ...formData, actionRejectQty: parseInt(e.target.value) || 0 })} /></div></td>
@@ -558,11 +555,11 @@ const NCRSystem: React.FC = () => {
 
                 {/* SECTION 3: ROOT CAUSE & PREVENTION */}
                 <table className="w-full border-2 border-black mb-6 text-sm bg-white print-border-2">
-                    <thead><tr className="bg-slate-50 print:bg-transparent border-b-2 border-black print-border-2"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">สาเหตุ-การป้องกัน (ผู้รับผิดชอบปัญหา)</th></tr></thead>
+                    <thead><tr className="bg-slate-200 print:bg-transparent border-b-2 border-black print-border-2"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">สาเหตุ-การป้องกัน (ผู้รับผิดชอบปัญหา)</th></tr></thead>
                     <tbody>
                         <tr>
                             <td className="w-1/4 border-r-2 border-black align-top p-0 print-border">
-                                <div className="border-b border-black p-2 font-bold text-center bg-slate-50 print:bg-transparent print-border">สาเหตุเกิดจาก</div>
+                                <div className="border-b border-black p-2 font-bold text-center bg-slate-200 print:bg-transparent print-border">สาเหตุเกิดจาก</div>
                                 <div className="p-4 space-y-3">
                                     <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={formData.causePackaging} onChange={e => setFormData({ ...formData, causePackaging: e.target.checked, causeTransport: false, causeOperation: false, causeEnv: false })} /> บรรจุภัณฑ์</label>
                                     <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={formData.causeTransport} onChange={e => setFormData({ ...formData, causeTransport: e.target.checked, causePackaging: false, causeOperation: false, causeEnv: false })} /> การขนส่ง</label>
@@ -601,7 +598,7 @@ const NCRSystem: React.FC = () => {
                 {/* SECTION 4: CLOSING (Avoid Break Inside) */}
                 <div className="print-break-avoid">
                     <table className="w-full border-2 border-black text-sm bg-white print-border-2">
-                        <thead><tr className="bg-slate-50 print:bg-transparent border-b-2 border-black print-border-2"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">การตรวจติดตามและการปิด NCR</th></tr></thead>
+                        <thead><tr className="bg-slate-200 print:bg-transparent border-b-2 border-black print-border-2"><th colSpan={2} className="py-2 text-center font-bold text-slate-900">การตรวจติดตามและการปิด NCR</th></tr></thead>
                         <tbody>
                             <tr className="border-b-2 border-black print-border-2">
                                 <td colSpan={2} className="p-4 print-border">
