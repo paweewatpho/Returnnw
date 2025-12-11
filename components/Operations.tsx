@@ -69,10 +69,7 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
         );
       case 3:
         return (
-          <Step3HubReceive
-            requestedItems={derived.hubReceiveItems}
-            handleIntakeReceive={actions.handleIntakeReceive}
-          />
+          <Step3HubReceive />
         );
       case 4:
         return (

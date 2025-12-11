@@ -1,17 +1,26 @@
-
 import React from 'react';
 import { Truck, Inbox, MapPin, CheckCircle } from 'lucide-react';
+import { useData } from '../../../DataContext';
 import { ReturnRecord } from '../../../types';
 
-interface Step2IntakeProps {
-    requestedItems: ReturnRecord[];
-    handleIntakeReceive: (id: string) => void;
-}
-
-export const Step3HubReceive: React.FC<Step2IntakeProps> = ({ requestedItems, handleIntakeReceive }) => {
+export const Step3HubReceive: React.FC = () => {
+    const { items, updateReturnRecord } = useData();
     const [filterBranch, setFilterBranch] = React.useState<string>('');
     const [filterCustomer, setFilterCustomer] = React.useState<string>('');
     const [filterDestination, setFilterDestination] = React.useState<string>('');
+
+    // Filter Items: Status 'PickupScheduled' (In Transit from Logistics)
+    const requestedItems = React.useMemo(() => {
+        return items.filter(item => item.status === 'PickupScheduled');
+    }, [items]);
+
+    const handleIntakeReceive = async (id: string) => {
+        if (window.confirm('ยืนยันรับเข้าสินค้านี้เข้าสู่ Hub?')) {
+            await updateReturnRecord(id, {
+                status: 'ReceivedAtHub'
+            });
+        }
+    };
 
     // Unique values for dropdowns
     const branches = React.useMemo(() => {
