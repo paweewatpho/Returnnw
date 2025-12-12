@@ -1,9 +1,3 @@
-
-import React from 'react';
-import { Truck, RotateCcw, ShieldCheck, Home, Trash2, FileText, AlertOctagon } from 'lucide-react';
-import { ReturnRecord, DispositionAction } from '../../../types';
-import { KanbanColumn } from './KanbanColumn';
-
 import React from 'react';
 import { Truck, RotateCcw, ShieldCheck, Home, Trash2, FileText, AlertOctagon } from 'lucide-react';
 import { useData } from '../../../DataContext';
@@ -13,9 +7,9 @@ import { KanbanColumn } from './KanbanColumn';
 export const Step5HubDocs: React.FC = () => {
     const { items, updateReturnRecord } = useData();
 
-    // Filter Items: Status 'QCCompleted' (Passed QC)
+    // Filter Items: Status 'ReceivedAtHub' (Direct from Hub Receive, No QC as per new 8-step flow)
     const processedItems = React.useMemo(() => {
-        return items.filter(item => item.status === 'QCCompleted');
+        return items.filter(item => item.status === 'ReceivedAtHub');
     }, [items]);
 
     const handlePrintClick = async (status: DispositionAction, list: ReturnRecord[]) => {
