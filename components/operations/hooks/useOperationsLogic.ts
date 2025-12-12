@@ -437,7 +437,11 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
     const handleLogisticsSubmit = async (selectedIds: string[], routeType: 'Hub' | 'Direct', transportInfo: any) => {
         try {
             console.log(`[Logistics] HandleSubmit Called. IDs: ${selectedIds.length}, Route: ${routeType}`);
-            // alert(`Debug: Starting Submit for ${selectedIds.length} items (Route: ${routeType})`);
+
+            if (!selectedIds || selectedIds.length === 0) {
+                alert("ไม่พบรายการที่เลือก (No items selected)");
+                return;
+            }
 
             const destination = transportInfo.destination || (routeType === 'Hub' ? 'Hub (Nakhon Sawan)' : 'Unknown');
 
@@ -472,11 +476,14 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                     transportCompany: cleanCompany
                 };
 
-            const selectedItems = items.filter(i => selectedIds.includes(i.id));
+            // Force finding items from current state
+            // Use rigorous string comparison
+            const selectedItems = items.filter(i => selectedIds.includes(String(i.id)));
 
             if (!selectedItems || selectedItems.length === 0) {
                 console.error("Critical Error: Items not found for IDs:", selectedIds);
-                alert("เกิดข้อผิดพลาด: ไม่พบข้อมูลสินค้าที่เลือก (Items Not Found)");
+                console.log("Current Items:", items.map(i => i.id));
+                alert(`เกิดข้อผิดพลาด: ไม่พบข้อมูลสินค้าที่เลือกในระบบ (Items Not Found in Memory)\nSelected: ${selectedIds.join(', ')}`);
                 return;
             }
 
@@ -490,6 +497,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
             setDocConfig(prev => ({ ...prev, titleTH: 'ใบส่งคืนสินค้า (Return Note)', titleEN: 'RETURN NOTE' }));
 
             // Critical: Ensure docData is set before Modal opens
+            // 'RTV' is used as a generic template for Internal Transfer as well (using same layout)
             const docDataPayload = { type: 'RTV' as DispositionAction, items: selectedItems };
             setDocData(docDataPayload);
 
@@ -497,6 +505,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
             setIsDocEditable(false);
 
             // Force Modal Open
+            console.log("Opening Document Modal for Logistics...");
             setShowDocModal(true);
 
         } catch (error) {
@@ -728,6 +737,8 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 alert(`สร้างเอกสารและบันทึกรายการเรียบร้อย! (${successCount} รายการ)`);
                 setShowDocModal(false);
                 setPendingLogisticsTx(null);
+            } else {
+                alert("ไม่สามารถบันทึกรายการได้ (Update Failed). กรุณาลองใหม่อีกครั้ง หรือตรวจสอบ Console");
             }
             return;
         }

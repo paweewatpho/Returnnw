@@ -203,7 +203,11 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                         <Printer className="w-4 h-4" /> พิมพ์
                     </button>
 
-                    <button onClick={handleConfirmDocGeneration} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm flex items-center gap-2">
+                    <button onClick={() => {
+                        if (window.confirm('ยืนยันการบันทึกข้อมูลและสร้างเอกสาร? (Confirm Save & Generate Document)')) {
+                            handleConfirmDocGeneration();
+                        }
+                    }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm flex items-center gap-2">
                         <CheckCircle className="w-4 h-4" /> บันทึก
                     </button>
 
