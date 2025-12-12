@@ -112,17 +112,23 @@ export interface ChatMessage {
 // Updated Status Flow for 6-Step Workflow
 export type ReturnStatus =
   | 'Draft'             // Step 1: Created
-  | 'Requested'         // Legacy
-  | 'PickupScheduled'   // Step 2: Collection Scheduled
-  | 'PickedUp'          // Step 3: Driver Collected
-  | 'InTransitHub'      // Step 2 (Route A): On way to Hub
-  | 'ReturnToSupplier'  // Step 2 (Route B) OR Step 5 (Route A)
-  | 'ReceivedAtHub'     // Step 3 (Route A): Arrived at Hub
-  | 'QCPassed'          // Step 4 (Route A)
-  | 'QCFailed'          // Step 4 (Route A)
-  | 'QCCompleted'       // Step 4 (Complete)
-  | 'Documented'        // Step 5 (Route A) - Legacy Name, effectively ReturnToSupplier preparation
-  | 'Completed'         // Step 6: Closed
+  | 'Requested'         // Step 1: Output
+  | 'JobAccepted'       // Step 2: Output
+  | 'BranchReceived'    // Step 3: Output
+  | 'ReadyForLogistics' // Step 4: Output
+  | 'InTransitToHub'    // Step 5: Output
+  | 'HubReceived'       // Step 6: Output
+  | 'DocsCompleted'     // Step 7: Output
+  | 'Completed'         // Step 8: Closed
+  | 'PickupScheduled'   // Legacy
+  | 'PickedUp'          // Legacy
+  | 'InTransitHub'      // Legacy
+  | 'ReturnToSupplier'  // Legacy
+  | 'ReceivedAtHub'     // Legacy
+  | 'QCPassed'          // Legacy
+  | 'QCFailed'          // Legacy
+  | 'QCCompleted'       // Legacy
+  | 'Documented'        // Legacy
   | 'Received'          // Legacy
   | 'Graded'            // Legacy
   | 'Approved'          // Legacy
@@ -271,6 +277,9 @@ export interface ReturnRecord {
   claimCompany?: string;      // ชื่อบริษัทประกัน
   claimCoordinator?: string;  // ผู้ประสานงาน
   claimPhone?: string;        // เบอร์โทรศัพท์ (เคลม)
+
+  // Logistics
+  collectionOrderId?: string; // Links to CollectionOrder
 }
 
 export interface SearchFilters {

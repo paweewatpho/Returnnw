@@ -7,7 +7,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
     const { items, addReturnRecord, updateReturnRecord, addNCRReport, getNextNCRNumber, getNextReturnNumber } = useData();
 
     // Workflow State
-    const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+    const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
     const [isCustomBranch, setIsCustomBranch] = useState(false);
 
     // QC State
@@ -123,30 +123,43 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
     const [customProblemType, setCustomProblemType] = useState('');
     const [customRootCause, setCustomRootCause] = useState('');
 
-    // Derived Data (filtered items)
-    // Step 2: Logistics - Items waiting for transport (Draft or Requested)
-    const logisticItems = items.filter(i => i.status === 'Draft' || i.status === 'Requested');
+    // Derived Data (filtered items) - 8 Step Workflow
 
-    // Step 3: Hub Receive - Items In Transit to Hub
-    const hubReceiveItems = items.filter(i => i.status === 'InTransitHub');
+    // Step 2 Input: Requested
+    const step2Items = items.filter(i => i.status === 'Requested');
 
-    // Step 4: Hub QC - Received at Hub
-    const hubQCItems = items.filter(i => i.status === 'ReceivedAtHub' || i.status === 'Received');
+    // Step 3 Input: JobAccepted
+    const step3Items = items.filter(i => i.status === 'JobAccepted');
 
-    // Step 5: Hub Docs - Passed QC (Graded)
-    const hubDocItems = items.filter(i => i.status === 'QCPassed' || i.status === 'QCFailed' || i.status === 'Graded');
+    // Step 4 Input: BranchReceived
+    const step4Items = items.filter(i => i.status === 'BranchReceived');
 
-    // Step 6: Closure - Waiting for Closure (ReturnToSupplier or Documented/Completed logic)
-    const closureItems = items.filter(i => i.status === 'ReturnToSupplier' || i.status === 'Documented');
+    // Step 5 Input: ReadyForLogistics
+    const step5Items = items.filter(i => i.status === 'ReadyForLogistics');
 
-    // History
+    // Step 6 Input: InTransitToHub
+    const step6Items = items.filter(i => i.status === 'InTransitToHub');
+
+    // Step 7 Input: HubReceived
+    const step7Items = items.filter(i => i.status === 'HubReceived');
+
+    // Step 8 Input: DocsCompleted
+    const step8Items = items.filter(i => i.status === 'DocsCompleted');
+
+    // Completed History
     const completedItems = items.filter(i => i.status === 'Completed');
 
-    // Mapped for Props Compatibility
-    const requestedItems = logisticItems;
-    const receivedItems = hubReceiveItems;
-    const gradedItems = hubQCItems;
-    const docItems = hubDocItems;
+    // Aliases for Props Compatibility (where needed, though we will update Operations.tsx to use new names ideally)
+    const logisticItems = step5Items;
+    const hubReceiveItems = step6Items;
+    const hubDocItems = step7Items;
+    const closureItems = step8Items;
+
+    // Legacy mapping (to prevent breaking immediate usage before full refactor)
+    const requestedItems = step2Items;
+    const receivedItems = step6Items;
+    const gradedItems = []; // QC Removed
+    const docItems = step7Items;
 
     // Autocomplete Data
     const uniqueCustomers = React.useMemo(() => {
@@ -308,7 +321,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                     refNo: runningId,
                     amount: (item.quantity || 0) * (item.priceBill || 0),
                     reason: item.problemDetail || item.notes || 'แจ้งคืนสินค้า',
-                    status: 'Draft',
+                    status: 'Requested',
                     dateRequested: item.date || new Date().toISOString().split('T')[0],
                     disposition: 'Pending',
                     condition: 'Unknown',
@@ -464,7 +477,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
 
         // Existing Hub Logic
         let successCount = 0;
-        const newStatus: ReturnStatus = 'InTransitHub';
+        const newStatus: ReturnStatus = 'InTransitToHub';
 
         for (const id of selectedIds) {
             const success = await updateReturnRecord(id, {
@@ -764,18 +777,26 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
         },
         derived: {
             uniqueCustomers, uniqueDestinations, uniqueProductCodes, uniqueProductNames, uniqueFounders,
+            step2Items,
+            step3Items,
+            step4Items,
+            step5Items,
+            step6Items,
+            step7Items,
+            step8Items,
+            completedItems,
+
+            // Legacy/Alias
             logisticItems,
             hubReceiveItems,
-            hubQCItems,
+            hubQCItems: [],
             hubDocItems,
             closureItems,
-            completedItems,
-            // Aliases for compatibility
             requestedItems,
             receivedItems,
-            gradedItems,
-            docItems: hubDocItems,
-            processedItems: hubDocItems
+            gradedItems: [],
+            docItems,
+            processedItems: step7Items
         },
         actions: {
             setActiveStep, setIsCustomBranch, setFormData, setRequestItems,

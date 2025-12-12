@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import {
   Menu, FileInput, Truck, Activity, ClipboardList,
-  FileText, LayoutGrid, BarChart2, CheckCircle
+  FileText, LayoutGrid, CheckCircle
 } from 'lucide-react';
 import { useOperationsLogic } from './operations/hooks/useOperationsLogic';
 import { Step1Request } from './operations/components/Step1Request';
-import { Step2Logistics } from './operations/components/Step2Logistics';
-import { Step3HubReceive } from './operations/components/Step3HubReceive';
-import { Step4HubQC } from './operations/components/Step4HubQC';
-import { Step5HubDocs } from './operations/components/Step5HubDocs';
-import { Step6Closure } from './operations/components/Step6Closure';
+import { Step2JobAccept } from './operations/components/Step2JobAccept';
+import { Step3BranchReceive } from './operations/components/Step3BranchReceive';
+import { Step4Consolidation } from './operations/components/Step4Consolidation';
+import { Step5Logistics } from './operations/components/Step5Logistics';
+import { Step6HubReceive } from './operations/components/Step6HubReceive';
+import { Step7Docs } from './operations/components/Step7Docs';
+import { Step8Closure } from './operations/components/Step8Closure';
 import { ReturnRecord } from '../types';
 import { SelectionModal } from './operations/components/SelectionModal';
 import { DocumentPreviewModal } from './operations/components/DocumentPreviewModal';
@@ -24,16 +26,16 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
   const { state, actions, derived } = useOperationsLogic(initialData, onClearInitialData);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Updated Menu for 8-Step Workflow (New User Defined Flow)
+  // Updated Menu for 8-Step Workflow
   const MENU_ITEMS = [
-    { id: 1, label: '1. แจ้งคืนสินค้า (Request)', icon: FileInput, count: derived.requestedItems.length || undefined, color: 'text-blue-600' },
-    { id: 2, label: '2. รับงาน (Receive Job)', icon: ClipboardList, color: 'text-slate-400' },
-    { id: 3, label: '3. รับสินค้า (Branch Rx)', icon: Activity, color: 'text-slate-400' },
-    { id: 4, label: '4. รวมสินค้า (Consolidate)', icon: LayoutGrid, color: 'text-slate-400' },
-    { id: 5, label: '5. ขนส่ง (Logistics)', icon: Truck, count: derived.logisticItems.length || undefined, color: 'text-orange-500' },
-    { id: 6, label: '6. รับสินค้าเข้า Hub', icon: LayoutGrid, count: derived.hubReceiveItems.length || undefined, color: 'text-amber-500' },
-    { id: 7, label: '7. เอกสาร (Docs)', icon: FileText, count: derived.hubDocItems.length || undefined, color: 'text-purple-500' },
-    { id: 8, label: '8. ปิดงาน (Closure)', icon: CheckCircle, count: derived.closureItems.length || undefined, color: 'text-green-600' }
+    { id: 1, label: '1. แจ้งคืนสินค้า (Request)', icon: FileInput, count: undefined, color: 'text-blue-600' },
+    { id: 2, label: '2. รับงาน (Receive Job)', icon: ClipboardList, count: derived.step2Items.length || undefined, color: 'text-indigo-500' },
+    { id: 3, label: '3. รับสินค้า (Branch Rx)', icon: Activity, count: derived.step3Items.length || undefined, color: 'text-indigo-500' },
+    { id: 4, label: '4. รวมสินค้า (Consolidate)', icon: LayoutGrid, count: derived.step4Items.length || undefined, color: 'text-slate-600' },
+    { id: 5, label: '5. ขนส่ง (Logistics)', icon: Truck, count: derived.step5Items.length || undefined, color: 'text-orange-500' },
+    { id: 6, label: '6. รับสินค้าเข้า Hub', icon: LayoutGrid, count: derived.step6Items.length || undefined, color: 'text-amber-500' },
+    { id: 7, label: '7. เอกสาร (Docs)', icon: FileText, count: derived.step7Items.length || undefined, color: 'text-purple-500' },
+    { id: 8, label: '8. ปิดงาน (Closure)', icon: CheckCircle, count: derived.step8Items.length || undefined, color: 'text-green-600' }
   ];
 
   const renderContent = () => {
@@ -43,8 +45,6 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
           <Step1Request
             formData={state.formData}
             requestItems={state.requestItems}
-            customProblemType={state.customProblemType}
-            customRootCause={state.customRootCause}
             isCustomBranch={state.isCustomBranch}
             uniqueCustomers={derived.uniqueCustomers}
             uniqueDestinations={derived.uniqueDestinations}
@@ -54,8 +54,6 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
             setFormData={actions.setFormData}
             setRequestItems={actions.setRequestItems}
             setIsCustomBranch={actions.setIsCustomBranch}
-            setCustomProblemType={actions.setCustomProblemType}
-            setCustomRootCause={actions.setCustomRootCause}
             handleImageUpload={actions.handleImageUpload}
             handleRemoveImage={actions.handleRemoveImage}
             handleAddItem={actions.handleAddItem}
@@ -63,38 +61,18 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
             handleRequestSubmit={actions.handleRequestSubmit}
           />
         );
-      case 2:
-      case 3:
-      case 4:
-        return (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400">
-            <Activity className="w-16 h-16 mb-4 opacity-30" />
-            <h3 className="text-xl font-bold mb-2">Step {state.activeStep} อยู่ระหว่างการพัฒนา</h3>
-            <p>(This step is under construction)</p>
-          </div>
-        );
+      case 2: return <Step2JobAccept />;
+      case 3: return <Step3BranchReceive />;
+      case 4: return <Step4Consolidation />;
       case 5:
         return (
-          <Step2Logistics
+          <Step5Logistics
             onConfirm={actions.handleLogisticsSubmit}
           />
         );
-      case 6:
-        return (
-          <Step3HubReceive />
-        );
-      case 7:
-        return (
-          <Step5HubDocs />
-        );
-      case 8:
-        return (
-          <Step6Closure
-            documentedItems={derived.closureItems}
-            completedItems={derived.completedItems}
-            handleCompleteJob={actions.handleCompleteJob}
-          />
-        );
+      case 6: return <Step6HubReceive />;
+      case 7: return <Step7Docs />;
+      case 8: return <Step8Closure />;
       default:
         return <div className="p-8 text-center text-slate-400">อยู่ระหว่างปรับปรุง (Step Coming Soon)</div>;
     }
