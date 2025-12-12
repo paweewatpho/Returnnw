@@ -322,7 +322,7 @@ const NCRSystem: React.FC = () => {
 
             const success = await addNCRReport(record);
             if (success) {
-                // BIDIRECTIONAL SYNC: Create Return Record for Operations Hub (Step 2: Intake)
+                // BIDIRECTIONAL SYNC: Create Return Record for Operations Hub (Step 2: Consolidation & Logistics)
                 const returnRecord: ReturnRecord = { // STRICT TYPING
                     id: `RT-${new Date().getFullYear()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
                     refNo: item.refNo || '-',
@@ -338,7 +338,8 @@ const NCRSystem: React.FC = () => {
                     category: 'General', // Added required field
                     ncrNumber: newNcrNo,
                     documentType: 'NCR', // Required for Step 2 Visibility
-                    status: 'Requested',
+                    founder: formData.founder, // Sync Founder to Operations Hub
+                    status: 'COL_JobAccepted', // Auto-move to Step 2: Logistics (Was 'Requested')
                     disposition: 'Pending',
                     reason: `Created via NCR System (${formData.problemDetail || 'No Detail'})`,
                     amount: item.priceBill || 0, // Calculated Amount (Total)
@@ -373,8 +374,7 @@ const NCRSystem: React.FC = () => {
                     problemSource: item.problemSource,
                     hasCost: item.hasCost,
                     costAmount: item.costAmount,
-                    costResponsible: item.costResponsible,
-                    founder: formData.founder // Sync Founder to Operations Hub
+                    costResponsible: item.costResponsible
                 };
 
                 console.log("🔄 Syncing to Operations Hub:", returnRecord);

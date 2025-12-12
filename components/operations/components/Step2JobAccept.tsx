@@ -16,7 +16,7 @@ export const Step2JobAccept: React.FC = () => {
 
     // Filter Items: Status 'Requested' BUT exclude NCR (which go to NCR Hub Step 2)
     const requestedItems = React.useMemo(() => {
-        return items.filter(item => item.status === 'Requested' && item.documentType !== 'NCR');
+        return items.filter(item => item.status === 'Requested' && item.documentType !== 'NCR' && !item.ncrNumber);
     }, [items]);
 
     const handleToggleSelect = (id: string) => {

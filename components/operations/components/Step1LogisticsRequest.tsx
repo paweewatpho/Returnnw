@@ -39,6 +39,7 @@ interface Step1LogisticsRequestProps {
 
     // Dropdown Data
     uniqueCustomers?: string[];
+    uniqueDestinations?: string[];
     uniqueProductCodes?: string[];
     uniqueProductNames?: string[];
 }
@@ -47,7 +48,7 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
     formData, requestItems, isCustomBranch, initialData,
     setFormData, setIsCustomBranch, setRequestItems,
     handleAddItem, handleRemoveItem, handleRequestSubmit,
-    uniqueCustomers = [], uniqueProductCodes = [], uniqueProductNames = []
+    uniqueCustomers = [], uniqueDestinations = [], uniqueProductCodes = [], uniqueProductNames = []
 }) => {
 
     // Ensure Document Type is LOGISTICS
@@ -164,7 +165,8 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
                         </div>
 
                         {/* Row 3: Customer Code | Customer Name */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Row 3: Customer Code | Source Customer | Destination Customer */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-1">รหัสลูกค้า</label>
                                 <input
@@ -177,19 +179,35 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-1">
-                                    ชื่อลูกค้า (Customer Name) <span className="text-red-500">*</span>
+                                    ลูกค้าต้นทาง (Source Customer) <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.customerName || ''}
                                     onChange={e => updateField('customerName', e.target.value)}
-                                    placeholder="ระบุชื่อลูกค้า..."
+                                    placeholder="ระบุชื่อลูกค้าต้นทาง..."
                                     className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                                     list="customer-list"
                                 />
                                 <datalist id="customer-list">
                                     {uniqueCustomers.map(c => <option key={c} value={c} />)}
+                                </datalist>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">
+                                    ลูกค้าปลายทาง (Destination Customer)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.destinationCustomer || ''}
+                                    onChange={e => updateField('destinationCustomer', e.target.value)}
+                                    placeholder="ระบุลูกค้าปลายทาง..."
+                                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    list="destination-list"
+                                />
+                                <datalist id="destination-list">
+                                    {uniqueDestinations.map(d => <option key={d} value={d} />)}
                                 </datalist>
                             </div>
                         </div>

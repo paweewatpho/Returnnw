@@ -34,9 +34,11 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
     { id: 1, label: '1. แจ้งคืนสินค้า (Return Request)', icon: FileInput, count: undefined, color: 'text-blue-600', group: 'Return Request' },
 
     // --- ORANGE FLOW (Inbound Logistics) ---
-    { id: 12, label: '2. รับงาน (Receive Job)', icon: ClipboardList, count: derived.step2Items.length || undefined, color: 'text-orange-500', group: 'Inbound Logistics (COL ID)' },
-    { id: 13, label: '3. รับสินค้า (Physical Receive)', icon: Activity, count: derived.step3Items.length || undefined, color: 'text-orange-500', group: 'Inbound Logistics (COL ID)' },
-    { id: 14, label: '4. รวมสินค้า (Branch Consolidation)', icon: LayoutGrid, count: derived.step4Items.length || undefined, color: 'text-orange-500', group: 'Inbound Logistics (COL ID)' },
+    // --- ORANGE FLOW (Inbound Logistics) - Removed per user request
+    // { id: 12, label: '2. รับงาน (Receive Job)', icon: ClipboardList, count: derived.step2Items.length || undefined, color: 'text-orange-500', group: 'Inbound Logistics (COL ID)' },
+    // { id: 13, label: '3. รับสินค้า (Physical Receive)', icon: Activity, count: derived.step3Items.length || undefined, color: 'text-orange-500', group: 'Inbound Logistics (COL ID)' },
+    // { id: 14, label: '4. รวมสินค้า (Branch Consolidation)', icon: LayoutGrid, count: derived.step4Items.length || undefined, color: 'text-orange-500', group: 'Inbound Logistics (COL ID)' },
+
 
     // --- BLUE FLOW (NCR System) ---
     { id: 2, label: '2. รวบรวมและระบุขนส่ง (Consolidation & Logistics)', icon: Truck, count: derived.ncrStep2Items?.length || undefined, color: 'text-indigo-600', group: 'NCR Hub' },
@@ -80,7 +82,7 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
       // --- Blue Operations (Hub) Steps ---
       case 2:
         // Logic: NCR Items Consolidation & Decision (Direct Return vs Hub)
-        return <Step2NCRLogistics />;
+        return <Step2NCRLogistics onConfirm={actions.handleLogisticsSubmit} />;
 
       case 3:
         // Hub Receive (Old Step 6)
@@ -134,7 +136,7 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-          {['Return Request', 'NCR Hub', 'Inbound Logistics (COL ID)'].map((group) => {
+          {['Return Request', 'NCR Hub'].map((group) => {
             const items = MENU_ITEMS.filter(i => i.group === group);
             if (items.length === 0) return null;
             return (

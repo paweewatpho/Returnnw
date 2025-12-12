@@ -302,6 +302,7 @@ export interface ReturnRecord {
   customerAddress?: string; // ที่อยู่
   documentNo?: string;      // เลขที่เอกสาร (เลข R)
   contactPhone?: string;    // เบอร์โทรศัพท์ (ติดต่อ)
+  sellerName?: string;      // ชื่อผู้ขาย (ร้านค้า/ตัวแทน)
 
   // Transport Info (Step 2 NCR)
   transportPlate?: string;

@@ -3,8 +3,12 @@ import { Truck, MapPin, Printer, ArrowRight, Package, Box, Calendar, Layers } fr
 import { useData } from '../../../DataContext';
 import { ReturnRecord } from '../../../types';
 
-export const Step2NCRLogistics: React.FC = () => {
-    const { items, updateReturnRecord } = useData();
+interface Step2NCRLogisticsProps {
+    onConfirm?: (selectedIds: string[], routeType: 'Hub' | 'Direct', transportInfo: any) => void;
+}
+
+export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm }) => {
+    const { items } = useData(); // Removed updateReturnRecord since it's handled by onConfirm (parent)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     // Transport Info State matched to Step 5
@@ -20,12 +24,17 @@ export const Step2NCRLogistics: React.FC = () => {
     const [customDestination, setCustomDestination] = useState<string>('');
     const [selectedBranch, setSelectedBranch] = useState<string>('All');
 
-    // Filter Logic: Status 'Requested' AND (NCR or LOGISTICS)
+    // Filter Logic: Separte NCR (Direct Entry) and Logistics (From Collection System Step 4)
     const pendingItems = useMemo(() => {
-        return items.filter(item =>
-            item.status === 'Requested' &&
-            (item.documentType === 'NCR' || item.documentType === 'LOGISTICS')
-        );
+        return items.filter(item => {
+            const isNCR = item.documentType === 'NCR' || !!item.ncrNumber;
+            // NCR enters at 'Requested' or 'COL_JobAccepted'
+            if (isNCR) {
+                return item.status === 'Requested' || item.status === 'COL_JobAccepted';
+            }
+            // Logistics (Collection System) must complete Step 4 (Consolidation) first
+            return item.status === 'COL_Consolidated';
+        });
     }, [items]);
 
     const uniqueBranches = useMemo(() => Array.from(new Set(pendingItems.map(i => i.branch))).filter(Boolean), [pendingItems]);
@@ -58,8 +67,25 @@ export const Step2NCRLogistics: React.FC = () => {
             alert('กรุณาเลือกรายการสินค้าอย่างน้อย 1 รายการ');
             return;
         }
-        if (!transportInfo.driverName || !transportInfo.plateNumber) {
-            if (!window.confirm('คุณยังไม่ได้ระบุชื่อพนักงานขับรถหรือทะเบียนรถ ต้องการดำเนินการต่อหรือไม่?')) {
+
+        // Validation based on Type
+        const isCompanyCar = transportInfo.transportCompany === 'รถบริษัท';
+        const is3PL = !isCompanyCar && transportInfo.driverName === '3PL';
+        const isOther = !isCompanyCar && transportInfo.driverName === 'Other';
+
+        if (isCompanyCar) {
+            if (!transportInfo.driverName || !transportInfo.plateNumber) {
+                alert('กรุณาระบุชื่อพนักงานขับรถและทะเบียนรถสำหรับรถบริษัท');
+                return;
+            }
+        } else if (is3PL) {
+            if (!transportInfo.transportCompany) {
+                alert('กรุณาระบุชื่อบริษัทขนส่ง (3PL)');
+                return;
+            }
+        } else if (isOther) {
+            if (!transportInfo.transportCompany) {
+                alert('กรุณาระบุรายละเอียดการขนส่ง (อื่นๆ)');
                 return;
             }
         }
@@ -77,45 +103,21 @@ export const Step2NCRLogistics: React.FC = () => {
             finalDestination = directDestination === 'Other' ? customDestination : directDestination;
         }
 
-        const confirmMsg = routeType === 'Hub'
-            ? `ยืนยันการส่งเข้า Hub จำนวน ${selectedIds.size} รายการ?`
-            : `ยืนยันการส่งคืนตรง (Direct Return) ไปยัง "${finalDestination}" จำนวน ${selectedIds.size} รายการ?`;
+        // Delegate to Parent (Operations Logic) to handle PDF generation and Saving
+        if (onConfirm) {
+            // Pass transport info and specific destination for Direct
+            const submissionTransportInfo = {
+                ...transportInfo,
+                destination: routeType === 'Direct' ? finalDestination : undefined
+            };
+            onConfirm(Array.from(selectedIds), routeType, submissionTransportInfo);
 
-        if (window.confirm(confirmMsg)) {
-            const driverDetails = `Driver: ${transportInfo.driverName}, Plate: ${transportInfo.plateNumber}, Transport: ${transportInfo.transportCompany}`;
-
-            const updates = Array.from(selectedIds).map(id => {
-                const item = items.find(i => i.id === id);
-                if (!item) return null;
-
-                if (routeType === 'Hub') {
-                    return updateReturnRecord(id, {
-                        ...item,
-                        status: 'NCR_InTransit',
-                        dateInTransit: new Date().toISOString(),
-                        transportPlate: transportInfo.plateNumber,
-                        transportDriver: transportInfo.driverName,
-                        transportCompany: transportInfo.transportCompany,
-                        notes: item.notes ? `${item.notes}\n[Logistics] ${driverDetails}` : `[Logistics] ${driverDetails}`
-                    });
-                } else {
-                    // Direct Return
-                    return updateReturnRecord(id, {
-                        ...item,
-                        status: 'DirectReturn', // Using specific NCR status or ReturnToSupplier? Using DirectReturn as per previous NCR flow
-                        disposition: 'RTV',
-                        destinationCustomer: finalDestination,
-                        dateInTransit: new Date().toISOString(), // Track when it was sent
-                        transportPlate: transportInfo.plateNumber,
-                        transportDriver: transportInfo.driverName,
-                        transportCompany: transportInfo.transportCompany,
-                        notes: item.notes ? `${item.notes}\n[Direct Logistics] ${driverDetails}` : `[Direct Logistics] ${driverDetails}`
-                    });
-                }
-            });
-
-            await Promise.all(updates);
+            // Note: We don't clear selection immediately here because the parent needs to open Modal first.
+            // Ideally parent should clear it, but for now we keep selection until success alert implies refresh.
+            // Or we can clear it.
             setSelectedIds(new Set());
+        } else {
+            console.error("No onConfirm handler provided to Step2NCRLogistics");
         }
     };
 
@@ -133,44 +135,97 @@ export const Step2NCRLogistics: React.FC = () => {
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 lg:col-span-1">
                     <h4 className="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">ข้อมูลการขนส่ง</h4>
                     <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-bold text-slate-600 mb-1">ทะเบียนรถ</label>
-                            <input
-                                type="text"
-                                value={transportInfo.plateNumber}
-                                onChange={e => setTransportInfo({ ...transportInfo, plateNumber: e.target.value })}
-                                className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                                placeholder="เช่น 1กข-1234"
-                            />
+                        <label className="block text-sm font-bold text-slate-600 mb-1">เลือกประเภทการขนส่ง</label>
+
+                        {/* Option 1: Company Car */}
+                        <div className={`border rounded-lg p-3 transition-colors ${transportInfo.transportCompany === 'รถบริษัท' ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200'}`}>
+                            <label className="flex items-center gap-2 cursor-pointer mb-2">
+                                <input
+                                    type="radio"
+                                    name="transportType"
+                                    checked={transportInfo.transportCompany === 'รถบริษัท'}
+                                    onChange={() => setTransportInfo({ ...transportInfo, transportCompany: 'รถบริษัท', driverName: '', plateNumber: '' })}
+                                    className="text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span className="font-bold text-slate-700">รถบริษัท</span>
+                            </label>
+
+                            {transportInfo.transportCompany === 'รถบริษัท' && (
+                                <div className="pl-6 space-y-3 animate-fade-in">
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">ทะเบียนรถ</label>
+                                        <input
+                                            type="text"
+                                            value={transportInfo.plateNumber}
+                                            onChange={e => setTransportInfo({ ...transportInfo, plateNumber: e.target.value })}
+                                            className="w-full p-2 border border-slate-300 rounded text-sm bg-white"
+                                            placeholder="ระบุทะเบียนรถ..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-500 mb-1">พนักงานขับรถ</label>
+                                        <input
+                                            type="text"
+                                            value={transportInfo.driverName}
+                                            onChange={e => setTransportInfo({ ...transportInfo, driverName: e.target.value })}
+                                            className="w-full p-2 border border-slate-300 rounded text-sm bg-white"
+                                            placeholder="ระบุชื่อพนักงาน..."
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-600 mb-1">พนักงานขับรถ</label>
-                            <input
-                                type="text"
-                                value={transportInfo.driverName}
-                                onChange={e => setTransportInfo({ ...transportInfo, driverName: e.target.value })}
-                                className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                                placeholder="ชื่อ-นามสกุล"
-                            />
+
+                        {/* Option 2: 3PL */}
+                        <div className={`border rounded-lg p-3 transition-colors ${transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === '3PL' ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200'}`}>
+                            <label className="flex items-center gap-2 cursor-pointer mb-2">
+                                <input
+                                    type="radio"
+                                    name="transportType"
+                                    checked={transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === '3PL'}
+                                    onChange={() => setTransportInfo({ ...transportInfo, transportCompany: '', driverName: '3PL', plateNumber: '-' })}
+                                    className="text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span className="font-bold text-slate-700">รถขนส่งร่วม (3PL)</span>
+                            </label>
+
+                            {transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === '3PL' && (
+                                <div className="pl-6 animate-fade-in">
+                                    <label className="block text-xs text-slate-500 mb-1">ชื่อบริษัทขนส่ง</label>
+                                    <input
+                                        type="text"
+                                        value={transportInfo.transportCompany === 'รถบริษัท' ? '' : transportInfo.transportCompany} // Use transportCompany field to store the 3PL name
+                                        onChange={e => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })}
+                                        className="w-full p-2 border border-slate-300 rounded text-sm bg-white"
+                                        placeholder="ระบุชื่อบริษัทขนส่ง..."
+                                    />
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-600 mb-1">บริษัทขนส่ง</label>
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="transportType" checked={transportInfo.transportCompany === 'รถบริษัท'} onChange={() => setTransportInfo({ ...transportInfo, transportCompany: 'รถบริษัท' })} className="text-indigo-600 focus:ring-indigo-500" />
-                                    <span className="text-sm">รถบริษัท</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="transportType" checked={transportInfo.transportCompany === 'รถร่วม'} onChange={() => setTransportInfo({ ...transportInfo, transportCompany: 'รถร่วม' })} className="text-indigo-600 focus:ring-indigo-500" />
-                                    <span className="text-sm">รถร่วม</span>
-                                </label>
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="transportType" checked={!['รถบริษัท', 'รถร่วม'].includes(transportInfo.transportCompany)} onChange={() => setTransportInfo({ ...transportInfo, transportCompany: '' })} className="text-indigo-600 focus:ring-indigo-500" />
-                                    <span className="text-sm">อื่นๆ</span>
-                                </label>
-                            </div>
-                            {!['รถบริษัท', 'รถร่วม'].includes(transportInfo.transportCompany) && (
-                                <input type="text" value={transportInfo.transportCompany} onChange={e => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })} className="w-full mt-2 p-2 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 bg-slate-50" placeholder="ระบุชื่อบริษัทขนส่ง..." />
+
+                        {/* Option 3: Other */}
+                        <div className={`border rounded-lg p-3 transition-colors ${transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === 'Other' ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200'}`}>
+                            <label className="flex items-center gap-2 cursor-pointer mb-2">
+                                <input
+                                    type="radio"
+                                    name="transportType"
+                                    checked={transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === 'Other'}
+                                    onChange={() => setTransportInfo({ ...transportInfo, transportCompany: '', driverName: 'Other', plateNumber: '-' })}
+                                    className="text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span className="font-bold text-slate-700">อื่นๆ (ระบุ)</span>
+                            </label>
+
+                            {transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === 'Other' && (
+                                <div className="pl-6 animate-fade-in">
+                                    <input
+                                        type="text"
+                                        value={transportInfo.transportCompany === 'รถบริษัท' ? '' : transportInfo.transportCompany}
+                                        onChange={e => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })}
+                                        className="w-full p-2 border border-slate-300 rounded text-sm bg-white"
+                                        placeholder="ระบุรายละเอียด..."
+                                    />
+                                </div>
                             )}
                         </div>
                     </div>
@@ -201,6 +256,9 @@ export const Step2NCRLogistics: React.FC = () => {
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer text-sm">
                                         <input type="radio" name="directDest" value="ซีโน" checked={directDestination === 'ซีโน'} onChange={e => setDirectDestination(e.target.value)} /> ซีโน
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                        <input type="radio" name="directDest" value="นีโอคอเปอเรท" checked={directDestination === 'นีโอคอเปอเรท'} onChange={e => setDirectDestination(e.target.value)} /> นีโอคอเปอเรท
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer text-sm">
                                         <input type="radio" name="directDest" value="Other" checked={directDestination === 'Other'} onChange={e => setDirectDestination(e.target.value)} /> อื่นๆ

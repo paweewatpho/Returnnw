@@ -10,15 +10,26 @@ export const Step6HubReceive: React.FC = () => {
     const [filterCustomer, setFilterCustomer] = React.useState<string>('');
     const [filterDestination, setFilterDestination] = React.useState<string>('');
 
-    // Filter Items: Status 'InTransitToHub' or 'COL_InTransit'
+    // Filter Items: Status 'InTransitToHub', 'COL_InTransit', or 'NCR_InTransit'
     const incomingItems = React.useMemo(() => {
-        return items.filter(item => item.status === 'InTransitToHub' || item.status === 'COL_InTransit');
+        return items.filter(item => item.status === 'InTransitToHub' || item.status === 'COL_InTransit' || item.status === 'NCR_InTransit');
     }, [items]);
 
-    const handleHubReceive = async (id: string) => {
-        if (window.confirm('ยืนยันรับเข้าสินค้านี้เข้าสู่ Hub (Main Warehouse)?')) {
+    const handleHubReceive = async (id: string, currentItem?: ReturnRecord) => {
+        const item = currentItem || items.find(i => i.id === id);
+        if (!item) return;
+
+        // Logic: NCR -> QC (Step 4), Collection -> Docs (Step 7 - Skip QC)
+        const isNCR = item.documentType === 'NCR' || !!item.ncrNumber || item.status === 'NCR_InTransit';
+        const newStatus = isNCR ? 'NCR_HubReceived' : 'COL_HubReceived';
+
+        const confirmMsg = isNCR
+            ? 'ยืนยันรับสินค้า NCR เข้าสู่ Hub เพื่อตรวจสอบคุณภาพ (QC)?'
+            : 'ยืนยันรับสินค้า Collection เข้าสู่ Hub (ข้าม QC ไปยังเอกสาร)?';
+
+        if (window.confirm(confirmMsg)) {
             await updateReturnRecord(id, {
-                status: 'COL_HubReceived',
+                status: newStatus,
                 dateReceived: new Date().toISOString().split('T')[0]
             });
         }
@@ -28,8 +39,11 @@ export const Step6HubReceive: React.FC = () => {
         if (filteredItems.length === 0) return;
         if (window.confirm(`ยืนยันการรับสินค้าเข้า Hub ทั้งหมด ${filteredItems.length} รายการ?`)) {
             for (const item of filteredItems) {
+                const isNCR = item.documentType === 'NCR' || !!item.ncrNumber || item.status === 'NCR_InTransit';
+                const newStatus = isNCR ? 'NCR_HubReceived' : 'COL_HubReceived';
+
                 await updateReturnRecord(item.id, {
-                    status: 'COL_HubReceived',
+                    status: newStatus,
                     dateReceived: new Date().toISOString().split('T')[0]
                 });
             }

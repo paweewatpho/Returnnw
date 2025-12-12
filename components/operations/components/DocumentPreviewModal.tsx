@@ -220,7 +220,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                     {/* Header */}
                     <div className="flex border-b-2 border-slate-800 pb-4 mb-6">
                         <div className="w-[100px] h-[100px] flex items-center justify-center mr-6">
-                            <img src="https://img2.pic.in.th/pic/logo-neo.png" alt="Neo Siam Logo" className="max-w-full max-h-full object-contain" />
+                            <img src="/logo.png" alt="Neo Siam Logo" className="max-w-full max-h-full object-contain" />
                         </div>
                         <div className="flex-1">
                             {isDocEditable ? (

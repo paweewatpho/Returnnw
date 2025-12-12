@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import {
     Truck, CheckCircle2, Clock, MapPin, Package, FileText,
-    ArrowRight, Plus, Search, User, Phone, X, Save,
-    Camera, PenTool, Printer, Boxes, Ship, LayoutGrid, List, Trash2, Lock
+    ArrowRight, User, X,
+    Boxes, Lock
 } from 'lucide-react';
 import { useData } from '../DataContext';
 import { useOperationsLogic } from './operations/hooks/useOperationsLogic';
@@ -11,7 +11,6 @@ import { Step1LogisticsRequest } from './operations/components/Step1LogisticsReq
 import { Step2JobAccept } from './operations/components/Step2JobAccept';
 import { Step3BranchReceive } from './operations/components/Step3BranchReceive';
 import { Step4Consolidation } from './operations/components/Step4Consolidation';
-import { Step5Logistics } from './operations/components/Step5Logistics';
 
 // --- SUB-COMPONENTS ---
 
@@ -47,7 +46,7 @@ const CollectionSystem: React.FC = () => {
     const { state, derived, actions } = useOperationsLogic();
 
     // Local state for Navigation
-    const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+    const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
     // Auth Modal State (Local)
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -81,7 +80,6 @@ const CollectionSystem: React.FC = () => {
                         { id: 2, label: '2. รับงาน (Job Accept)', icon: CheckCircle2 },
                         { id: 3, label: '3. รับสินค้า (Branch Rx)', icon: Truck },
                         { id: 4, label: '4. รวมสินค้า (Consolidate)', icon: Boxes },
-                        { id: 5, label: '5. ขนส่ง (Logistics)', icon: Ship },
                     ].map((item) => (
                         <button
                             key={item.id}
@@ -120,7 +118,6 @@ const CollectionSystem: React.FC = () => {
                         {currentStep === 2 && <><CheckCircle2 className="w-5 h-5 text-blue-600" /> รับงานเข้าสาขา (Job Acceptance)</>}
                         {currentStep === 3 && <><Truck className="w-5 h-5 text-blue-600" /> รับสินค้าจริง (Physical Receive)</>}
                         {currentStep === 4 && <><Boxes className="w-5 h-5 text-blue-600" /> รวมสินค้า (Consolidation)</>}
-                        {currentStep === 5 && <><Ship className="w-5 h-5 text-blue-600" /> จัดการขนส่ง (Logistics)</>}
                     </h2>
                     <div className="flex items-center gap-4">
                         <div className="text-right">
@@ -142,6 +139,7 @@ const CollectionSystem: React.FC = () => {
                             requestItems={state.requestItems}
                             isCustomBranch={state.isCustomBranch}
                             uniqueCustomers={derived.uniqueCustomers}
+                            uniqueDestinations={derived.uniqueDestinations}
                             uniqueProductCodes={derived.uniqueProductCodes}
                             uniqueProductNames={derived.uniqueProductNames}
                             setFormData={actions.setFormData}
@@ -165,11 +163,6 @@ const CollectionSystem: React.FC = () => {
                     {currentStep === 4 && (
                         <div className="h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                             <Step4Consolidation />
-                        </div>
-                    )}
-                    {currentStep === 5 && (
-                        <div className="h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <Step5Logistics onConfirm={actions.handleLogisticsSubmit} />
                         </div>
                     )}
 
