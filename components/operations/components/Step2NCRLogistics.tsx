@@ -226,12 +226,13 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                     </div>
 
                     <button
+                        type="button"
                         onClick={confirmSelection}
                         disabled={selectedIds.size === 0}
                         className={`w-full mt-6 py-3 rounded-lg font-bold text-white shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${routeType === 'Hub' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'}`}
                     >
                         {routeType === 'Hub' ?
-                            <>ตรวจสอบ & บันทึก (Preview & Save) <Printer className="w-4 h-4" /></> :
+                            <>ตรวจสอบ & บันทึก (Preview & Save) <Truck className="w-4 h-4" /></> :
                             <>ตรวจสอบ & บันทึก (Preview & Save) <Printer className="w-4 h-4" /></>
                         }
                     </button>
