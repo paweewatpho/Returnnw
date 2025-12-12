@@ -44,8 +44,8 @@ export const Step4SplitModal: React.FC<Step4SplitModalProps> = ({ isOpen, onClos
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[85vh] animate-fade-in">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white shadow-xl w-full h-full flex flex-col animate-fade-in">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2">
                         <GitFork className="w-5 h-5 text-blue-600" /> แยกรายการ (Split Item)

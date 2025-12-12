@@ -52,8 +52,8 @@ export const PreliminaryDecisionModal: React.FC<PreliminaryDecisionModalProps> =
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white shadow-xl w-full h-full overflow-hidden animate-scale-in flex flex-col">
                 <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-blue-50 flex-shrink-0">
                     <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                         <Share2 className="w-6 h-6 text-indigo-600" /> ตัดสินใจเบื้องต้น (Preliminary Decision)

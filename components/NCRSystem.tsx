@@ -397,16 +397,13 @@ const NCRSystem: React.FC = () => {
         if (successCount === ncrItems.length) {
             setGeneratedNCRNumber(newNcrNo); // Show ID on form
             setSaveResult({ success: true, message: `บันทึกข้อมูลสำเร็จ`, ncrNo: newNcrNo });
+            setShowResultModal(true); // Show success immediately
 
             if (isPrinting) {
-                // Wait a moment for the newNcrNo to be rendered in the DOM
+                // Wait a moment for the newNcrNo to be rendered in the DOM before printing
                 setTimeout(() => {
                     window.print();
-                    // After print dialog closes (or standard timeout), show success modal
-                    setShowResultModal(true);
                 }, 500);
-            } else {
-                setShowResultModal(true);
             }
 
         } else {
@@ -915,7 +912,21 @@ const NCRSystem: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                        <button onClick={handleCloseResultModal} className={`w-full py-2 text-white rounded-lg font-bold shadow-sm ${saveResult.success ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>ตกลง</button>
+                        <div className="flex gap-2">
+                            {saveResult.success && (
+                                <button
+                                    onClick={() => {
+                                        window.print();
+                                    }}
+                                    className="flex-1 py-2 bg-slate-800 text-white rounded-lg font-bold shadow-sm hover:bg-slate-700 flex items-center justify-center gap-2"
+                                >
+                                    <Printer className="w-4 h-4" /> พิมพ์เอกสาร
+                                </button>
+                            )}
+                            <button onClick={handleCloseResultModal} className={`flex-1 py-2 text-white rounded-lg font-bold shadow-sm ${saveResult.success ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                                {saveResult.success ? 'ปิดหน้าต่าง' : 'ตกลง'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

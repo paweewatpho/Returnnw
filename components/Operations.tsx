@@ -92,8 +92,8 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
         return <Step4HubQC />;
 
       case 5:
-        // Docs (Old Step 7)
-        return <Step7Docs />;
+        // Docs (Old Step 7, now Step 5 in UI flow)
+        return <Step7Docs onPrintDocs={actions.handlePrintClick} />;
 
       case 6:
         // Closure (Old Step 8)

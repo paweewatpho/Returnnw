@@ -112,10 +112,10 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
             };
             onConfirm(Array.from(selectedIds), routeType, submissionTransportInfo);
 
-            // Note: We don't clear selection immediately here because the parent needs to open Modal first.
-            // Ideally parent should clear it, but for now we keep selection until success alert implies refresh.
-            // Or we can clear it.
-            // setSelectedIds(new Set()); // Commented out to prevent state flash before Modal opens
+            // Clear selection after a delay to allow parent to process
+            setTimeout(() => {
+                setSelectedIds(new Set());
+            }, 500);
         } else {
             console.error("No onConfirm handler provided to Step2NCRLogistics");
         }

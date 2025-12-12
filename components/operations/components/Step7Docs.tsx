@@ -5,23 +5,34 @@ import { useData } from '../../../DataContext';
 import { ReturnRecord, DispositionAction } from '../../../types';
 import { KanbanColumn } from './KanbanColumn';
 
-export const Step7Docs: React.FC = () => {
-    const { items, updateReturnRecord } = useData();
+interface Step7DocsProps {
+    onPrintDocs?: (status: DispositionAction, list: ReturnRecord[]) => void;
+}
 
-    // Filter Items: Status 'COL_HubReceived' or 'HubReceived' (Legacy)
+export const Step7Docs: React.FC<Step7DocsProps> = ({ onPrintDocs }) => {
+    const { items } = useData();
+
+    // Filter Items:
+    // We want items that have passed QC or are ready for documentation.
+    // In strict NCR flow: 'QCPassed' or 'NCR_QCPassed'
+    // In legacy/Collection flow: 'HubReceived' (if QC skipped) or 'QCPassed'
     const processedItems = React.useMemo(() => {
-        return items.filter(item => item.status === 'COL_HubReceived' || item.status === 'HubReceived');
+        return items.filter(item =>
+            item.status === 'QCPassed' ||
+            item.status === 'NCR_QCPassed' ||
+            item.status === 'HubReceived' ||
+            item.status === 'COL_HubReceived' ||
+            // Also include items that might be 'ReturnToSupplier' but haven't been finalized? No, those are next step.
+            // Items ready for Docs are typically 'QCPassed'.
+            item.status === 'QCCompleted' // Legacy alias
+        );
     }, [items]);
 
     const handlePrintClick = async (status: DispositionAction, list: ReturnRecord[]) => {
-        if (list.length === 0) return;
-        if (window.confirm(`ยืนยันการสร้างเอกสารและส่งต่อ ${list.length} รายการไปยังขั้นตอนปิดงาน?`)) {
-            for (const item of list) {
-                await updateReturnRecord(item.id, {
-                    status: 'COL_Documented',
-                    dateDocumented: new Date().toISOString()
-                });
-            }
+        if (onPrintDocs) {
+            onPrintDocs(status, list);
+        } else {
+            console.error("onPrintDocs prop missing");
         }
     };
 
@@ -32,7 +43,7 @@ export const Step7Docs: React.FC = () => {
     // Fallback for items with missing disposition
     const safeItems = processedItems.map(i => ({
         ...i,
-        disposition: i.disposition || 'RTV' // Default to RTV if missing, as usually it is RTV
+        disposition: i.disposition || 'RTV' // Default to RTV if missing
     }));
 
     // Helper: Identify NCR items

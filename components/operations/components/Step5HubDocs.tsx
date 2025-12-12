@@ -4,7 +4,23 @@ import { useData } from '../../../DataContext';
 import { ReturnRecord, DispositionAction } from '../../../types';
 import { KanbanColumn } from './KanbanColumn';
 
-export const Step5HubDocs: React.FC = () => {
+// This component now delegates the document logic to the parent via props or context if available.
+// However, since useOperationsLogic is the main controller, we should emit an event or used a shared context.
+// For this Refactor, since Step5 is a child of Operations.tsx which USES useOperationsLogic, 
+// we need to pass the handler down or expose it.
+// Assuming Operations passes 'onPrintDocs' prop or similar.
+// BUT, based on the file structure, Step5HubDocs is used in Operations.tsx.
+// Let's check Operations.tsx to see if we can pass the handleDocModal.
+
+// Wait, the user wants "Preview PDF & Save" status.
+// Currently handlePrintClick does a simple window.confirm and update.
+// We need to open the DocumentPreviewModal.
+
+interface Step5HubDocsProps {
+    onPrintDocs: (status: DispositionAction, list: ReturnRecord[]) => void;
+}
+
+export const Step5HubDocs: React.FC<Step5HubDocsProps> = ({ onPrintDocs }) => {
     const { items, updateReturnRecord } = useData();
 
     // Filter Items: Status 'NCR_QCCompleted' or 'QCCompleted' (Legacy)
@@ -12,28 +28,16 @@ export const Step5HubDocs: React.FC = () => {
         return items.filter(item => item.status === 'NCR_QCCompleted' || item.status === 'QCCompleted');
     }, [items]);
 
-    const handlePrintClick = async (status: DispositionAction, list: ReturnRecord[]) => {
-        if (list.length === 0) return;
-        if (window.confirm(`ยืนยันการสร้างเอกสารและส่งต่อ ${list.length} รายการไปยังขั้นตอนปิดงาน?`)) {
-            for (const item of list) {
-                await updateReturnRecord(item.id, {
-                    status: 'NCR_Documented',
-                    dateDocumented: new Date().toISOString()
-                });
-            }
-        }
-    };
-
-    const handleSplitClick = (item: ReturnRecord) => {
-        // Placeholder for split logic in docs step if needed
-        alert('Split functionality in Docs step is under construction.');
-    };
-
     // Fallback for items with missing disposition (Ghost Items repair)
     const safeItems = processedItems.map(i => ({
         ...i,
         disposition: i.disposition || 'InternalUse'
     }));
+
+    const handleSplitClick = (item: ReturnRecord) => {
+        // Placeholder for split logic
+        alert('Split functionality in Docs step is under construction.');
+    };
 
     // Helper: Identify NCR items
     const isNCR = (i: ReturnRecord) => i.ncrNumber || i.id.startsWith('NCR');
@@ -63,15 +67,15 @@ export const Step5HubDocs: React.FC = () => {
                 icon={Truck}
                 color="bg-amber-500"
                 items={rtvGeneralItems}
-                onPrintClick={handlePrintClick}
+                onPrintClick={onPrintDocs}
                 onSplitClick={handleSplitClick}
                 overrideFilter={true}
             />
 
-            <KanbanColumn title="สินค้าสำหรับขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" items={otherItems} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าสำหรับเคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" items={otherItems} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" items={otherItems} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าสำหรับทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" items={otherItems} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
+            <KanbanColumn title="สินค้าสำหรับขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
+            <KanbanColumn title="สินค้าสำหรับเคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
+            <KanbanColumn title="สินค้าใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
+            <KanbanColumn title="สินค้าสำหรับทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
 
             {/* 6. Collection Return (COL ID) - Teal - Special Channel */}
             <KanbanColumn
@@ -80,7 +84,7 @@ export const Step5HubDocs: React.FC = () => {
                 icon={FileText}
                 color="bg-teal-600"
                 items={rtvCollectionItems}
-                onPrintClick={handlePrintClick}
+                onPrintClick={onPrintDocs}
                 onSplitClick={handleSplitClick}
                 overrideFilter={true}
             />
