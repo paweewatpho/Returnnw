@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Truck, MapPin, Printer, ArrowRight, Package, Box, Calendar, Layers } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import Swal from 'sweetalert2';
+import { Truck, MapPin, Printer, ArrowRight, Package, Box, Calendar, Layers, X, Info } from 'lucide-react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord } from '../../../types';
 
@@ -8,10 +10,12 @@ interface Step2NCRLogisticsProps {
 }
 
 export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm }) => {
-    const { items } = useData(); // Removed updateReturnRecord since it's handled by onConfirm (parent)
+    const { items } = useData();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Transport Info State matched to Step 5
+    // Transport Info State
+    const [transportMode, setTransportMode] = useState<'Company' | '3PL' | 'Other'>('Company');
     const [transportInfo, setTransportInfo] = useState({
         driverName: '',
         plateNumber: '',
@@ -24,15 +28,13 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
     const [customDestination, setCustomDestination] = useState<string>('');
     const [selectedBranch, setSelectedBranch] = useState<string>('All');
 
-    // Filter Logic: Separte NCR (Direct Entry) and Logistics (From Collection System Step 4)
+    // Filter Logic
     const pendingItems = useMemo(() => {
         return items.filter(item => {
             const isNCR = item.documentType === 'NCR' || !!item.ncrNumber;
-            // NCR enters at 'Requested' or 'COL_JobAccepted'
             if (isNCR) {
                 return item.status === 'Requested' || item.status === 'COL_JobAccepted';
             }
-            // Logistics (Collection System) must complete Step 4 (Consolidation) first
             return item.status === 'COL_Consolidated';
         });
     }, [items]);
@@ -52,40 +54,68 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
 
     const handleSelectAll = () => {
         if (selectedIds.size === filteredItems.length && filteredItems.length > 0) {
-            const newSet = new Set(selectedIds);
-            filteredItems.forEach(i => newSet.delete(i.id));
-            setSelectedIds(newSet);
+            setSelectedIds(new Set());
         } else {
-            const newSet = new Set(selectedIds);
-            filteredItems.forEach(i => newSet.add(i.id));
-            setSelectedIds(newSet);
+            setSelectedIds(new Set(filteredItems.map(i => i.id)));
         }
     };
 
-    const confirmSelection = async () => {
+    const handleOpenModal = () => {
         if (selectedIds.size === 0) {
-            alert('กรุณาเลือกรายการสินค้าอย่างน้อย 1 รายการ');
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่มีรายการที่เลือก',
+                text: 'กรุณาเลือกรายการสินค้าอย่างน้อย 1 รายการ',
+                confirmButtonText: 'ตกลง',
+                confirmButtonColor: '#f39c12'
+            });
             return;
         }
+        setIsModalOpen(true);
+    };
 
-        // Validation based on Type
-        const isCompanyCar = transportInfo.transportCompany === 'รถบริษัท';
-        const is3PL = !isCompanyCar && transportInfo.driverName === '3PL';
-        const isOther = !isCompanyCar && transportInfo.driverName === 'Other';
-
-        if (isCompanyCar) {
+    const confirmSelection = async () => {
+        if (transportMode === 'Company') {
             if (!transportInfo.driverName || !transportInfo.plateNumber) {
-                alert('กรุณาระบุชื่อพนักงานขับรถและทะเบียนรถสำหรับรถบริษัท');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุชื่อพนักงานขับรถและทะเบียนรถสำหรับรถบริษัท',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#f39c12'
+                });
                 return;
             }
-        } else if (is3PL) {
+        } else if (transportMode === '3PL') {
             if (!transportInfo.transportCompany) {
-                alert('กรุณาระบุชื่อบริษัทขนส่ง (3PL)');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุชื่อบริษัทขนส่ง (3PL)',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#f39c12'
+                });
                 return;
             }
-        } else if (isOther) {
+            if (!transportInfo.driverName || !transportInfo.plateNumber) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุชื่อพนักงานขับรถและทะเบียนรถสำหรับ 3PL',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#f39c12'
+                });
+                return;
+            }
+        } else if (transportMode === 'Other') {
             if (!transportInfo.transportCompany) {
-                alert('กรุณาระบุรายละเอียดการขนส่ง (อื่นๆ)');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุรายละเอียดการขนส่ง (อื่นๆ)',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#f39c12'
+                });
                 return;
             }
         }
@@ -93,211 +123,308 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
         let finalDestination = '';
         if (routeType === 'Direct') {
             if (!directDestination) {
-                alert('กรุณาระบุปลายทางสำหรับการส่งตรง (Direct Return)');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุปลายทางสำหรับการส่งตรง (Direct Return)',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#f39c12'
+                });
                 return;
             }
             if (directDestination === 'Other' && !customDestination) {
-                alert('กรุณาระบุชื่อปลายทาง (อื่นๆ)');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุชื่อปลายทาง (อื่นๆ)',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#f39c12'
+                });
                 return;
             }
             finalDestination = directDestination === 'Other' ? customDestination : directDestination;
         }
 
-        // Delegate to Parent (Operations Logic) to handle PDF generation and Saving
         if (onConfirm) {
-            // Pass transport info and specific destination for Direct
             const submissionTransportInfo = {
                 ...transportInfo,
                 destination: routeType === 'Direct' ? finalDestination : undefined
             };
             onConfirm(Array.from(selectedIds), routeType, submissionTransportInfo);
-        } else {
-            console.error("No onConfirm handler provided to Step2NCRLogistics");
+            setIsModalOpen(false); // Close modal on success
+
+            // Optional Success Message
+            Swal.fire({
+                icon: 'success',
+                title: 'บันทึกสำเร็จ',
+                text: 'สร้างเอกสารและบันทึกข้อมูลเรียบร้อยแล้ว',
+                timer: 1500,
+                showConfirmButton: false
+            });
         }
     };
 
     const isAllFilteredSelected = filteredItems.length > 0 && filteredItems.every(i => selectedIds.has(i.id));
 
     return (
-        <div className="h-full flex flex-col p-6 animate-fade-in overflow-y-auto">
-            <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+        <div className="h-full flex flex-col p-6 animate-fade-in relative">
+            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
                 <Truck className="w-6 h-6 text-indigo-600" /> 2. รวบรวมและระบุขนส่ง (Consolidation & Logistics)
             </h3>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-
-                {/* Transport Info Form (Left Panel) */}
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 lg:col-span-1">
-                    <h4 className="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">ข้อมูลการขนส่ง</h4>
-                    {/* ... (Middle content omitted for brevity) ... */}
-                    <div className="space-y-4">
-                        <label className="block text-sm font-bold text-slate-600 mb-1">เลือกประเภทการขนส่ง</label>
-                        {/* Option 1: Company Car */}
-                        <div className={`border rounded-lg p-3 transition-colors ${transportInfo.transportCompany === 'รถบริษัท' ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200'}`}>
-                            {/* ... Inputs ... */}
-                            <label className="flex items-center gap-2 cursor-pointer mb-2">
-                                <input
-                                    type="radio"
-                                    name="transportType"
-                                    checked={transportInfo.transportCompany === 'รถบริษัท'}
-                                    onChange={() => setTransportInfo({ ...transportInfo, transportCompany: 'รถบริษัท', driverName: '', plateNumber: '' })}
-                                    className="text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <span className="font-bold text-slate-700">รถบริษัท</span>
-                            </label>
-                            {/* ... */}
-                        </div>
-
-                        {/* Option 2: 3PL */}
-                        <div className={`border rounded-lg p-3 transition-colors ${transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === '3PL' ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200'}`}>
-                            <label className="flex items-center gap-2 cursor-pointer mb-2">
-                                <input
-                                    type="radio"
-                                    name="transportType"
-                                    checked={transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === '3PL'}
-                                    onChange={() => setTransportInfo({ ...transportInfo, transportCompany: '', driverName: '3PL', plateNumber: '-' })}
-                                    className="text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <span className="font-bold text-slate-700">รถขนส่งร่วม (3PL)</span>
-                            </label>
-                            {/* ... */}
-                        </div>
-
-                        {/* Option 3: Other */}
-                        <div className={`border rounded-lg p-3 transition-colors ${transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === 'Other' ? 'bg-indigo-50 border-indigo-200' : 'border-slate-200'}`}>
-                            <label className="flex items-center gap-2 cursor-pointer mb-2">
-                                <input
-                                    type="radio"
-                                    name="transportType"
-                                    checked={transportInfo.transportCompany !== 'รถบริษัท' && transportInfo.driverName === 'Other'}
-                                    onChange={() => setTransportInfo({ ...transportInfo, transportCompany: '', driverName: 'Other', plateNumber: '-' })}
-                                    className="text-indigo-600 focus:ring-indigo-500"
-                                />
-                                <span className="font-bold text-slate-700">อื่นๆ (ระบุ)</span>
-                            </label>
-                            {/* ... */}
-                        </div>
+            {/* Top Toolbar */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-wrap justify-between items-center gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                        <span className="text-sm font-bold text-slate-600">สาขา:</span>
+                        <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)} className="bg-transparent text-sm font-medium outline-none text-slate-800">
+                            <option value="All">ทุกสาขา</option>
+                            {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                        </select>
                     </div>
-
-                    <div className="mt-6 pt-4 border-t border-slate-100">
-                        <h4 className="font-bold text-slate-700 mb-3 block">ปลายทาง (Destination)</h4>
-                        <div className="space-y-3">
-                            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${routeType === 'Hub' ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
-                                <input type="radio" name="route" checked={routeType === 'Hub'} onChange={() => setRouteType('Hub')} className="mt-1" />
-                                <div>
-                                    <div className="font-bold text-slate-800">Hub นครสวรรค์</div>
-                                    <div className="text-xs text-slate-500">ส่งเข้า Hub เพื่อตรวจสอบคุณภาพ (QC)</div>
-                                </div>
-                            </label>
-                            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${routeType === 'Direct' ? 'bg-green-50 border-green-500 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
-                                <input type="radio" name="route" checked={routeType === 'Direct'} onChange={() => setRouteType('Direct')} className="mt-1" />
-                                <div>
-                                    <div className="font-bold text-slate-800">ส่งตรง (Direct Return)</div>
-                                    <div className="text-xs text-slate-500">ไม่ผ่าน QC, ส่งคืนผู้ผลิต/ลูกค้าทันที</div>
-                                </div>
-                            </label>
-
-                            {routeType === 'Direct' && (
-                                <div className="ml-8 p-3 bg-green-50/50 rounded-lg border border-green-100 space-y-2">
-                                    <div className="text-xs font-bold text-green-800 mb-1">ระบุปลายทาง:</div>
-                                    <label className="flex items-center gap-2 cursor-pointer text-sm">
-                                        <input type="radio" name="directDest" value="สาย 3" checked={directDestination === 'สาย 3'} onChange={e => setDirectDestination(e.target.value)} /> สาย 3
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer text-sm">
-                                        <input type="radio" name="directDest" value="ซีโน" checked={directDestination === 'ซีโน'} onChange={e => setDirectDestination(e.target.value)} /> ซีโน
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer text-sm">
-                                        <input type="radio" name="directDest" value="นีโอคอเปอเรท" checked={directDestination === 'นีโอคอเปอเรท'} onChange={e => setDirectDestination(e.target.value)} /> นีโอคอเปอเรท
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer text-sm">
-                                        <input type="radio" name="directDest" value="Other" checked={directDestination === 'Other'} onChange={e => setDirectDestination(e.target.value)} /> อื่นๆ
-                                    </label>
-                                    {directDestination === 'Other' && (
-                                        <input type="text" value={customDestination} onChange={e => setCustomDestination(e.target.value)} placeholder="ระบุปลายทาง..." className="w-full mt-1 p-1.5 text-xs border border-green-300 rounded" />
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                    <div className="text-sm text-slate-500">
+                        รายการรอดำเนินการ: <span className="font-bold text-indigo-600">{filteredItems.length}</span>
                     </div>
+                </div>
 
+                <div className="flex gap-3">
+                    <button onClick={handleSelectAll} className="px-4 py-2 text-sm bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-slate-600 font-bold transition-colors">
+                        {isAllFilteredSelected ? 'ยกเลิกเลือกทั้งหมด' : 'เลือกทั้งหมด'}
+                    </button>
                     <button
-                        type="button"
-                        onClick={confirmSelection}
+                        onClick={handleOpenModal}
                         disabled={selectedIds.size === 0}
-                        className={`w-full mt-6 py-3 rounded-lg font-bold text-white shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${routeType === 'Hub' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'}`}
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
-                        {routeType === 'Hub' ?
-                            <>ออกเอกสาร / บันทึก (Issue Doc / Save) <Truck className="w-4 h-4" /></> :
-                            <>ออกเอกสาร / บันทึก (Issue Doc / Save) <Printer className="w-4 h-4" /></>
-                        }
+                        <Truck className="w-4 h-4" /> ดำเนินการ ({selectedIds.size})
                     </button>
                 </div>
-
-                {/* List (Right Panel - Spanning 2 cols) */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 lg:col-span-2 flex flex-col overflow-hidden max-h-[700px]">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center flex-wrap gap-2">
-                        <div>
-                            <h4 className="font-bold text-slate-700">รายการสินค้ารอจัดส่ง ({filteredItems.length})</h4>
-                            <div className="text-sm text-slate-500">เลือก {selectedIds.size} รายการ</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={handleSelectAll} className="text-xs px-3 py-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-600 font-medium">
-                                {isAllFilteredSelected ? 'ยกเลิกเลือกทั้งหมด' : 'เลือกทั้งหมด'}
-                            </button>
-                            <select value={selectedBranch} onChange={e => setSelectedBranch(e.target.value)} className="text-xs p-1.5 border rounded-lg bg-white outline-none">
-                                <option value="All">ทุกสาขา</option>
-                                {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
-                        {filteredItems.length === 0 ? (
-                            <div className="p-12 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-                                <Package className="w-12 h-12 mx-auto mb-2 text-slate-300" />
-                                <p>ไม่พบรายการสินค้าที่รอจัดส่ง</p>
-                                <p className="text-xs mt-1">หรือลองเปลี่ยนตัวกรองสาขา</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {filteredItems.map(item => {
-                                    const isSelected = selectedIds.has(item.id);
-                                    const isNCR = item.documentType === 'NCR';
-                                    return (
-                                        <div key={item.id} onClick={() => handleToggle(item.id)} className={`flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
-                                            <div className="pt-1">
-                                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300'}`}>
-                                                    {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
-                                                </div>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-800 text-sm">{item.productName}</h4>
-                                                        <div className="flex gap-2 mt-1">
-                                                            {isNCR ?
-                                                                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold">NCR</span> :
-                                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">COL</span>
-                                                            }
-                                                            <span className="text-xs font-mono text-slate-500">{item.ncrNumber || item.id}</span>
-                                                        </div>
-                                                    </div>
-                                                    <span className="text-xs font-medium text-slate-400">{item.dateRequested || item.date}</span>
-                                                </div>
-                                                <div className="text-xs text-slate-500 mt-2 flex gap-4 flex-wrap">
-                                                    <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">สาขา: {item.branch}</span>
-                                                    <span>จำนวน: <b>{item.quantity} {item.unit}</b></span>
-                                                    {item.founder && <span>ผู้พบ: {item.founder}</span>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </div>
             </div>
+
+            {/* Items Grid */}
+            <div className="flex-1 overflow-y-auto pb-20">
+                {filteredItems.length === 0 ? (
+                    <div className="h-64 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                        <Package className="w-16 h-16 mb-4 text-slate-300" />
+                        <p className="font-medium text-lg">ไม่พบรายการสินค้าที่รอจัดส่ง</p>
+                        <p className="text-sm mt-1">กรุณาตรวจสอบสถานะสินค้า หรือการกรองสาขา</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {filteredItems.map(item => {
+                            const isSelected = selectedIds.has(item.id);
+                            const isNCR = item.documentType === 'NCR';
+                            return (
+                                <div key={item.id} onClick={() => handleToggle(item.id)} className={`group relative p-5 rounded-xl border transition-all cursor-pointer shadow-sm hover:shadow-md ${isSelected ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-200' : 'bg-white border-slate-200 hover:border-indigo-300'}`}>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex items-center gap-2">
+                                            {isNCR ?
+                                                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">NCR</span> :
+                                                <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">COL</span>
+                                            }
+                                            <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 rounded">{item.ncrNumber || item.id}</span>
+                                        </div>
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'bg-transparent border-slate-300 group-hover:border-indigo-400'}`}>
+                                            {isSelected && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
+                                        </div>
+                                    </div>
+
+                                    <h4 className="font-bold text-slate-800 text-base mb-2 line-clamp-2" title={item.productName}>{item.productName}</h4>
+
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-500">จำนวน:</span>
+                                            <span className="font-bold text-slate-700">{item.quantity} {item.unit}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-500">สาขา:</span>
+                                            <span className="text-slate-700">{item.branch}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-500">วันที่:</span>
+                                            <span className="text-slate-700">{item.dateRequested || item.date}</span>
+                                        </div>
+                                    </div>
+
+                                    {item.founder && (
+                                        <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex items-center gap-1">
+                                            <Info className="w-3 h-3" /> ผู้พบ: {item.founder}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Modal Dialog */}
+            {isModalOpen && createPortal(
+                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-slide-up">
+                        {/* Modal Header */}
+                        <div className="px-6 py-4 bg-white border-b border-slate-100 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Truck className="w-6 h-6 text-indigo-600" /> ระบุรายละเอียดการขนส่ง
+                                </h2>
+                                <p className="text-sm text-slate-500 mt-0.5">กรุณาระบุข้อมูลยานพาหนะและปลายทางสำหรับ {selectedIds.size} รายการที่เลือก</p>
+                            </div>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                <X className="w-6 h-6 text-slate-400" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            {/* Section 1: Transport Type */}
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-slate-800 mb-2">1. เลือกประเภทการขนส่ง</label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === 'Company' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
+                                            <input type="radio" name="transportType" checked={transportMode === 'Company'} onChange={() => { setTransportMode('Company'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: 'รถบริษัท' }); }} className="text-indigo-600 focus:ring-indigo-500" />
+                                            รถบริษัท
+                                        </div>
+                                        <div className="space-y-2 mt-2">
+                                            <input
+                                                type="text"
+                                                placeholder="ชื่อพนักงานขับรถ"
+                                                value={transportMode === 'Company' ? transportInfo.driverName : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, driverName: e.target.value })}
+                                                disabled={transportMode !== 'Company'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="ทะเบียนรถ"
+                                                value={transportMode === 'Company' ? transportInfo.plateNumber : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, plateNumber: e.target.value })}
+                                                disabled={transportMode !== 'Company'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                        </div>
+                                    </label>
+
+                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === '3PL' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
+                                            <input type="radio" name="transportType" checked={transportMode === '3PL'} onChange={() => { setTransportMode('3PL'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: '' }); }} className="text-indigo-600 focus:ring-indigo-500" />
+                                            รถขนส่งร่วม (3PL)
+                                        </div>
+                                        <div className="space-y-2 mt-2">
+                                            <input
+                                                type="text"
+                                                placeholder="ระบุบริษัทขนส่ง..."
+                                                value={transportMode === '3PL' ? transportInfo.transportCompany : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })}
+                                                disabled={transportMode !== '3PL'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="ชื่อพนักงานขับรถ"
+                                                value={transportMode === '3PL' ? transportInfo.driverName : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, driverName: e.target.value })}
+                                                disabled={transportMode !== '3PL'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="ทะเบียนรถ"
+                                                value={transportMode === '3PL' ? transportInfo.plateNumber : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, plateNumber: e.target.value })}
+                                                disabled={transportMode !== '3PL'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                        </div>
+                                    </label>
+
+                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === 'Other' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
+                                            <input type="radio" name="transportType" checked={transportMode === 'Other'} onChange={() => { setTransportMode('Other'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: '' }); }} className="text-indigo-600 focus:ring-indigo-500" />
+                                            อื่นๆ
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="ระบุรายละเอียด..."
+                                            value={transportMode === 'Other' ? transportInfo.transportCompany : ''}
+                                            onChange={(e) => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })}
+                                            disabled={transportMode !== 'Other'}
+                                            className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none mt-2"
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <hr className="border-slate-100" />
+
+                            {/* Section 2: Destination */}
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-slate-800 mb-2">2. ปลายทาง (Destination)</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <label className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${routeType === 'Hub' ? 'bg-indigo-50 border-indigo-500 shadow-sm ring-1 ring-indigo-200' : 'border-slate-200 hover:bg-slate-50'}`}>
+                                        <div className="pt-1">
+                                            <input type="radio" name="route" checked={routeType === 'Hub'} onChange={() => setRouteType('Hub')} className="w-4 h-4 text-indigo-600" />
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-slate-800 text-base">Hub นครสวรรค์</div>
+                                            <div className="text-sm text-slate-500 mt-1">ส่งสินค้าเข้า Hub เพื่อตรวจสอบคุณภาพ (QC) และคัดแยก</div>
+                                        </div>
+                                    </label>
+
+                                    <div className="flex flex-col gap-3">
+                                        <label className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${routeType === 'Direct' ? 'bg-green-50 border-green-500 shadow-sm ring-1 ring-green-200' : 'border-slate-200 hover:bg-slate-50'}`}>
+                                            <div className="pt-1">
+                                                <input type="radio" name="route" checked={routeType === 'Direct'} onChange={() => setRouteType('Direct')} className="w-4 h-4 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-800 text-base">ส่งตรง (Direct Return)</div>
+                                                <div className="text-sm text-slate-500 mt-1">ส่งคืนผู้ผลิตหรือลูกค้าโดยตรง (ไม่ผ่าน Hub)</div>
+                                            </div>
+                                        </label>
+
+                                        {routeType === 'Direct' && (
+                                            <div className="p-4 bg-green-50/50 rounded-xl border border-green-100 animate-fade-in">
+                                                <div className="text-sm font-bold text-green-800 mb-2">ระบุปลายทาง:</div>
+                                                <div className="space-y-2">
+                                                    {['สาย 3', 'ซีโน', 'นีโอคอเปอเรท'].map(dest => (
+                                                        <label key={dest} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-green-100/50 p-1 rounded">
+                                                            <input type="radio" name="directDest" value={dest} checked={directDestination === dest} onChange={e => setDirectDestination(e.target.value)} className="text-green-600" /> {dest}
+                                                        </label>
+                                                    ))}
+                                                    <label className="flex items-center gap-2 cursor-pointer text-sm hover:bg-green-100/50 p-1 rounded">
+                                                        <input type="radio" name="directDest" value="Other" checked={directDestination === 'Other'} onChange={e => setDirectDestination(e.target.value)} className="text-green-600" /> อื่นๆ
+                                                        {directDestination === 'Other' && (
+                                                            <input type="text" value={customDestination} onChange={e => setCustomDestination(e.target.value)} placeholder="ระบุปลายทาง..." className="flex-1 ml-2 p-1.5 text-xs border border-green-300 rounded focus:ring-1 focus:ring-green-500 outline-none bg-white" autoFocus />
+                                                        )}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                            <button onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors">
+                                ยกเลิก
+                            </button>
+                            <button
+                                onClick={confirmSelection}
+                                className={`px-6 py-2.5 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-all ${routeType === 'Hub' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'}`}
+                            >
+                                {routeType === 'Hub' ?
+                                    <>ยืนยัน / ออกเอกสาร <Truck className="w-5 h-5" /></> :
+                                    <>ยืนยัน / ออกเอกสาร <Printer className="w-5 h-5" /></>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };
