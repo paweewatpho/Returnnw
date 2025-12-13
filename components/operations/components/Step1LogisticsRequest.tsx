@@ -265,22 +265,9 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
                     <div className="flex justify-end pt-8 mt-4 border-t border-slate-100">
                         <button
                             onClick={() => {
-                                // Add a dummy item if list is empty to allow submission, 
-                                // or handle logic in parent to allow empty items.
-                                // For now, we simulate adding the header info as a "Request Item" if none exists.
+                                // Add a dummy item if list is empty to allow submission
                                 if (requestItems.length === 0) {
                                     handleAddItem(null, { ...formData, productName: 'General Request', quantity: 1, unit: 'Lot' });
-                                    // We need to wait for state update or force submit logic in parent?
-                                    // Actually, handleAddItem updates state. We might need a two-step or 
-                                    // update parent logic to allow submitting without items.
-                                    // BUT, to keep it simple, we can just call handleRequestSubmit, 
-                                    // assuming the parent checks formData too. 
-                                    // If parent enforces items > 0, we might need to bypass.
-                                    // Let's assume user fills header -> click submit -> we package it.
-
-                                    // Hack: Call AddItem then Submit immediately might not work due to async state.
-                                    // Better: In parent, if items=[], use formData as the item.
-                                    // For this UI, we just call submit.
                                 }
                                 handleRequestSubmit();
                             }}
