@@ -97,12 +97,11 @@ export const Step2JobAccept: React.FC = () => {
                                         checked={requestedItems.length > 0 && selectedIds.length === requestedItems.length}
                                     />
                                 </th>
-                                <th className="p-4 border-b">ID</th>
                                 <th className="p-4 border-b">สาขา (Branch)</th>
-                                <th className="p-4 border-b">ลูกค้า (Customer)</th>
-                                <th className="p-4 border-b">สินค้า (Product)</th>
-                                <th className="p-4 border-b text-center">จำนวน</th>
-                                <th className="p-4 border-b">วันที่แจ้ง</th>
+                                <th className="p-4 border-b">ใบกำกับ/วันที่ (Inv/Date)</th>
+                                <th className="p-4 border-b">เลขที่เอกสาร (Doc Info)</th>
+                                <th className="p-4 border-b">ลูกค้าปลายทาง</th>
+                                <th className="p-4 border-b">หมายเหตุ</th>
                                 <th className="p-4 border-b text-center">สถานะ</th>
                             </tr>
                         </thead>
@@ -119,21 +118,32 @@ export const Step2JobAccept: React.FC = () => {
                             ) : (
                                 requestedItems.map(item => (
                                     <tr key={item.id} className="hover:bg-blue-50/50 transition-colors cursor-pointer" onClick={() => handleToggleSelect(item.id)}>
-                                        <td className="p-4">
+                                        <td className="p-4 align-top">
                                             <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => { }} className="accent-blue-600 w-4 h-4" />
                                         </td>
-                                        <td className="p-4 font-mono text-xs text-slate-500">{item.id}</td>
-                                        <td className="p-4 font-bold text-slate-700">{item.branch}</td>
-                                        <td className="p-4 text-slate-600">{item.customerName}</td>
-                                        <td className="p-4">
-                                            <div className="font-medium text-slate-800">{item.productName}</div>
-                                            <div className="text-xs text-slate-500">{item.productCode}</div>
+                                        <td className="p-4 align-top">
+                                            <div className="font-bold text-slate-700">{item.branch}</div>
                                         </td>
-                                        <td className="p-4 text-center font-bold text-slate-600">
-                                            {item.quantity} {item.unit}
+                                        <td className="p-4 align-top">
+                                            <div className="text-sm font-semibold text-slate-700">{item.invoiceNo || '-'}</div>
+                                            <div className="text-xs text-slate-500 flex items-center gap-1">
+                                                <Calendar className="w-3 h-3" /> {item.controlDate || item.date || '-'}
+                                            </div>
                                         </td>
-                                        <td className="p-4 text-xs text-slate-500">{item.dateRequested || item.date}</td>
-                                        <td className="p-4 text-center">
+                                        <td className="p-4 align-top">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-xs font-mono text-slate-600 bg-slate-100 px-1 rounded w-fit">R: {item.refNo || '-'}</span>
+                                                <span className="text-xs font-mono text-slate-600 bg-slate-100 px-1 rounded w-fit">TM: {item.tmNo || '-'}</span>
+                                                <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1 rounded w-fit">COL: {item.id}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4 align-top text-slate-600">
+                                            {item.destinationCustomer || '-'}
+                                        </td>
+                                        <td className="p-4 align-top">
+                                            <div className="text-sm text-slate-600 max-w-xs">{item.notes || '-'}</div>
+                                        </td>
+                                        <td className="p-4 align-top text-center">
                                             <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">{item.status}</span>
                                         </td>
                                     </tr>
