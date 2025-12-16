@@ -21,6 +21,8 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
     const [receivedDate, setReceivedDate] = React.useState(new Date().toISOString().split('T')[0]);
     const [driverName, setDriverName] = React.useState('');
     const [plateNumber, setPlateNumber] = React.useState('');
+    const [editQty, setEditQty] = React.useState<number>(0);
+    const [editUnit, setEditUnit] = React.useState<string>('');
 
     // Filter Items: Status 'JobAccepted' or 'COL_JobAccepted' ensuring NO NCR items (unless explicitly LOGISTICS)
     const acceptedItems = React.useMemo(() => {
@@ -42,6 +44,11 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
 
     const handleReceiveItem = (id: string) => {
         if (isSubmitting) return;
+        const item = items.find(i => i.id === id);
+        if (item) {
+            setEditQty(item.quantity || 0);
+            setEditUnit(item.unit || '');
+        }
         setTargetIds([id]);
         setDriverName('');
         setPlateNumber('');
@@ -79,6 +86,8 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                     status: 'COL_BranchReceived',
                     dateReceived: receivedDate,
                     dateBranchReceived: receivedDate,
+                    // If single item, update quantity and unit
+                    ...(targetIds.length === 1 ? { quantity: editQty, unit: editUnit } : {}),
                     transportInfo: {
                         driverName: driverName,
                         plateNumber: plateNumber,
@@ -262,6 +271,31 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                                 </p>
                                 <p className="text-xs text-indigo-600">กรุณาระบุข้อมูลคนขับและรถที่นำสินค้าเข้ามาส่ง</p>
                             </div>
+
+                            {/* Quantity & Unit Edit (Single Item Only) */}
+                            {targetIds.length === 1 && (
+                                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">จำนวน (Qty)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full p-2 border border-slate-300 rounded text-sm font-bold text-blue-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            value={editQty}
+                                            onChange={(e) => setEditQty(Number(e.target.value))}
+                                            min="0"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">หน่วย (Unit)</label>
+                                        <input
+                                            type="text"
+                                            className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            value={editUnit}
+                                            onChange={(e) => setEditUnit(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-1">วันที่รับจริง (Received Date) <span className="text-red-500">*</span></label>
