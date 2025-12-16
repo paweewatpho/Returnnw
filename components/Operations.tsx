@@ -233,6 +233,7 @@ export const Operations: React.FC<OperationsProps> = ({ initialData, onClearInit
           setIsDocEditable={actions.setIsDocEditable}
           handleConfirmDocGeneration={actions.handleConfirmDocGeneration}
           onUpdateItem={actions.handleUpdateDocItem}
+          isSubmitting={state.isSubmittingDoc}
         />
       )}
 

@@ -25,6 +25,7 @@ export const Step4HubQC: React.FC = () => {
         claimPhone: ''
     });
     const [isCustomRoute, setIsCustomRoute] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Split State
     const [showSplitMode, setShowSplitMode] = useState(false);
@@ -109,6 +110,8 @@ export const Step4HubQC: React.FC = () => {
     const handleQCSubmit = async () => {
         // ...
         if (!qcSelectedItem || !selectedDisposition) return;
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         try {
             // Construct update object
@@ -140,11 +143,15 @@ export const Step4HubQC: React.FC = () => {
                 title: 'เกิดข้อผิดพลาด',
                 text: error instanceof Error ? error.message : 'Unknown error'
             });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleSplitSubmit = async () => {
         if (!qcSelectedItem || splitQty <= 0) return;
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         try {
             // 1. Calculate quantities
@@ -205,6 +212,8 @@ export const Step4HubQC: React.FC = () => {
                 title: 'เกิดข้อผิดพลาดในการแยกรายการ',
                 text: error instanceof Error ? error.message : 'Unknown error'
             });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -519,16 +528,24 @@ export const Step4HubQC: React.FC = () => {
 
                             <div className="mt-4 flex justify-end pt-6 border-t border-slate-200">
                                 {showSplitMode ? (
-                                    <button onClick={handleSplitSubmit} disabled={splitQty <= 0 || splitQty >= (isBreakdownUnit ? (qcSelectedItem.quantity * conversionRate) : qcSelectedItem.quantity) || !selectedDisposition} className="px-8 py-3 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-700 shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                                        <GitFork className="w-5 h-5" /> ยืนยันการแยกรายการ (Confirm Split)
+                                    <button onClick={handleSplitSubmit} disabled={isSubmitting || splitQty <= 0 || splitQty >= (isBreakdownUnit ? (qcSelectedItem.quantity * conversionRate) : qcSelectedItem.quantity) || !selectedDisposition} className="px-8 py-3 rounded-lg bg-orange-600 text-white font-bold hover:bg-orange-700 shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait">
+                                        {isSubmitting ? (
+                                            <>⏳ กำลังประมวลผล...</>
+                                        ) : (
+                                            <><GitFork className="w-5 h-5" /> ยืนยันการแยกรายการ (Confirm Split)</>
+                                        )}
                                     </button>
                                 ) : (
                                     <>
-                                        <button onClick={handleUndoQC} className="px-6 py-3 rounded-lg bg-white border border-slate-300 text-slate-600 font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 shadow-sm flex items-center gap-2 mr-auto" title="ส่งกลับไปขั้นตอนรับสินค้า (Step 3)">
+                                        <button onClick={handleUndoQC} disabled={isSubmitting} className="px-6 py-3 rounded-lg bg-white border border-slate-300 text-slate-600 font-bold hover:bg-red-50 hover:text-red-600 hover:border-red-200 shadow-sm flex items-center gap-2 mr-auto disabled:opacity-50" title="ส่งกลับไปขั้นตอนรับสินค้า (Step 3)">
                                             <Undo className="w-5 h-5" /> ส่งกลับ Step 3
                                         </button>
-                                        <button onClick={handleQCSubmit} disabled={!selectedDisposition || !qcSelectedItem?.condition || qcSelectedItem.condition === 'Unknown'} className="px-8 py-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                                            <Save className="w-5 h-5" /> ยืนยันผลการตรวจสอบ (Confirm QC)
+                                        <button onClick={handleQCSubmit} disabled={isSubmitting || !selectedDisposition || !qcSelectedItem?.condition || qcSelectedItem.condition === 'Unknown'} className="px-8 py-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait">
+                                            {isSubmitting ? (
+                                                <>⏳ กำลังบันทึก...</>
+                                            ) : (
+                                                <><Save className="w-5 h-5" /> ยืนยันผลการตรวจสอบ (Confirm QC)</>
+                                            )}
                                         </button>
                                     </>
                                 )}

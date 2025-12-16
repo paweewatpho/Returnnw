@@ -77,6 +77,9 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
         updatePayload: Partial<ReturnRecord>;
     } | null>(null);
 
+    // Document Submitting State
+    const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
+
     // Manual Intake Form State
     const initialFormState: Partial<ReturnRecord> = {
         branch: 'พิษณุโลก',
@@ -828,51 +831,61 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
 
     const handleConfirmDocGeneration = async () => {
         if (!docData) return;
+        if (isSubmittingDoc) return;
+        setIsSubmittingDoc(true);
+
         const today = new Date().toISOString().split('T')[0];
 
-        // Logistics Pending Check
-        if (pendingLogisticsTx) {
-            let successCount = 0;
-            // No need to redeclare today
+        try {
+            // Logistics Pending Check
+            if (pendingLogisticsTx) {
+                let successCount = 0;
+                // No need to redeclare today
 
-            for (const id of pendingLogisticsTx.ids) {
-                const success = await updateReturnRecord(id, {
-                    ...pendingLogisticsTx.updatePayload
-                });
+                for (const id of pendingLogisticsTx.ids) {
+                    const success = await updateReturnRecord(id, {
+                        ...pendingLogisticsTx.updatePayload
+                    });
+                    if (success) successCount++;
+                }
+                if (successCount > 0) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ดำเนินการสำเร็จ',
+                        text: `สร้างเอกสารและบันทึกรายการเรียบร้อย! (${successCount} รายการ)`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    setShowDocModal(false);
+                    setPendingLogisticsTx(null);
+                } else {
+                    Swal.fire('ไม่สามารถบันทึกรายการได้ (Update Failed)', 'กรุณาลองใหม่อีกครั้ง หรือตรวจสอบ Console', 'error');
+                }
+                return;
+            }
+
+            // Standard Hub Doc Generation
+            let successCount = 0;
+            for (const item of docData.items) {
+                const success = await updateReturnRecord(item.id, { status: 'ReturnToSupplier', dateDocumented: today });
                 if (success) successCount++;
             }
+
             if (successCount > 0) {
                 Swal.fire({
                     icon: 'success',
-                    title: 'ดำเนินการสำเร็จ',
-                    text: `สร้างเอกสารและบันทึกรายการเรียบร้อย! (${successCount} รายการ)`,
+                    title: 'สร้างเอกสารเรียบร้อย',
+                    text: `${successCount} รายการ -> ไปที่ขั้นตอน "ปิดงาน"`,
                     timer: 2000,
                     showConfirmButton: false
                 });
                 setShowDocModal(false);
-                setPendingLogisticsTx(null);
-            } else {
-                Swal.fire('ไม่สามารถบันทึกรายการได้ (Update Failed)', 'กรุณาลองใหม่อีกครั้ง หรือตรวจสอบ Console', 'error');
             }
-            return;
-        }
-
-        // Standard Hub Doc Generation
-        let successCount = 0;
-        for (const item of docData.items) {
-            const success = await updateReturnRecord(item.id, { status: 'ReturnToSupplier', dateDocumented: today });
-            if (success) successCount++;
-        }
-
-        if (successCount > 0) {
-            Swal.fire({
-                icon: 'success',
-                title: 'สร้างเอกสารเรียบร้อย',
-                text: `${successCount} รายการ -> ไปที่ขั้นตอน "ปิดงาน"`,
-                timer: 2000,
-                showConfirmButton: false
-            });
-            setShowDocModal(false);
+        } catch (error) {
+            console.error("Document Generation Error:", error);
+            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถสร้างเอกสารได้ กรุณาลองใหม่', 'error');
+        } finally {
+            setIsSubmittingDoc(false);
         }
     };
 
@@ -907,7 +920,8 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
             showDocModal, docData, includeVat, vatRate, discountRate, isDocEditable, docConfig,
             showSelectionModal, selectionStatus, selectionItems, selectedItemIds,
             formData, requestItems, customProblemType, customRootCause,
-            docSelectedItem, showStep4SplitModal
+            docSelectedItem, showStep4SplitModal,
+            isSubmittingDoc
         },
         derived: {
             uniqueCustomers, uniqueDestinations, uniqueFounders, uniqueProductCodes, uniqueProductNames,

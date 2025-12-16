@@ -11,6 +11,8 @@ export const Step6HubReceive: React.FC = () => {
     const [filterCustomer, setFilterCustomer] = React.useState<string>('');
     const [filterDestination, setFilterDestination] = React.useState<string>('');
 
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+
     // Filter Items: Status 'InTransitToHub', 'COL_InTransit', or 'NCR_InTransit'
     const incomingItems = React.useMemo(() => {
         return items.filter(item => item.status === 'InTransitToHub' || item.status === 'COL_InTransit' || item.status === 'NCR_InTransit');
@@ -19,6 +21,7 @@ export const Step6HubReceive: React.FC = () => {
     const handleHubReceive = async (id: string, currentItem?: ReturnRecord) => {
         const item = currentItem || items.find(i => i.id === id);
         if (!item) return;
+        if (isSubmitting) return;
 
         // Logic: NCR -> QC (Step 4), Collection -> Docs (Step 7 - Skip QC)
         const isNCR = item.documentType === 'NCR' || !!item.ncrNumber || item.status === 'NCR_InTransit';
@@ -38,19 +41,29 @@ export const Step6HubReceive: React.FC = () => {
         });
 
         if (result.isConfirmed) {
-            await updateReturnRecord(id, {
-                status: newStatus,
-                dateReceived: new Date().toISOString().split('T')[0]
-            });
+            setIsSubmitting(true);
+            try {
+                await updateReturnRecord(id, {
+                    status: newStatus,
+                    dateReceived: new Date().toISOString().split('T')[0]
+                });
 
-            await Swal.fire({
-                icon: 'success',
-                title: 'รับเข้า Hub สำเร็จ',
-                timer: 1500,
-                showConfirmButton: false
-            });
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'รับเข้า Hub สำเร็จ',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } catch (error) {
+                console.error("Receive Error:", error);
+                Swal.fire('Error', 'Failed to receive item', 'error');
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
+
+
 
     const handleHubReceiveAll = async () => {
         if (filteredItems.length === 0) return;
@@ -198,8 +211,12 @@ export const Step6HubReceive: React.FC = () => {
                                     <span className="font-bold text-lg text-blue-600">{item.quantity}</span> <span className="text-xs text-slate-500">{item.unit}</span>
                                 </div>
 
-                                <button onClick={() => handleHubReceive(item.id)} className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors whitespace-nowrap">
-                                    <CheckCircle className="w-4 h-4" /> รับเข้า Hub
+                                <button onClick={() => handleHubReceive(item.id)} disabled={isSubmitting} className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-wait">
+                                    {isSubmitting ? (
+                                        <>⏳ กำลังรับ...</>
+                                    ) : (
+                                        <><CheckCircle className="w-4 h-4" /> รับเข้า Hub</>
+                                    )}
                                 </button>
                             </div>
                         </div>

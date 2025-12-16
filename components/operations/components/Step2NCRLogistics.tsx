@@ -15,6 +15,8 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
     const { items, updateReturnRecord } = useData();
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
 
     // Decision Modal State
     const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
@@ -93,23 +95,30 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
             return;
         }
 
-        await updateReturnRecord(editingItemId!, {
-            preliminaryDecision: decision,
-            preliminaryRoute: tempRoute
-        });
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
-        await Swal.fire({
-            icon: 'success',
-            title: 'บันทึกสำเร็จ',
-            text: 'เพิ่มการตัดสินใจเบื้องต้นเรียบร้อยแล้ว',
-            timer: 1500,
-            showConfirmButton: false
-        });
+        try {
+            await updateReturnRecord(editingItemId!, {
+                preliminaryDecision: decision,
+                preliminaryRoute: tempRoute
+            });
 
-        setIsDecisionModalOpen(false);
-        setEditingItemId(null);
-        setTempDecision(null);
-        setTempRoute('');
+            await Swal.fire({
+                icon: 'success',
+                title: 'บันทึกสำเร็จ',
+                text: 'เพิ่มการตัดสินใจเบื้องต้นเรียบร้อยแล้ว',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            setIsDecisionModalOpen(false);
+            setEditingItemId(null);
+            setTempDecision(null);
+            setTempRoute('');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleOpenModal = () => {
@@ -191,21 +200,26 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
         }
 
         if (onConfirm) {
-            const submissionTransportInfo = {
-                ...transportInfo,
-                destination: routeType === 'Direct' ? finalDestination : undefined
-            };
-            onConfirm(Array.from(selectedIds), routeType, submissionTransportInfo);
-            setIsModalOpen(false); // Close modal on success
+            setIsSubmitting(true);
+            try {
+                const submissionTransportInfo = {
+                    ...transportInfo,
+                    destination: routeType === 'Direct' ? finalDestination : undefined
+                };
+                await onConfirm(Array.from(selectedIds), routeType, submissionTransportInfo);
+                setIsModalOpen(false); // Close modal on success
 
-            // Optional Success Message
-            Swal.fire({
-                icon: 'success',
-                title: 'บันทึกสำเร็จ',
-                text: 'สร้างเอกสารและบันทึกข้อมูลเรียบร้อยแล้ว',
-                timer: 1500,
-                showConfirmButton: false
-            });
+                // Optional Success Message
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกสำเร็จ',
+                    text: 'สร้างเอกสารและบันทึกข้อมูลเรียบร้อยแล้ว',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
 
@@ -554,12 +568,16 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                             </button>
                             <button
                                 onClick={confirmSelection}
-                                className={`px-6 py-2.5 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-all ${routeType === 'Hub' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'}`}
+                                disabled={isSubmitting}
+                                className={`px-6 py-2.5 text-white font-bold rounded-lg shadow-md flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-wait ${routeType === 'Hub' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'}`}
                             >
-                                {routeType === 'Hub' ?
-                                    <>ยืนยัน / ออกเอกสาร <Truck className="w-5 h-5" /></> :
-                                    <>ยืนยัน / ออกเอกสาร <Printer className="w-5 h-5" /></>
-                                }
+                                {isSubmitting ? (
+                                    <>⏳ กำลังบันทึก...</>
+                                ) : (
+                                    routeType === 'Hub' ?
+                                        <>ยืนยัน / ออกเอกสาร <Truck className="w-5 h-5" /></> :
+                                        <>ยืนยัน / ออกเอกสาร <Printer className="w-5 h-5" /></>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -640,8 +658,8 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                             <button onClick={() => setIsDecisionModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors">
                                 ยกเลิก
                             </button>
-                            <button onClick={handleSaveDecision} className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transition-all">
-                                บันทึก
+                            <button onClick={handleSaveDecision} disabled={isSubmitting} className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transition-all disabled:opacity-50 disabled:cursor-wait">
+                                {isSubmitting ? '...' : 'บันทึก'}
                             </button>
                         </div>
                     </div>

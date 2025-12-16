@@ -207,7 +207,9 @@ const COLTimelineModal: React.FC<COLTimelineModalProps> = ({ isOpen, onClose, it
                             </div>
                             <div className="flex justify-between items-end pt-1">
                                 <span className="text-xs text-slate-600 truncate max-w-[50px]">สินค้า:</span>
-                                <span className="font-bold text-slate-700 text-xs truncate max-w-[120px]" title={item.productName}>{item.productCode}</span>
+                                <span className="font-bold text-slate-700 text-xs truncate max-w-[120px]" title={item.productName}>
+                                    {(item.productCode === 'N/A' || !item.productCode) ? (item.productName === 'N/A' ? '-' : item.productName) : item.productCode}
+                                </span>
                             </div>
                         </div>
 

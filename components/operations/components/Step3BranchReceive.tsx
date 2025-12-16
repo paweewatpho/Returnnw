@@ -10,6 +10,7 @@ interface Step3BranchReceiveProps {
 
 export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComplete }) => {
     const { items, updateReturnRecord } = useData();
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // Filter Items: Status 'JobAccepted' or 'COL_JobAccepted' ensuring NO NCR items (unless explicitly LOGISTICS)
     const acceptedItems = React.useMemo(() => {
@@ -30,6 +31,8 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
     }, [items]);
 
     const handleReceiveItem = async (id: string) => {
+        if (isSubmitting) return;
+
         const result = await Swal.fire({
             title: 'ยืนยันรับสินค้า?',
             text: "คุณตรวจสอบสินค้าเรียบร้อยแล้วใช่หรือไม่?",
@@ -42,27 +45,33 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
         });
 
         if (result.isConfirmed) {
-            await updateReturnRecord(id, {
-                status: 'COL_BranchReceived',
-                dateReceived: new Date().toISOString().split('T')[0]
-            });
+            setIsSubmitting(true);
+            try {
+                await updateReturnRecord(id, {
+                    status: 'COL_BranchReceived',
+                    dateReceived: new Date().toISOString().split('T')[0]
+                });
 
-            await Swal.fire({
-                icon: 'success',
-                title: 'รับสินค้าเรียบร้อย',
-                timer: 1500,
-                showConfirmButton: false
-            });
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'รับสินค้าเรียบร้อย',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
 
-            // Auto-navigate if this was the last item
-            if (acceptedItems.length === 1 && onComplete) {
-                onComplete();
+                // Auto-navigate if this was the last item
+                if (acceptedItems.length === 1 && onComplete) {
+                    onComplete();
+                }
+            } finally {
+                setIsSubmitting(false);
             }
         }
     };
 
     const handleReceiveAll = async () => {
         if (acceptedItems.length === 0) return;
+        if (isSubmitting) return;
 
         const result = await Swal.fire({
             title: `ยืนยันรับสินค้าทั้งหมด ${acceptedItems.length} รายการ?`,
@@ -76,28 +85,35 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
         });
 
         if (result.isConfirmed) {
-            for (const item of acceptedItems) {
-                await updateReturnRecord(item.id, {
-                    status: 'COL_BranchReceived',
-                    dateReceived: new Date().toISOString().split('T')[0]
+            setIsSubmitting(true);
+            try {
+                for (const item of acceptedItems) {
+                    await updateReturnRecord(item.id, {
+                        status: 'COL_BranchReceived',
+                        dateReceived: new Date().toISOString().split('T')[0]
+                    });
+                }
+
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ!',
+                    text: 'รับสินค้าทั้งหมดเรียบร้อยแล้ว',
+                    timer: 1500,
+                    showConfirmButton: false
                 });
-            }
 
-            await Swal.fire({
-                icon: 'success',
-                title: 'สำเร็จ!',
-                text: 'รับสินค้าทั้งหมดเรียบร้อยแล้ว',
-                timer: 1500,
-                showConfirmButton: false
-            });
-
-            if (onComplete) {
-                onComplete();
+                if (onComplete) {
+                    onComplete();
+                }
+            } finally {
+                setIsSubmitting(false);
             }
         }
     };
 
     const handleUndo = async (id: string) => {
+        if (isSubmitting) return;
+
         const { value: password } = await Swal.fire({
             title: 'ใส่รหัสผ่านเพื่อแก้ไข (Undo)',
             input: 'password',
@@ -109,10 +125,15 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
         });
 
         if (password === '1234') {
-            await updateReturnRecord(id, {
-                status: 'COL_JobAccepted'
-            });
-            Swal.fire('ย้อนกลับเรียบร้อย', '', 'success');
+            setIsSubmitting(true);
+            try {
+                await updateReturnRecord(id, {
+                    status: 'COL_JobAccepted'
+                });
+                Swal.fire('ย้อนกลับเรียบร้อย', '', 'success');
+            } finally {
+                setIsSubmitting(false);
+            }
         } else if (password) {
             Swal.fire('รหัสผ่านไม่ถูกต้อง', '', 'error');
         }
@@ -127,9 +148,10 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                 {acceptedItems.length > 0 && (
                     <button
                         onClick={handleReceiveAll}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-all"
+                        disabled={isSubmitting}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-wait"
                     >
-                        รับสินค้าทั้งหมด ({acceptedItems.length})
+                        {isSubmitting ? 'กำลังทำงาน...' : `รับสินค้าทั้งหมด (${acceptedItems.length})`}
                     </button>
                 )}
             </div>
@@ -195,13 +217,15 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                                         <td className="p-4 align-top text-center">
                                             <button
                                                 onClick={() => handleReceiveItem(item.id)}
-                                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-2 mx-auto whitespace-nowrap"
+                                                disabled={isSubmitting}
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-2 mx-auto whitespace-nowrap disabled:opacity-50 disabled:cursor-wait"
                                             >
-                                                <CheckSquare className="w-4 h-4" /> ยืนยันรับของ
+                                                {isSubmitting ? '...' : <><CheckSquare className="w-4 h-4" /> ยืนยันรับของ</>}
                                             </button>
                                             <button
                                                 onClick={() => handleUndo(item.id)}
-                                                className="mt-2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors flex items-center gap-1 mx-auto text-xs"
+                                                disabled={isSubmitting}
+                                                className="mt-2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors flex items-center gap-1 mx-auto text-xs disabled:opacity-50 disabled:cursor-wait"
                                                 title="ย้อนกลับ (Undo)"
                                             >
                                                 <RotateCcw className="w-3 h-3" /> แก้ไข/ย้อนกลับ

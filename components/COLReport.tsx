@@ -125,8 +125,8 @@ const COLReport: React.FC<COLReportProps> = () => {
         tmNo: item.tmNo || '-',
         collectionOrderId: item.collectionOrderId || '-',
         status: item.status,
-        productCode: item.productCode,
-        productName: item.productName,
+        productCode: item.productCode === 'N/A' ? '' : item.productCode,
+        productName: item.productName === 'N/A' ? '' : item.productName,
         quantity: item.quantity,
         unit: item.unit || '',
         destination: item.destinationCustomer || '-',
@@ -163,8 +163,8 @@ const COLReport: React.FC<COLReportProps> = () => {
 
     // Data
     worksheet.getRow(7).values = [
-      item.productCode,
-      item.productName,
+      item.productCode === 'N/A' ? '' : item.productCode,
+      item.productName === 'N/A' ? '' : item.productName,
       item.quantity,
       item.unit,
       item.notes || '-'
@@ -421,8 +421,8 @@ const COLReport: React.FC<COLReportProps> = () => {
 
                     {/* Product */}
                     <td className="px-3 py-2 border-r align-top">
-                      <div className="font-bold text-slate-800">{item.productCode}</div>
-                      <div className="line-clamp-2" title={item.productName}>{item.productName}</div>
+                      <div className="font-bold text-slate-800">{item.productCode === 'N/A' ? '' : item.productCode}</div>
+                      <div className="line-clamp-2" title={item.productName}>{item.productName === 'N/A' ? '' : item.productName}</div>
                       <div className="mt-1 text-slate-500 text-[10px] flex gap-2">
                         <span>Qty: <span className="font-semibold text-slate-700">{item.quantity}</span> {item.unit}</span>
                       </div>

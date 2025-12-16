@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 
 export const Step8Closure: React.FC = () => {
     const { items, updateReturnRecord } = useData();
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // Filter Items: Status 'DocsCompleted', 'COL_Documented', 'NCR_Documented', 'DirectReturn', 'ReturnToSupplier'
     const documentedItems = React.useMemo(() => {
@@ -26,6 +27,8 @@ export const Step8Closure: React.FC = () => {
     }, [items]);
 
     const handleCompleteJob = async (id: string) => {
+        if (isSubmitting) return;
+
         const result = await Swal.fire({
             title: 'ยืนยันปิดงาน',
             text: 'ยืนยันปิดงานรายการนี้ (Complete Job)?',
@@ -36,21 +39,28 @@ export const Step8Closure: React.FC = () => {
         });
 
         if (result.isConfirmed) {
-            await updateReturnRecord(id, {
-                status: 'Completed',
-                dateCompleted: new Date().toISOString().split('T')[0]
-            });
+            setIsSubmitting(true);
+            try {
+                await updateReturnRecord(id, {
+                    status: 'Completed',
+                    dateCompleted: new Date().toISOString().split('T')[0]
+                });
 
-            await Swal.fire({
-                icon: 'success',
-                title: 'ปิดงานเรียบร้อย',
-                timer: 1500,
-                showConfirmButton: false
-            });
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'ปิดงานเรียบร้อย',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } finally {
+                setIsSubmitting(false);
+            }
         }
     };
 
     const handleUndo = async (item: any) => {
+        if (isSubmitting) return;
+
         // 1. Password Protection
         const { value: password } = await Swal.fire({
             title: 'ย้อนกลับสถานะ (Undo)',
@@ -74,40 +84,45 @@ export const Step8Closure: React.FC = () => {
             return;
         }
 
-        // 2. Determine Previous Status
-        // Logic: Send back to Step 5 (Docs)
-        // If NCR -> 'QCPassed'
-        // If Collection -> 'ReceivedAtHub' (or 'COL_HubReceived')
+        setIsSubmitting(true);
+        try {
+            // 2. Determine Previous Status
+            // Logic: Send back to Step 5 (Docs)
+            // If NCR -> 'QCPassed'
+            // If Collection -> 'ReceivedAtHub' (or 'COL_HubReceived')
 
-        let targetStatus = 'ReceivedAtHub'; // Default Safe
-        const isNCR = item.documentType === 'NCR' || item.ncrNumber || (item.id && item.id.startsWith('NCR'));
+            let targetStatus = 'ReceivedAtHub'; // Default Safe
+            const isNCR = item.documentType === 'NCR' || item.ncrNumber || (item.id && item.id.startsWith('NCR'));
 
-        if (isNCR) {
-            targetStatus = 'QCPassed';
-        } else {
-            // Collection flow
-            targetStatus = 'ReceivedAtHub';
+            if (isNCR) {
+                targetStatus = 'QCPassed';
+            } else {
+                // Collection flow
+                targetStatus = 'ReceivedAtHub';
+            }
+
+            // 3. Execute Update
+            await updateReturnRecord(item.id, {
+                status: targetStatus as any,
+                // Clear docs/completion info if needed, but keeping history is usually fine.
+                // Maybe clear specific flags if logic requires, but simple status revert is usually enough for the UI.
+            });
+
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+
+            Toast.fire({
+                icon: 'success',
+                title: `ย้อนกลับรายการ ${item.id} เรียบร้อย`
+            });
+        } finally {
+            setIsSubmitting(false);
         }
-
-        // 3. Execute Update
-        await updateReturnRecord(item.id, {
-            status: targetStatus as any,
-            // Clear docs/completion info if needed, but keeping history is usually fine.
-            // Maybe clear specific flags if logic requires, but simple status revert is usually enough for the UI.
-        });
-
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
-        });
-
-        Toast.fire({
-            icon: 'success',
-            title: `ย้อนกลับรายการ ${item.id} เรียบร้อย`
-        });
     };
 
     return (
@@ -150,14 +165,16 @@ export const Step8Closure: React.FC = () => {
                                         <td className="p-2 text-center flex items-center justify-center gap-1">
                                             <button
                                                 onClick={() => handleCompleteJob(item.id)}
-                                                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-xs font-bold shadow-sm flex items-center gap-1 transition-all active:scale-95"
+                                                disabled={isSubmitting}
+                                                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-xs font-bold shadow-sm flex items-center gap-1 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-wait"
                                                 title="ปิดงาน (Complete)"
                                             >
-                                                <CheckCircle className="w-3 h-3" /> ปิดงาน
+                                                {isSubmitting ? '...' : <><CheckCircle className="w-3 h-3" /> ปิดงาน</>}
                                             </button>
                                             <button
                                                 onClick={() => handleUndo(item)}
-                                                className="bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1.5 rounded text-xs font-bold shadow-sm flex items-center gap-1 transition-all active:scale-95 border border-amber-300"
+                                                disabled={isSubmitting}
+                                                className="bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1.5 rounded text-xs font-bold shadow-sm flex items-center gap-1 transition-all active:scale-95 border border-amber-300 disabled:opacity-50 disabled:cursor-wait"
                                                 title="ย้อนกลับ (Undo to Docs)"
                                             >
                                                 <RotateCcw className="w-3 h-3" />

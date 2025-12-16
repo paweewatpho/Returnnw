@@ -115,10 +115,10 @@ export const COLPrintPreview: React.FC<COLPrintPreviewProps> = ({ item, onClose 
                             <tbody>
                                 <tr className="print:break-inside-avoid">
                                     <td className="border border-black p-2 valign-top text-xs font-bold">
-                                        {item.productCode}
+                                        {item.productCode === 'N/A' ? '' : item.productCode}
                                     </td>
                                     <td className="border border-black p-2 valign-top text-xs">
-                                        <div className="font-bold">{item.productName}</div>
+                                        <div className="font-bold">{item.productName === 'N/A' ? '' : item.productName}</div>
                                         {item.destinationCustomer && (
                                             <div className="text-slate-500 text-[10px]">ปลายทาง: {item.destinationCustomer}</div>
                                         )}

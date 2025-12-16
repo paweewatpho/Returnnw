@@ -15,6 +15,7 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
 
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
     const [showModal, setShowModal] = React.useState(false);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // Replaced driverId with manual entry fields
     const [driverName, setDriverName] = React.useState('');
@@ -24,6 +25,8 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
 
     // Handle Undo (Step 2 -> Step 1) implies deleting the request so it can be re-created or just removed
     const handleUndo = async (id: string) => {
+        if (isSubmitting) return;
+
         const { value: password } = await Swal.fire({
             title: 'ใส่รหัสผ่านเพื่อแก้ไข (Undo)',
             input: 'password',
@@ -46,9 +49,14 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
             });
 
             if (confirmResult.isConfirmed) {
-                // Actual delete call
-                await deleteReturnRecord(id);
-                Swal.fire('ลบเรียบร้อย', '', 'success');
+                setIsSubmitting(true);
+                try {
+                    // Actual delete call
+                    await deleteReturnRecord(id);
+                    Swal.fire('ลบเรียบร้อย', '', 'success');
+                } finally {
+                    setIsSubmitting(false);
+                }
             }
         } else if (password) {
             Swal.fire('รหัสผ่านไม่ถูกต้อง', '', 'error');
@@ -75,32 +83,34 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
 
     const handleCreateJob = async () => {
         if (selectedIds.length === 0) return;
+        if (isSubmitting) return;
 
         // Validation Removed per User Request
         // if (!driverName) { alert... }
         // if (!plateNumber) { alert... }
 
-        const newColId = `COL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
-
-        const newOrder: CollectionOrder = {
-            id: newColId,
-            driverId: driverName || 'Unspecified', // Fallback if empty
-            vehiclePlate: plateNumber || 'Unspecified', // Fallback if empty
-            linkedRmaIds: selectedIds,
-            pickupLocation: {
-                name: 'Multiple Customers',
-                address: 'Multiple Addresses',
-                contactName: '-',
-                contactPhone: '-'
-            },
-            pickupDate: pickupDate,
-            packageSummary: { totalBoxes: 1, description: 'Batch Collection' },
-            status: 'ASSIGNED',
-            createdDate: new Date().toISOString()
-        };
-
-        // 1. Create Order in Firebase
+        setIsSubmitting(true);
         try {
+            const newColId = `COL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+
+            const newOrder: CollectionOrder = {
+                id: newColId,
+                driverId: driverName || 'Unspecified', // Fallback if empty
+                vehiclePlate: plateNumber || 'Unspecified', // Fallback if empty
+                linkedRmaIds: selectedIds,
+                pickupLocation: {
+                    name: 'Multiple Customers',
+                    address: 'Multiple Addresses',
+                    contactName: '-',
+                    contactPhone: '-'
+                },
+                pickupDate: pickupDate,
+                packageSummary: { totalBoxes: 1, description: 'Batch Collection' },
+                status: 'ASSIGNED',
+                createdDate: new Date().toISOString()
+            };
+
+            // 1. Create Order in Firebase
             await set(ref(db, `collection_orders/${newColId}`), newOrder);
 
             // 2. Update Items
@@ -136,6 +146,8 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                 text: 'ไม่สามารถสร้างงานได้ กรุณาลองใหม่',
                 confirmButtonColor: '#d33'
             });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -233,7 +245,8 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                                                     e.stopPropagation();
                                                     handleUndo(item.id);
                                                 }}
-                                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                                disabled={isSubmitting}
+                                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-wait"
                                                 title="ยกเลิก/ลบ (Undo)"
                                             >
                                                 <RotateCcw className="w-4 h-4" />
@@ -288,8 +301,8 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                                     onChange={e => setPickupDate(e.target.value)}
                                 />
                             </div>
-                            <button onClick={handleCreateJob} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg transition-all mt-2">
-                                ยืนยัน (Confirm)
+                            <button onClick={handleCreateJob} disabled={isSubmitting} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg transition-all mt-2 disabled:opacity-50 disabled:cursor-wait">
+                                {isSubmitting ? 'กำลังสร้างใบงาน...' : 'ยืนยัน (Confirm)'}
                             </button>
                         </div>
                     </div>

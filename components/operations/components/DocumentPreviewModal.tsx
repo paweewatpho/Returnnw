@@ -19,6 +19,7 @@ interface DocumentPreviewModalProps {
     setDiscountRate: (val: number) => void;
     handleConfirmDocGeneration: () => void;
     onUpdateItem: (id: string, updates: any) => void;
+    isSubmitting?: boolean;
 }
 
 export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
@@ -27,7 +28,8 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
     includeVat, setIncludeVat, vatRate, setVatRate,
     discountRate, setDiscountRate,
     handleConfirmDocGeneration,
-    onUpdateItem
+    onUpdateItem,
+    isSubmitting = false
 }) => {
     const [editingPrices, setEditingPrices] = useState<Record<string, number>>({});
 
@@ -204,21 +206,27 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                         <Printer className="w-4 h-4" /> พิมพ์
                     </button>
 
-                    <button onClick={async () => {
-                        const result = await Swal.fire({
-                            title: 'ยืนยันการบันทึก',
-                            text: 'ยืนยันการบันทึกข้อมูลและสร้างเอกสาร? (Confirm Save & Generate Document)',
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonText: 'ยืนยัน (Confirm)',
-                            cancelButtonText: 'ยกเลิก (Cancel)'
-                        });
+                    <button
+                        disabled={isSubmitting}
+                        onClick={async () => {
+                            const result = await Swal.fire({
+                                title: 'ยืนยันการบันทึก',
+                                text: 'ยืนยันการบันทึกข้อมูลและสร้างเอกสาร? (Confirm Save & Generate Document)',
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: 'ยืนยัน (Confirm)',
+                                cancelButtonText: 'ยกเลิก (Cancel)'
+                            });
 
-                        if (result.isConfirmed) {
-                            handleConfirmDocGeneration();
-                        }
-                    }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4" /> บันทึก
+                            if (result.isConfirmed) {
+                                handleConfirmDocGeneration();
+                            }
+                        }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait">
+                        {isSubmitting ? (
+                            <>⏳ กำลังบันทึก...</>
+                        ) : (
+                            <><CheckCircle className="w-4 h-4" /> บันทึก</>
+                        )}
                     </button>
 
                     <button onClick={onClose} className="ml-2 p-2 hover:bg-slate-700 rounded-full">
