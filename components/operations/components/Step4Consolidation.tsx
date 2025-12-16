@@ -1,8 +1,11 @@
 import React from 'react';
-import { LayoutGrid, PackageCheck, Calendar, RotateCcw } from 'lucide-react';
+import { LayoutGrid, PackageCheck, Calendar, RotateCcw, Share2, Truck, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import Swal from 'sweetalert2';
 import { useData } from '../../../DataContext';
-import { ReturnRecord } from '../../../types';
+import { ReturnRecord, TransportInfo } from '../../../types';
+
+import { RETURN_ROUTES } from '../../../constants';
 
 interface Step4ConsolidationProps {
     onComplete?: () => void;
@@ -10,6 +13,21 @@ interface Step4ConsolidationProps {
 
 export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComplete }) => {
     const { items, updateReturnRecord } = useData();
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [consolidationDate, setConsolidationDate] = React.useState(new Date().toISOString().split('T')[0]);
+
+    // Preliminary Decision State
+    const [isDecisionModalOpen, setIsDecisionModalOpen] = React.useState(false);
+    const [targetConsolidateIds, setTargetConsolidateIds] = React.useState<string[]>([]);
+    const [tempRoute, setTempRoute] = React.useState<string>('');
+
+    // Transport Info State
+    const [transportMode, setTransportMode] = React.useState<'Company' | '3PL' | 'Other'>('Company');
+    const [transportInfo, setTransportInfo] = React.useState<TransportInfo>({
+        driverName: '',
+        plateNumber: '',
+        transportCompany: 'รถบริษัท'
+    });
 
     // Filter Items: Status 'BranchReceived' or 'COL_BranchReceived'
     const receivedItems = React.useMemo(() => {
@@ -17,64 +35,111 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
     }, [items]);
 
     const handleConsolidate = async (id: string) => {
-        const result = await Swal.fire({
-            title: 'ยืนยันการรวมสินค้า?',
-            text: "ต้องการรวมสินค้าเพื่อเตรียมขนส่ง (Ready for Logistics) หรือไม่?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#1e293b', // slate-800
-            cancelButtonColor: '#94a3b8', // slate-400
-            confirmButtonText: 'ยืนยัน',
-            cancelButtonText: 'ยกเลิก'
-        });
+        if (isSubmitting) return;
 
-        if (result.isConfirmed) {
-            await updateReturnRecord(id, { status: 'COL_Consolidated' });
+        // Open Decision Modal instead of Direct Confirmation
+        setTargetConsolidateIds([id]);
+        setTempRoute('');
+        setIsDecisionModalOpen(true);
+    };
+
+    const confirmConsolidation = async () => {
+        if (!tempRoute || tempRoute === 'Other') {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาระบุเส้นทาง',
+                text: 'สำหรับการคืนสินค้า กรุณาระบุเส้นทางส่งคืน',
+                confirmButtonText: 'ตกลง'
+            });
+
+            return;
+        }
+
+        // Validate Transport Info
+        if (transportMode === 'Company') {
+            if (!transportInfo.driverName || !transportInfo.plateNumber) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุชื่อพนักงานขับรถและทะเบียนรถสำหรับรถบริษัท',
+                    confirmButtonText: 'ตกลง'
+                });
+                return;
+            }
+        } else if (transportMode === '3PL') {
+            if (!transportInfo.transportCompany) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุชื่อบริษัทขนส่ง (3PL)',
+                    confirmButtonText: 'ตกลง'
+                });
+                return;
+            }
+            if (!transportInfo.driverName || !transportInfo.plateNumber) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุชื่อพนักงานขับรถและทะเบียนรถสำหรับ 3PL',
+                    confirmButtonText: 'ตกลง'
+                });
+                return;
+            }
+        } else if (transportMode === 'Other') {
+            if (!transportInfo.transportCompany) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาระบุรายละเอียดการขนส่ง (อื่นๆ)',
+                    confirmButtonText: 'ตกลง'
+                });
+                return;
+            }
+        }
+
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+
+        try {
+            for (const id of targetConsolidateIds) {
+                await updateReturnRecord(id, {
+                    status: 'COL_Consolidated',
+                    dateConsolidated: consolidationDate,
+                    preliminaryDecision: 'Return',
+                    preliminaryRoute: tempRoute,
+                    transportInfo: transportInfo
+                });
+            }
 
             await Swal.fire({
                 icon: 'success',
                 title: 'สำเร็จ',
-                text: 'รวมสินค้าเรียบร้อยแล้ว',
+                text: 'รวมสินค้าและบันทึกข้อมูลเรียบร้อยแล้ว',
                 timer: 1500,
                 showConfirmButton: false
             });
+
+            setIsDecisionModalOpen(false);
+            setTargetConsolidateIds([]);
+            setTempRoute('');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleConsolidateAll = async () => {
         if (receivedItems.length === 0) return;
+        if (isSubmitting) return;
 
-        const result = await Swal.fire({
-            title: `ยืนยันรวมสินค้าทั้งหมด ${receivedItems.length} รายการ?`,
-            text: "ต้องการเปลี่ยนสถานะสินค้าทั้งหมดเป็น 'พร้อมขนส่ง' หรือไม่?",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#1e293b',
-            cancelButtonColor: '#94a3b8',
-            confirmButtonText: 'ยืนยันทั้งหมด',
-            cancelButtonText: 'ยกเลิก'
-        });
-
-        if (result.isConfirmed) {
-            for (const item of receivedItems) {
-                await updateReturnRecord(item.id, { status: 'COL_Consolidated' });
-            }
-
-            await Swal.fire({
-                icon: 'success',
-                title: 'ดำเนินการเสร็จสิ้น',
-                text: 'รวมสินค้าทั้งหมดเรียบร้อยแล้ว',
-                timer: 1500,
-                showConfirmButton: false
-            });
-
-            if (onComplete) {
-                onComplete();
-            }
-        }
+        // Open Decision Modal for ALL items
+        setTargetConsolidateIds(receivedItems.map(i => i.id));
+        setTempRoute('');
+        setIsDecisionModalOpen(true);
     };
 
     const handleUndo = async (id: string) => {
+        if (isSubmitting) return;
+
         const { value: password } = await Swal.fire({
             title: 'ใส่รหัสผ่านเพื่อแก้ไข (Undo)',
             input: 'password',
@@ -86,10 +151,15 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
         });
 
         if (password === '1234') {
-            await updateReturnRecord(id, {
-                status: 'COL_BranchReceived'
-            });
-            Swal.fire('ย้อนกลับเรียบร้อย', '', 'success');
+            setIsSubmitting(true);
+            try {
+                await updateReturnRecord(id, {
+                    status: 'COL_BranchReceived'
+                });
+                Swal.fire('ย้อนกลับเรียบร้อย', '', 'success');
+            } finally {
+                setIsSubmitting(false);
+            }
         } else if (password) {
             Swal.fire('รหัสผ่านไม่ถูกต้อง', '', 'error');
         }
@@ -102,12 +172,24 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
                     <LayoutGrid className="w-6 h-6 text-slate-600" /> 4. รวมสินค้า (Branch Consolidation)
                 </h3>
                 {receivedItems.length > 0 && (
-                    <button
-                        onClick={handleConsolidateAll}
-                        className="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-all"
-                    >
-                        รวมสินค้าทั้งหมด ({receivedItems.length})
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                            <span className="text-sm font-bold text-slate-600">วันที่รวม:</span>
+                            <input
+                                type="date"
+                                value={consolidationDate}
+                                onChange={(e) => setConsolidationDate(e.target.value)}
+                                className="outline-none text-slate-700 font-medium text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={handleConsolidateAll}
+                            disabled={isSubmitting}
+                            className="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-wait"
+                        >
+                            {isSubmitting ? 'กำลังทำงาน...' : `รวมสินค้าทั้งหมด (${receivedItems.length})`}
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -178,13 +260,15 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
                                         <td className="p-4 align-top text-center">
                                             <button
                                                 onClick={() => handleConsolidate(item.id)}
-                                                className="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-2 mx-auto whitespace-nowrap"
+                                                disabled={isSubmitting}
+                                                className="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-2 mx-auto whitespace-nowrap disabled:opacity-50 disabled:cursor-wait"
                                             >
-                                                <PackageCheck className="w-4 h-4" /> รวมของ (Pack)
+                                                {isSubmitting ? '...' : <><PackageCheck className="w-4 h-4" /> รวมของ (Pack)</>}
                                             </button>
                                             <button
                                                 onClick={() => handleUndo(item.id)}
-                                                className="mt-2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors flex items-center gap-1 mx-auto text-xs"
+                                                disabled={isSubmitting}
+                                                className="mt-2 text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors flex items-center gap-1 mx-auto text-xs disabled:opacity-50 disabled:cursor-wait"
                                                 title="ย้อนกลับ (Undo)"
                                             >
                                                 <RotateCcw className="w-3 h-3" /> แก้ไข/ย้อนกลับ
@@ -197,6 +281,171 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
                     </table>
                 </div>
             </div>
+            {/* Decision Modal */}
+            {isDecisionModalOpen && createPortal(
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
+                        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Share2 className="w-6 h-6 text-indigo-600" />
+                                    เพิ่มการตัดสินใจเบื้องต้น (รวมสินค้า {targetConsolidateIds.length} รายการ)
+                                </h3>
+                                <button onClick={() => setIsDecisionModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                            <p className="text-sm text-slate-600 mt-2">กรุณาเลือกการจัดการเบื้องต้นสำหรับรายการนี้ ก่อนบันทึก</p>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            {/* 1. Transport Type Selection */}
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-slate-800 mb-2">1. เลือกประเภทการขนส่ง</label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === 'Company' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
+                                            <input type="radio" name="transportType" checked={transportMode === 'Company'} onChange={() => { setTransportMode('Company'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: 'รถบริษัท' }); }} className="text-indigo-600 focus:ring-indigo-500" />
+                                            รถบริษัท
+                                        </div>
+                                        <div className="space-y-2 mt-2">
+                                            <input
+                                                type="text"
+                                                placeholder="ชื่อพนักงานขับรถ"
+                                                value={transportMode === 'Company' ? transportInfo.driverName : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, driverName: e.target.value })}
+                                                disabled={transportMode !== 'Company'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="ทะเบียนรถ"
+                                                value={transportMode === 'Company' ? transportInfo.plateNumber : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, plateNumber: e.target.value })}
+                                                disabled={transportMode !== 'Company'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                        </div>
+                                    </label>
+
+                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === '3PL' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
+                                            <input type="radio" name="transportType" checked={transportMode === '3PL'} onChange={() => { setTransportMode('3PL'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: '' }); }} className="text-indigo-600 focus:ring-indigo-500" />
+                                            รถขนส่งร่วม (3PL)
+                                        </div>
+                                        <div className="space-y-2 mt-2">
+                                            <input
+                                                type="text"
+                                                placeholder="ระบุบริษัทขนส่ง..."
+                                                value={transportMode === '3PL' ? transportInfo.transportCompany : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })}
+                                                disabled={transportMode !== '3PL'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="ชื่อพนักงานขับรถ"
+                                                value={transportMode === '3PL' ? transportInfo.driverName : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, driverName: e.target.value })}
+                                                disabled={transportMode !== '3PL'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="ทะเบียนรถ"
+                                                value={transportMode === '3PL' ? transportInfo.plateNumber : ''}
+                                                onChange={(e) => setTransportInfo({ ...transportInfo, plateNumber: e.target.value })}
+                                                disabled={transportMode !== '3PL'}
+                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
+                                            />
+                                        </div>
+                                    </label>
+
+                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === 'Other' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
+                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
+                                            <input type="radio" name="transportType" checked={transportMode === 'Other'} onChange={() => { setTransportMode('Other'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: '' }); }} className="text-indigo-600 focus:ring-indigo-500" />
+                                            อื่นๆ
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="ระบุรายละเอียด..."
+                                            value={transportMode === 'Other' ? transportInfo.transportCompany : ''}
+                                            onChange={(e) => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })}
+                                            disabled={transportMode !== 'Other'}
+                                            className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none mt-2"
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <hr className="border-slate-100" />
+
+                            {/* 2. Preliminary Decision Section - Return Only */}
+                            <div className="space-y-4">
+                                <label className="block text-sm font-bold text-slate-800 mb-2">2. ระบุเส้นทางส่งคืน (Return Route)</label>
+                                <div className="border rounded-xl overflow-hidden bg-indigo-50/30">
+                                    <div className="bg-indigo-100 px-4 py-2 border-b border-indigo-200 font-bold text-indigo-800 flex items-center gap-2 text-sm">
+                                        <Truck className="w-4 h-4" /> เลือกเส้นทาง
+                                    </div>
+                                    <div className="p-4">
+                                        <p className="text-xs text-slate-500 mb-3">กรุณาเลือกเส้นทางสำหรับการส่งคืนสินค้า</p>
+
+                                        <div className="p-3 bg-white rounded border border-indigo-100 text-sm">
+                                            <label className="block font-bold mb-2">เลือกเส้นทางส่งคืน <span className="text-red-500">*</span></label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {RETURN_ROUTES.map(route => (
+                                                    <label key={route} className={`px-3 py-1 rounded border cursor-pointer transition-all ${tempRoute === route ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 hover:bg-indigo-50/50'}`}>
+                                                        <input
+                                                            type="radio"
+                                                            name="tempRoute"
+                                                            value={route}
+                                                            checked={tempRoute === route}
+                                                            onChange={(e) => setTempRoute(e.target.value)}
+                                                            className="hidden"
+                                                        />
+                                                        {route}
+                                                    </label>
+                                                ))}
+                                                <label className={`px-3 py-1 rounded border cursor-pointer transition-all ${tempRoute === 'Other' || (tempRoute && !RETURN_ROUTES.includes(tempRoute)) ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 hover:bg-indigo-50/50'}`}>
+                                                    <input
+                                                        type="radio"
+                                                        name="tempRoute"
+                                                        value="Other"
+                                                        checked={tempRoute === 'Other' || (tempRoute && !RETURN_ROUTES.includes(tempRoute))}
+                                                        onChange={() => setTempRoute('Other')}
+                                                        className="hidden"
+                                                    />
+                                                    อื่นๆ (Other)
+                                                </label>
+                                            </div>
+                                            {(tempRoute === 'Other' || (tempRoute && !RETURN_ROUTES.includes(tempRoute))) && (
+                                                <input
+                                                    type="text"
+                                                    value={tempRoute === 'Other' ? '' : tempRoute}
+                                                    onChange={(e) => setTempRoute(e.target.value)}
+                                                    className="w-full mt-2 p-2 border rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                                                    placeholder="ระบุเส้นทาง..."
+                                                    autoFocus
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                                <button onClick={() => setIsDecisionModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors">
+                                    ยกเลิก
+                                </button>
+                                <button onClick={confirmConsolidation} disabled={isSubmitting} className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transition-all disabled:opacity-50 disabled:cursor-wait">
+                                    {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก (Save)'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

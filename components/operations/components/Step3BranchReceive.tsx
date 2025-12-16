@@ -11,6 +11,7 @@ interface Step3BranchReceiveProps {
 export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComplete }) => {
     const { items, updateReturnRecord } = useData();
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [receivedDate, setReceivedDate] = React.useState(new Date().toISOString().split('T')[0]);
 
     // Filter Items: Status 'JobAccepted' or 'COL_JobAccepted' ensuring NO NCR items (unless explicitly LOGISTICS)
     const acceptedItems = React.useMemo(() => {
@@ -49,18 +50,20 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
             try {
                 await updateReturnRecord(id, {
                     status: 'COL_BranchReceived',
-                    dateReceived: new Date().toISOString().split('T')[0]
-                });
+                    await updateReturnRecord(id, {
+                        status: 'COL_BranchReceived',
+                        dateReceived: receivedDate
+                    });
 
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'รับสินค้าเรียบร้อย',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'รับสินค้าเรียบร้อย',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
 
-                // Auto-navigate if this was the last item
-                if (acceptedItems.length === 1 && onComplete) {
+                    // Auto-navigate if this was the last item
+                    if(acceptedItems.length === 1 && onComplete) {
                     onComplete();
                 }
             } finally {
@@ -90,7 +93,8 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                 for (const item of acceptedItems) {
                     await updateReturnRecord(item.id, {
                         status: 'COL_BranchReceived',
-                        dateReceived: new Date().toISOString().split('T')[0]
+                        status: 'COL_BranchReceived',
+                        dateReceived: receivedDate
                     });
                 }
 
@@ -146,13 +150,24 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                     <Activity className="w-6 h-6 text-indigo-600" /> 3. รับสินค้า (Branch Physical Receive)
                 </h3>
                 {acceptedItems.length > 0 && (
-                    <button
-                        onClick={handleReceiveAll}
-                        disabled={isSubmitting}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-wait"
-                    >
-                        {isSubmitting ? 'กำลังทำงาน...' : `รับสินค้าทั้งหมด (${acceptedItems.length})`}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                            <span className="text-sm font-bold text-slate-600">วันที่รับ:</span>
+                            <input
+                                type="date"
+                                value={receivedDate}
+                                onChange={(e) => setReceivedDate(e.target.value)}
+                                className="outline-none text-slate-700 font-medium text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={handleReceiveAll}
+                            disabled={isSubmitting}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-wait"
+                        >
+                            {isSubmitting ? 'กำลังทำงาน...' : `รับสินค้าทั้งหมด (${acceptedItems.length})`}
+                        </button>
+                    </div>
                 )}
             </div>
 
