@@ -211,6 +211,12 @@ const COLTimelineModal: React.FC<COLTimelineModalProps> = ({ isOpen, onClose, it
                                     {(item.productCode === 'N/A' || !item.productCode) ? (item.productName === 'N/A' ? '-' : item.productName) : item.productCode}
                                 </span>
                             </div>
+                            <div className="flex justify-between items-end pt-1 border-t border-slate-50 mt-1">
+                                <span className="text-xs text-slate-600">จำนวน:</span>
+                                <span className="font-bold text-slate-800 text-xs">
+                                    {item.quantity} {item.unit}
+                                </span>
+                            </div>
                         </div>
 
                         {/* Card 4: COL & Dest */}

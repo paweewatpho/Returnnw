@@ -66,7 +66,7 @@ export const Step8Closure: React.FC = () => {
             title: 'ย้อนกลับสถานะ (Undo)',
             text: 'กรอกรหัสผ่านเพื่อย้อนกลับไปขั้นตอน "เอกสาร (Docs)"',
             input: 'password',
-            inputPlaceholder: 'Enter password',
+            inputPlaceholder: 'กรอกรหัสผ่าน...',
             showCancelButton: true,
             confirmButtonText: 'ยืนยัน',
             cancelButtonText: 'ยกเลิก',
@@ -139,19 +139,22 @@ export const Step8Closure: React.FC = () => {
 
                 <div className="overflow-auto flex-1">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-600 font-bold sticky top-0 shadow-sm z-10">
+                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm text-xs uppercase text-slate-500 font-bold">
                             <tr>
-                                <th className="p-3 border-b text-center w-32">Action</th>
-                                <th className="p-3 border-b">ID</th>
-                                <th className="p-3 border-b">สาขา</th>
-                                <th className="p-3 border-b">สินค้า</th>
-                                <th className="p-3 border-b text-center">จำนวน</th>
-                                <th className="p-3 border-b">วันที่แจ้ง</th>
-                                <th className="p-3 border-b">NCR No.</th>
-                                <th className="p-3 border-b">Neo Doc</th>
-                                <th className="p-3 border-b">ลูกค้า</th>
-                                <th className="p-3 border-b">ผู้พบปัญหา</th>
-                                <th className="p-3 border-b">ปลายทาง</th>
+                                <th className="px-3 py-3 border-r text-center min-w-[100px]">Action</th>
+                                <th className="px-3 py-3 border-r min-w-[120px]">สาขา</th>
+                                <th className="px-3 py-3 border-r min-w-[200px]">สินค้า</th>
+                                <th className="px-3 py-3 border-r text-center min-w-[80px]">จำนวน</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">วันที่แจ้ง</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">NCR No.</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">COL No.</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">Neo Doc</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">เลขที่เอกสาร (R)</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">เลขที่ใบคุม (TM)</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">เลข Invoice</th>
+                                <th className="px-3 py-3 border-r min-w-[150px]">ลูกค้า</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">ผู้พบปัญหา</th>
+                                <th className="px-3 py-3 min-w-[120px]">ปลายทาง</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -160,49 +163,57 @@ export const Step8Closure: React.FC = () => {
                                     <td colSpan={11} className="p-8 text-center text-slate-400">ไม่มีรายการที่รอปิดงาน</td>
                                 </tr>
                             ) : (
-                                documentedItems.map(item => (
-                                    <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="p-2 text-center flex items-center justify-center gap-1">
-                                            <button
-                                                onClick={() => handleCompleteJob(item.id)}
-                                                disabled={isSubmitting}
-                                                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-xs font-bold shadow-sm flex items-center gap-1 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-wait"
-                                                title="ปิดงาน (Complete)"
-                                            >
-                                                {isSubmitting ? '...' : <><CheckCircle className="w-3 h-3" /> ปิดงาน</>}
-                                            </button>
-                                            <button
-                                                onClick={() => handleUndo(item)}
-                                                disabled={isSubmitting}
-                                                className="bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1.5 rounded text-xs font-bold shadow-sm flex items-center gap-1 transition-all active:scale-95 border border-amber-300 disabled:opacity-50 disabled:cursor-wait"
-                                                title="ย้อนกลับ (Undo to Docs)"
-                                            >
-                                                <RotateCcw className="w-3 h-3" />
-                                            </button>
-                                        </td>
-                                        <td className="p-3 font-mono text-xs text-slate-500">{item.id}</td>
-                                        <td className="p-3">
-                                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {item.branch}</span>
-                                        </td>
-                                        <td className="p-3">
-                                            <div className="font-bold text-slate-700">{item.productName}</div>
-                                            <div className="text-xs text-slate-500">{item.productCode}</div>
-                                        </td>
-                                        <td className="p-3 text-center font-bold text-slate-600">
-                                            {item.quantity} {item.unit}
-                                        </td>
-                                        <td className="p-3 text-xs text-slate-500">{item.dateRequested}</td>
-                                        <td className="p-3 text-xs">{item.ncrNumber || '-'}</td>
-                                        <td className="p-3 text-xs">{item.neoRefNo || '-'}</td>
-                                        <td className="p-3 text-xs">{item.customerName}</td>
-                                        <td className="p-3 text-xs">{item.founder || '-'}</td>
-                                        <td className="p-3 text-xs">
-                                            <span className="px-2 py-1 rounded-full bg-slate-100 border border-slate-200">
-                                                {item.destinationCustomer || item.dispositionRoute || '-'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))
+                                documentedItems.map(item => {
+                                    const isNCR = item.documentType === 'NCR' || !!item.ncrNumber || (item.id && item.id.startsWith('NCR'));
+                                    return (
+                                        <tr key={item.id} className={`transition-colors border-b last:border-0 align-top text-xs text-slate-700 ${isNCR ? 'bg-amber-50/50 hover:bg-amber-100/50' : 'bg-teal-50/50 hover:bg-teal-100/50'}`}>
+                                            <td className="px-3 py-2 border-r text-center align-top">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                        onClick={() => handleCompleteJob(item.id)}
+                                                        disabled={isSubmitting}
+                                                        className="bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-xs font-bold shadow-sm flex items-center gap-1 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-wait"
+                                                        title="ปิดงาน (Complete)"
+                                                    >
+                                                        {isSubmitting ? '...' : <><CheckCircle className="w-3 h-3" /> ปิดงาน</>}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleUndo(item)}
+                                                        disabled={isSubmitting}
+                                                        className="bg-amber-100 hover:bg-amber-200 text-amber-700 px-2 py-1.5 rounded text-xs font-bold shadow-sm flex items-center gap-1 transition-all active:scale-95 border border-amber-300 disabled:opacity-50 disabled:cursor-wait"
+                                                        title="ย้อนกลับ (Undo to Docs)"
+                                                    >
+                                                        <RotateCcw className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-2 border-r align-top">
+                                                <span className="font-bold flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {item.branch}</span>
+                                            </td>
+                                            <td className="px-3 py-2 border-r align-top">
+                                                <div className="font-bold text-slate-800">{item.productCode}</div>
+                                                <div className="line-clamp-2" title={item.productName}>{item.productName}</div>
+                                            </td>
+                                            <td className="px-3 py-2 border-r text-center font-bold text-slate-700">
+                                                {item.quantity} {item.unit}
+                                            </td>
+                                            <td className="px-3 py-2 border-r text-slate-600">{item.dateRequested}</td>
+                                            <td className="px-3 py-2 border-r text-slate-700">{item.ncrNumber || '-'}</td>
+                                            <td className="px-3 py-2 border-r text-indigo-700 font-bold">{item.collectionOrderId || '-'}</td>
+                                            <td className="px-3 py-2 border-r text-slate-700">{item.neoRefNo || '-'}</td>
+                                            <td className="px-3 py-2 border-r font-mono text-blue-700 font-bold">{item.refNo || '-'}</td>
+                                            <td className="px-3 py-2 border-r font-mono text-slate-700">{item.transportManifestNo || '-'}</td>
+                                            <td className="px-3 py-2 border-r font-mono text-slate-700">{item.invoiceNo || '-'}</td>
+                                            <td className="px-3 py-2 border-r text-slate-700">{item.customerName}</td>
+                                            <td className="px-3 py-2 border-r text-slate-700">{item.founder || '-'}</td>
+                                            <td className="px-3 py-2 align-top">
+                                                <span className="px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 block text-center">
+                                                    {item.destinationCustomer || item.dispositionRoute || '-'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
@@ -216,34 +227,53 @@ export const Step8Closure: React.FC = () => {
                 </h3>
                 <div className="bg-white rounded-xl border border-slate-200 flex-1 overflow-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-500 sticky top-0">
+                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm text-xs uppercase text-slate-500 font-bold">
                             <tr>
-                                <th className="p-3 w-20">ID</th>
-                                <th className="p-3">สินค้า</th>
-                                <th className="p-3">สาขา</th>
-                                <th className="p-3">วันที่ปิดงาน</th>
-                                <th className="p-3">สถานะ</th>
+                                <th className="px-3 py-3 border-r min-w-[120px]">สาขา</th>
+                                <th className="px-3 py-3 border-r min-w-[200px]">สินค้า</th>
+                                <th className="px-3 py-3 border-r text-center min-w-[80px]">จำนวน</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">วันที่ปิดงาน</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">NCR No.</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">COL No.</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">Neo Doc</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">เลขที่เอกสาร (R)</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">เลขที่ใบคุม (TM)</th>
+                                <th className="px-3 py-3 border-r min-w-[100px]">เลข Invoice</th>
+                                <th className="px-3 py-3 border-r min-w-[150px]">ลูกค้า</th>
+                                <th className="px-3 py-3 min-w-[100px]">สถานะ</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {completedItems.slice(0, 20).map(item => (
-                                <tr key={item.id} className="hover:bg-slate-50 opacity-75">
-                                    <td className="p-3 text-xs font-mono">{item.id}</td>
-                                    <td className="p-3">
-                                        <div className="font-medium text-slate-700">{item.productName}</div>
+                                <tr key={item.id} className="hover:bg-slate-50 transition-colors opacity-75 align-top text-xs text-slate-700">
+                                    <td className="px-3 py-2 border-r">
+                                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {item.branch}</span>
                                     </td>
-                                    <td className="p-3 text-xs">{item.branch}</td>
-                                    <td className="p-3 text-xs">{item.dateCompleted}</td>
-                                    <td className="p-3 text-xs"><DispositionBadge disposition={item.disposition} /></td>
+                                    <td className="px-3 py-2 border-r">
+                                        <div className="font-bold text-slate-700">{item.productCode}</div>
+                                        <div className="text-slate-500" title={item.productName}>{item.productName}</div>
+                                    </td>
+                                    <td className="px-3 py-2 border-r text-center font-bold text-slate-600">
+                                        {item.quantity} {item.unit}
+                                    </td>
+                                    <td className="px-3 py-2 border-r text-slate-600">{item.dateCompleted}</td>
+                                    <td className="px-3 py-2 border-r text-slate-600">{item.ncrNumber || '-'}</td>
+                                    <td className="px-3 py-2 border-r text-indigo-600 font-bold">{item.collectionOrderId || '-'}</td>
+                                    <td className="px-3 py-2 border-r text-slate-600">{item.neoRefNo || '-'}</td>
+                                    <td className="px-3 py-2 border-r font-mono text-blue-600 font-bold">{item.refNo || '-'}</td>
+                                    <td className="px-3 py-2 border-r font-mono text-slate-600">{item.transportManifestNo || '-'}</td>
+                                    <td className="px-3 py-2 border-r font-mono text-slate-600">{item.invoiceNo || '-'}</td>
+                                    <td className="px-3 py-2 border-r text-slate-600">{item.customerName}</td>
+                                    <td className="px-3 py-2"><DispositionBadge disposition={item.disposition} /></td>
                                 </tr>
                             ))}
                             {completedItems.length === 0 && (
-                                <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">ยังไม่มีรายการที่จบงาน</td></tr>
+                                <tr><td colSpan={12} className="p-8 text-center text-slate-400 italic">ยังไม่มีรายการที่จบงาน</td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

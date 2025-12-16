@@ -45,7 +45,8 @@ export const Step6HubReceive: React.FC = () => {
             try {
                 await updateReturnRecord(id, {
                     status: newStatus,
-                    dateReceived: new Date().toISOString().split('T')[0]
+                    dateReceived: new Date().toISOString().split('T')[0],
+                    dateHubReceived: new Date().toISOString().split('T')[0]
                 });
 
                 await Swal.fire({
@@ -92,7 +93,8 @@ export const Step6HubReceive: React.FC = () => {
 
                 await updateReturnRecord(item.id, {
                     status: newStatus,
-                    dateReceived: new Date().toISOString().split('T')[0]
+                    dateReceived: new Date().toISOString().split('T')[0],
+                    dateHubReceived: new Date().toISOString().split('T')[0]
                 });
             }
 

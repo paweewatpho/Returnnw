@@ -30,10 +30,9 @@ export const FounderInfoSection: React.FC<FounderInfoSectionProps> = ({
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">ผู้พบปัญหา (Founder) <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">ผู้พบปัญหา (Founder)</label>
                     <AutocompleteInput
                         label=""
-                        required
                         value={formData.founder || ''}
                         onChange={(val) => updateField('founder', val)}
                         options={uniqueFounders}
@@ -51,10 +50,9 @@ export const FounderInfoSection: React.FC<FounderInfoSectionProps> = ({
                     />
                 </div>
                 <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-slate-700 mb-1">สถานที่ส่ง (Destination / Site) <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">สถานที่ส่ง (Destination / Site) </label>
                     <AutocompleteInput
                         label=""
-                        required
                         value={formData.destinationCustomer || ''}
                         onChange={(val) => updateField('destinationCustomer', val)}
                         options={uniqueDestinations}

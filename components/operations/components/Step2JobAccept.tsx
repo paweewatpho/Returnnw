@@ -109,7 +109,8 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
             for (const id of selectedIds) {
                 await updateReturnRecord(id, {
                     status: 'COL_JobAccepted',
-                    collectionOrderId: newColId
+                    collectionOrderId: newColId,
+                    dateJobAccepted: new Date().toISOString()
                 });
             }
 
@@ -170,6 +171,7 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                                 </th>
                                 <th className="p-4 border-b">สาขา (Branch)</th>
                                 <th className="p-4 border-b">ใบกำกับ / วันที่ (Inv / Date)</th>
+                                <th className="p-4 border-b">จำนวน (Qty)</th>
                                 <th className="p-4 border-b">เลขที่เอกสาร (Doc Info)</th>
                                 <th className="p-4 border-b">ลูกค้าปลายทาง</th>
                                 <th className="p-4 border-b">หมายเหตุ</th>
@@ -202,6 +204,9 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                                                 <Calendar className="w-3 h-3" />
                                                 <span title="วันที่ใบคุมรถ">{item.controlDate || item.date || '-'}</span>
                                             </div>
+                                        </td>
+                                        <td className="p-4 align-top">
+                                            <div className="font-bold text-slate-700">{item.quantity} {item.unit}</div>
                                         </td>
                                         <td className="p-4 align-top">
                                             <div className="flex flex-col gap-1">
@@ -254,30 +259,32 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
             </div>
 
             {/* Modal */}
-            {showModal && (
-                <div className="absolute inset-0 z-20 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-up">
-                        <div className="bg-blue-600 p-4 flex justify-between items-center text-white">
-                            <h3 className="font-bold flex items-center gap-2"><Truck className="w-5 h-5" /> สร้างงานรับสินค้า</h3>
-                            <button onClick={() => setShowModal(false)}><X className="w-5 h-5" /></button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">วันที่รับสินค้า (Date)</label>
-                                <input
-                                    type="date"
-                                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={pickupDate}
-                                    onChange={e => setPickupDate(e.target.value)}
-                                />
+            {
+                showModal && (
+                    <div className="absolute inset-0 z-20 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-up">
+                            <div className="bg-blue-600 p-4 flex justify-between items-center text-white">
+                                <h3 className="font-bold flex items-center gap-2"><Truck className="w-5 h-5" /> สร้างงานรับสินค้า</h3>
+                                <button onClick={() => setShowModal(false)}><X className="w-5 h-5" /></button>
                             </div>
-                            <button onClick={handleCreateJob} disabled={isSubmitting} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg transition-all mt-2 disabled:opacity-50 disabled:cursor-wait">
-                                {isSubmitting ? 'กำลังสร้างใบงาน...' : 'ยืนยัน (Confirm)'}
-                            </button>
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">วันที่รับสินค้า (Date)</label>
+                                    <input
+                                        type="date"
+                                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={pickupDate}
+                                        onChange={e => setPickupDate(e.target.value)}
+                                    />
+                                </div>
+                                <button onClick={handleCreateJob} disabled={isSubmitting} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg transition-all mt-2 disabled:opacity-50 disabled:cursor-wait">
+                                    {isSubmitting ? 'กำลังสร้างใบงาน...' : 'ยืนยัน (Confirm)'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

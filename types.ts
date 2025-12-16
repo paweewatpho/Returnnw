@@ -234,11 +234,15 @@ export interface ReturnRecord {
 
   // Status Timestamps (Timeline)
   dateRequested?: string;   // 1. แจ้งคืนสินค้า (Request)
-  dateInTransit?: string;   // 2. ขนส่ง (Logistics)
-  dateReceived?: string;    // 3. รับสินค้าเข้า (Receive)
-  dateGraded?: string;      // 4. ตรวจสอบคุณภาพ (QC)
-  dateDocumented?: string;  // 5. ออกเอกสาร (Warehouse/Docs)
-  dateCompleted?: string;   // 6. ปิดงาน (Done)
+  dateJobAccepted?: string; // 2. รับงาน (Job Accept)
+  dateBranchReceived?: string; // 3. รับเข้าสาขา (Branch Receive)
+  dateConsolidated?: string; // 4. รวมสินค้า (Consolidation)
+  dateInTransit?: string;   // 5. ขนส่ง (Logistics)
+  dateHubReceived?: string;    // 6. ถึง Hub (Hub Receive)
+  dateReceived?: string;    // (Legacy/Generic Receive)
+  dateGraded?: string;      // 7. ตรวจสอบคุณภาพ (QC)
+  dateDocumented?: string;  // 8. ออกเอกสาร (Warehouse/Docs)
+  dateCompleted?: string;   // 9. ปิดงาน (Done)
 
   // New Intake Fields (NCR Specific)
   quantity: number; // จำนวน

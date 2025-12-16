@@ -55,47 +55,8 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
             return;
         }
 
-        // Validate Transport Info
-        if (transportMode === 'Company') {
-            if (!transportInfo.driverName || !transportInfo.plateNumber) {
-                await Swal.fire({
-                    icon: 'warning',
-                    title: 'ข้อมูลไม่ครบถ้วน',
-                    text: 'กรุณาระบุชื่อพนักงานขับรถและทะเบียนรถสำหรับรถบริษัท',
-                    confirmButtonText: 'ตกลง'
-                });
-                return;
-            }
-        } else if (transportMode === '3PL') {
-            if (!transportInfo.transportCompany) {
-                await Swal.fire({
-                    icon: 'warning',
-                    title: 'ข้อมูลไม่ครบถ้วน',
-                    text: 'กรุณาระบุชื่อบริษัทขนส่ง (3PL)',
-                    confirmButtonText: 'ตกลง'
-                });
-                return;
-            }
-            if (!transportInfo.driverName || !transportInfo.plateNumber) {
-                await Swal.fire({
-                    icon: 'warning',
-                    title: 'ข้อมูลไม่ครบถ้วน',
-                    text: 'กรุณาระบุชื่อพนักงานขับรถและทะเบียนรถสำหรับ 3PL',
-                    confirmButtonText: 'ตกลง'
-                });
-                return;
-            }
-        } else if (transportMode === 'Other') {
-            if (!transportInfo.transportCompany) {
-                await Swal.fire({
-                    icon: 'warning',
-                    title: 'ข้อมูลไม่ครบถ้วน',
-                    text: 'กรุณาระบุรายละเอียดการขนส่ง (อื่นๆ)',
-                    confirmButtonText: 'ตกลง'
-                });
-                return;
-            }
-        }
+        // Validation for Transport Info removed as UI is removed.
+        // We will proceed with default/empty transport info.
 
         if (isSubmitting) return;
         setIsSubmitting(true);
@@ -200,6 +161,7 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
                             <tr>
                                 <th className="p-4 border-b">สาขา (Branch)</th>
                                 <th className="p-4 border-b">ใบกำกับ / วันที่ (Inv / Date)</th>
+                                <th className="p-4 border-b">จำนวน (Qty)</th>
                                 <th className="p-4 border-b">เลขที่เอกสาร (Doc Info)</th>
                                 <th className="p-4 border-b">ลูกค้าปลายทาง</th>
                                 <th className="p-4 border-b">หมายเหตุ</th>
@@ -229,6 +191,9 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
                                                 <Calendar className="w-3 h-3" />
                                                 <span title="วันที่ใบคุมรถ">{item.controlDate || item.date || '-'}</span>
                                             </div>
+                                        </td>
+                                        <td className="p-4 align-top">
+                                            <div className="font-bold text-slate-700">{item.quantity} {item.unit}</div>
                                         </td>
                                         <td className="p-4 align-top">
                                             <div className="flex flex-col gap-1">
@@ -299,90 +264,8 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
                         </div>
 
                         <div className="p-6 space-y-4">
-                            {/* 1. Transport Type Selection */}
                             <div className="space-y-4">
-                                <label className="block text-sm font-bold text-slate-800 mb-2">1. เลือกประเภทการขนส่ง</label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === 'Company' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
-                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
-                                            <input type="radio" name="transportType" checked={transportMode === 'Company'} onChange={() => { setTransportMode('Company'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: 'รถบริษัท' }); }} className="text-indigo-600 focus:ring-indigo-500" />
-                                            รถบริษัท
-                                        </div>
-                                        <div className="space-y-2 mt-2">
-                                            <input
-                                                type="text"
-                                                placeholder="ชื่อพนักงานขับรถ"
-                                                value={transportMode === 'Company' ? transportInfo.driverName : ''}
-                                                onChange={(e) => setTransportInfo({ ...transportInfo, driverName: e.target.value })}
-                                                disabled={transportMode !== 'Company'}
-                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="ทะเบียนรถ"
-                                                value={transportMode === 'Company' ? transportInfo.plateNumber : ''}
-                                                onChange={(e) => setTransportInfo({ ...transportInfo, plateNumber: e.target.value })}
-                                                disabled={transportMode !== 'Company'}
-                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
-                                            />
-                                        </div>
-                                    </label>
-
-                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === '3PL' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
-                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
-                                            <input type="radio" name="transportType" checked={transportMode === '3PL'} onChange={() => { setTransportMode('3PL'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: '' }); }} className="text-indigo-600 focus:ring-indigo-500" />
-                                            รถขนส่งร่วม (3PL)
-                                        </div>
-                                        <div className="space-y-2 mt-2">
-                                            <input
-                                                type="text"
-                                                placeholder="ระบุบริษัทขนส่ง..."
-                                                value={transportMode === '3PL' ? transportInfo.transportCompany : ''}
-                                                onChange={(e) => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })}
-                                                disabled={transportMode !== '3PL'}
-                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="ชื่อพนักงานขับรถ"
-                                                value={transportMode === '3PL' ? transportInfo.driverName : ''}
-                                                onChange={(e) => setTransportInfo({ ...transportInfo, driverName: e.target.value })}
-                                                disabled={transportMode !== '3PL'}
-                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="ทะเบียนรถ"
-                                                value={transportMode === '3PL' ? transportInfo.plateNumber : ''}
-                                                onChange={(e) => setTransportInfo({ ...transportInfo, plateNumber: e.target.value })}
-                                                disabled={transportMode !== '3PL'}
-                                                className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none"
-                                            />
-                                        </div>
-                                    </label>
-
-                                    <label className={`cursor-pointer rounded-xl border p-4 transition-all ${transportMode === 'Other' ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-200' : 'border-slate-200 hover:border-slate-300'}`}>
-                                        <div className="flex items-center gap-2 font-bold text-slate-700 mb-2">
-                                            <input type="radio" name="transportType" checked={transportMode === 'Other'} onChange={() => { setTransportMode('Other'); setTransportInfo({ driverName: '', plateNumber: '', transportCompany: '' }); }} className="text-indigo-600 focus:ring-indigo-500" />
-                                            อื่นๆ
-                                        </div>
-                                        <input
-                                            type="text"
-                                            placeholder="ระบุรายละเอียด..."
-                                            value={transportMode === 'Other' ? transportInfo.transportCompany : ''}
-                                            onChange={(e) => setTransportInfo({ ...transportInfo, transportCompany: e.target.value })}
-                                            disabled={transportMode !== 'Other'}
-                                            className="w-full text-sm p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none mt-2"
-                                        />
-                                    </label>
-                                </div>
-                            </div>
-
-                            <hr className="border-slate-100" />
-
-                            {/* 2. Preliminary Decision Section - Return Only */}
-                            <div className="space-y-4">
-                                <label className="block text-sm font-bold text-slate-800 mb-2">2. ระบุเส้นทางส่งคืน (Return Route)</label>
+                                <label className="block text-sm font-bold text-slate-800 mb-2">ระบุเส้นทางส่งคืน (Return Route)</label>
                                 <div className="border rounded-xl overflow-hidden bg-indigo-50/30">
                                     <div className="bg-indigo-100 px-4 py-2 border-b border-indigo-200 font-bold text-indigo-800 flex items-center gap-2 text-sm">
                                         <Truck className="w-4 h-4" /> เลือกเส้นทาง
@@ -432,15 +315,15 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-                                <button onClick={() => setIsDecisionModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors">
-                                    ยกเลิก
-                                </button>
-                                <button onClick={confirmConsolidation} disabled={isSubmitting} className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transition-all disabled:opacity-50 disabled:cursor-wait">
-                                    {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก (Save)'}
-                                </button>
-                            </div>
+                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                            <button onClick={() => setIsDecisionModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-200 rounded-lg transition-colors">
+                                ยกเลิก
+                            </button>
+                            <button onClick={confirmConsolidation} disabled={isSubmitting} className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transition-all disabled:opacity-50 disabled:cursor-wait">
+                                {isSubmitting ? 'กำลังบันทึก...' : 'บันทึก (Save)'}
+                            </button>
                         </div>
                     </div>
                 </div>,

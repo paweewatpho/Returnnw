@@ -78,6 +78,7 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                 await updateReturnRecord(id, {
                     status: 'COL_BranchReceived',
                     dateReceived: receivedDate,
+                    dateBranchReceived: receivedDate,
                     transportInfo: {
                         driverName: driverName,
                         plateNumber: plateNumber,
@@ -161,6 +162,7 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                             <tr>
                                 <th className="p-4 border-b">สาขา (Branch)</th>
                                 <th className="p-4 border-b">ใบกำกับ / วันที่ (Inv / Date)</th>
+                                <th className="p-4 border-b">จำนวน (Qty)</th>
                                 <th className="p-4 border-b">เลขที่เอกสาร (Doc Info)</th>
                                 <th className="p-4 border-b">ลูกค้าปลายทาง</th>
                                 <th className="p-4 border-b">หมายเหตุ</th>
@@ -189,6 +191,9 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                                                 <Calendar className="w-3 h-3" />
                                                 <span title="วันที่ใบคุมรถ">{item.controlDate || item.date || '-'}</span>
                                             </div>
+                                        </td>
+                                        <td className="p-4 align-top">
+                                            <div className="font-bold text-slate-700">{item.quantity} {item.unit}</div>
                                         </td>
                                         <td className="p-4 align-top">
                                             <div className="flex flex-col gap-1">

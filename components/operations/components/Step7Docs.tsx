@@ -12,6 +12,7 @@ interface Step7DocsProps {
 
 export const Step7Docs: React.FC<Step7DocsProps> = ({ onPrintDocs }) => {
     const { items } = useData();
+    const [activeTab, setActiveTab] = React.useState<'NCR' | 'COLLECTION'>('NCR');
 
     // Filter Items:
     // We want items that have passed QC or are ready for documentation.
@@ -62,60 +63,80 @@ export const Step7Docs: React.FC<Step7DocsProps> = ({ onPrintDocs }) => {
         });
     };
 
-    // Fallback for items with missing disposition
-    const safeItems = processedItems.map(i => ({
+    // Helper: Identify NCR items
+    const isNCRItem = (i: ReturnRecord) => i.ncrNumber || i.id.startsWith('NCR') || i.documentType === 'NCR';
+
+    // Helper: Identify Collection items (strictly not NCR)
+    const isCollectionItem = (i: ReturnRecord) => !isNCRItem(i);
+
+    // Split items into main groups
+    const ncrItems = React.useMemo(() => processedItems.filter(isNCRItem), [processedItems]);
+    const colItems = React.useMemo(() => processedItems.filter(isCollectionItem), [processedItems]);
+
+    // Current Display List based on Tab
+    const currentItems = activeTab === 'NCR' ? ncrItems : colItems;
+
+    // Map to safe items (default disposition)
+    const safeItems = currentItems.map(i => ({
         ...i,
         disposition: i.disposition || 'RTV' // Default to RTV if missing
     }));
 
-    // Helper: Identify NCR items
-    const isNCR = (i: ReturnRecord) => i.ncrNumber || i.id.startsWith('NCR');
-
-    // Helper: Identify Collection items (strictly not NCR)
-    const isCollection = (i: ReturnRecord) => (
-        !isNCR(i) && (
-            i.refNo?.startsWith('R-') || i.refNo?.startsWith('COL-') || i.refNo?.startsWith('RT-') ||
-            i.neoRefNo?.startsWith('R-') || i.neoRefNo?.startsWith('COL-')
-        )
-    );
-
-    // Filter RTV categories
-    const rtvCollectionItems = safeItems.filter(i => (i.disposition === 'RTV' || !i.disposition) && isCollection(i));
-    const rtvGeneralItems = safeItems.filter(i => (i.disposition === 'RTV' || !i.disposition) && !isCollection(i));
-
-    // Other items (Restock, Claim, etc.)
-    const otherItems = safeItems.filter(i => i.disposition !== 'RTV' && i.disposition); // Explicit disposition for others
+    // Filter by Disposition for Kanban
+    const itemsRTV = safeItems.filter(i => i.disposition === 'RTV');
+    const itemsRestock = safeItems.filter(i => i.disposition === 'Restock');
+    const itemsClaim = safeItems.filter(i => i.disposition === 'Claim');
+    const itemsInternal = safeItems.filter(i => i.disposition === 'InternalUse');
+    const itemsScrap = safeItems.filter(i => i.disposition === 'Recycle' || i.disposition === 'Scrap' as any);
 
     return (
-        <div className="h-full overflow-x-auto p-4 flex gap-4">
-            {/* 1. General RTV - Amber */}
-            <KanbanColumn
-                title="สินค้าสำหรับส่งคืน (RTV)"
-                status="RTV"
-                icon={Truck}
-                color="bg-amber-500"
-                items={rtvGeneralItems}
-                onPrintClick={handlePrintClick}
-                onSplitClick={handleSplitClick}
-                overrideFilter={true}
-            />
+        <div className="h-full flex flex-col p-4">
+            {/* Tabs */}
+            <div className="flex gap-4 mb-4 border-b border-slate-200 pb-2">
+                <button
+                    onClick={() => setActiveTab('NCR')}
+                    className={`px-6 py-2 rounded-lg font-bold transition-all flex items-center gap-2 ${activeTab === 'NCR'
+                        ? 'bg-amber-100 text-amber-700 border border-amber-200 shadow-sm'
+                        : 'bg-white text-slate-500 hover:bg-slate-50'
+                        }`}
+                >
+                    <AlertOctagon className="w-5 h-5" />
+                    รายการ NCR ({ncrItems.length})
+                </button>
+                <button
+                    onClick={() => setActiveTab('COLLECTION')}
+                    className={`px-6 py-2 rounded-lg font-bold transition-all flex items-center gap-2 ${activeTab === 'COLLECTION'
+                        ? 'bg-teal-100 text-teal-700 border border-teal-200 shadow-sm'
+                        : 'bg-white text-slate-500 hover:bg-slate-50'
+                        }`}
+                >
+                    <FileText className="w-5 h-5" />
+                    รายการ Collection ({colItems.length})
+                </button>
+            </div>
 
-            <KanbanColumn title="สินค้าสำหรับขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" items={otherItems} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าสำหรับเคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" items={otherItems} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" items={otherItems} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าสำหรับทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" items={otherItems} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
+            {/* Kanban Board */}
+            <div className="flex-1 overflow-x-auto flex gap-4">
+                <KanbanColumn
+                    title={activeTab === 'NCR' ? "สินค้าส่งคืน NCR (RTV)" : "สินค้าส่งคืน Collection (RTV)"}
+                    status="RTV"
+                    icon={activeTab === 'NCR' ? AlertOctagon : FileText}
+                    color={activeTab === 'NCR' ? "bg-amber-600" : "bg-teal-600"}
+                    items={itemsRTV}
+                    onPrintClick={handlePrintClick}
+                    onSplitClick={handleSplitClick}
+                    overrideFilter={true}
+                />
 
-            {/* 6. Collection Return (COL ID) - Teal - Special Channel */}
-            <KanbanColumn
-                title="งานรับสินค้า Collection Return (COL ID)"
-                status="RTV"
-                icon={FileText}
-                color="bg-teal-600"
-                items={rtvCollectionItems}
-                onPrintClick={handlePrintClick}
-                onSplitClick={handleSplitClick}
-                overrideFilter={true}
-            />
+                {activeTab === 'NCR' && (
+                    <>
+                        <KanbanColumn title="สินค้าสำหรับขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" items={itemsRestock} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
+                        <KanbanColumn title="สินค้าสำหรับเคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" items={itemsClaim} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
+                        <KanbanColumn title="สินค้าใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" items={itemsInternal} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
+                        <KanbanColumn title="สินค้าสำหรับทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" items={itemsScrap} onPrintClick={handlePrintClick} onSplitClick={handleSplitClick} />
+                    </>
+                )}
+            </div>
         </div>
     );
 };

@@ -42,10 +42,9 @@ export const ProductFormSection: React.FC<ProductFormSectionProps> = ({
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">รหัสสินค้า (Product Code) <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">รหัสสินค้า (Product Code)</label>
                     <AutocompleteInput
                         label=""
-                        required
                         value={formData.productCode || ''}
                         onChange={(val) => updateField('productCode', val)}
                         options={uniqueProductCodes}
@@ -54,10 +53,9 @@ export const ProductFormSection: React.FC<ProductFormSectionProps> = ({
             </div>
 
             <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">ชื่อสินค้า (Product Name) <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-bold text-slate-700 mb-1">ชื่อสินค้า (Product Name)</label>
                 <AutocompleteInput
                     label=""
-                    required
                     value={formData.productName || ''}
                     onChange={(val) => updateField('productName', val)}
                     options={uniqueProductNames}

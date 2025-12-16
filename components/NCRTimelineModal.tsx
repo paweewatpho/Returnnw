@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileText, Truck, MapPin, CheckSquare, CircleCheck, X, Clock, Calendar } from 'lucide-react';
+import { FileText, Truck, MapPin, CheckSquare, CircleCheck, X, Clock, Calendar, ClipboardList, Box, ArrowRight } from 'lucide-react';
 import { NCRRecord } from '../DataContext';
 import { ReturnRecord } from '../types';
 import { formatDate } from '../utils/dateUtils';
@@ -27,13 +27,18 @@ const NCRTimelineModal: React.FC<NCRTimelineModalProps> = ({ isOpen, onClose, re
     };
 
     const steps = [
-        { id: 1, label: 'แจ้งคืน (Request)', status: 'รออนุมัติ', date: correspondingReturn?.dateRequested || report.date, icon: FileText, colorKey: 'blue', description: 'ลูกค้าแจ้งปัญหา/ขอคืนสินค้า' },
-        { id: 2, label: 'ขนส่ง (Logistics)', status: 'ระหว่างทาง', date: correspondingReturn?.dateInTransit, icon: Truck, colorKey: 'orange', description: 'สินค้าอยู่ระหว่างรับกลับ/ขนส่ง' },
-        { id: 3, label: 'รับเข้า (Receive)', status: 'ถึง Hub', date: correspondingReturn?.dateReceived, icon: MapPin, colorKey: 'indigo', description: 'สินค้าถึงศูนย์รับคืน (Hub)' },
-        { id: 4, label: 'ตรวจสอบ (QC)', status: 'รอคัดแยก', date: correspondingReturn?.dateGraded, icon: CheckSquare, colorKey: 'yellow', description: 'ตรวจสอบสภาพ/คัดแยกเกรด' },
-        { id: 5, label: 'คลัง/เอกสาร', status: 'รอปิดงาน', date: correspondingReturn?.dateDocumented, icon: FileText, colorKey: 'purple', description: 'ออกใบลดหนี้/เอกสารปิดงาน' },
-        { id: 6, label: 'ปิดงาน (Done)', status: 'สำเร็จ', date: correspondingReturn?.dateCompleted, icon: CircleCheck, colorKey: 'green', description: 'กระบวนการเสร็จสิ้น' },
+        { id: 1, label: 'สร้างใบงาน (Request)', status: 'รออนุมัติ', date: correspondingReturn?.dateRequested || report.date, icon: FileText, colorKey: 'blue', description: 'ลูกค้าแจ้งปัญหา/ขอคืนสินค้า' },
+        { id: 2, label: 'ขนส่ง (In Transit)', status: 'ระหว่างทาง', date: correspondingReturn?.dateInTransit, icon: Truck, colorKey: 'purple', description: 'สินค้าอยู่ระหว่างทางไป Hub' },
+        { id: 3, label: 'ถึง Hub (Received)', status: 'ถึง Hub', date: correspondingReturn?.dateHubReceived || correspondingReturn?.dateReceived, icon: MapPin, colorKey: 'pink', description: 'สินค้าถึงศูนย์กระจายสินค้า' },
+        { id: 4, label: 'คลัง/เอกสาร (QC/Docs)', status: 'ตรวจสอบ', date: correspondingReturn?.dateGraded || correspondingReturn?.dateDocumented, icon: FileText, colorKey: 'yellow', description: 'ตรวจสอบเอกสาร/คลังรับเข้า' },
+        { id: 5, label: 'ปิดงาน (Done)', status: 'สำเร็จ', date: correspondingReturn?.dateCompleted, icon: CircleCheck, colorKey: 'green', description: 'กระบวนการเสร็จสิ้นสมบูรณ์' },
     ];
+
+    // Calculate Total Duration
+    const completedSteps = steps.filter(s => s.date);
+    const startDate = completedSteps.length > 0 ? completedSteps[0].date : null;
+    const endDate = completedSteps.length > 0 ? completedSteps[completedSteps.length - 1].date : null;
+    const totalDuration = calculateDuration(startDate, endDate);
 
     const isCanceled = report.status === 'Canceled';
 
@@ -43,6 +48,7 @@ const NCRTimelineModal: React.FC<NCRTimelineModalProps> = ({ isOpen, onClose, re
         indigo: { bg: 'bg-indigo-100', border: 'border-indigo-500', text: 'text-indigo-600', badgeBg: 'bg-indigo-50', badgeText: 'text-indigo-700' },
         yellow: { bg: 'bg-yellow-100', border: 'border-yellow-500', text: 'text-yellow-600', badgeBg: 'bg-yellow-50', badgeText: 'text-yellow-700' },
         purple: { bg: 'bg-purple-100', border: 'border-purple-500', text: 'text-purple-600', badgeBg: 'bg-purple-50', badgeText: 'text-purple-700' },
+        pink: { bg: 'bg-pink-100', border: 'border-pink-500', text: 'text-pink-600', badgeBg: 'bg-pink-50', badgeText: 'text-pink-700' },
         green: { bg: 'bg-green-100', border: 'border-green-500', text: 'text-green-600', badgeBg: 'bg-green-50', badgeText: 'text-green-700' },
         red: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-600', badgeBg: 'bg-red-50', badgeText: 'text-red-700' },
         gray: { bg: 'bg-slate-100', border: 'border-slate-300', text: 'text-slate-400', badgeBg: 'bg-slate-100', badgeText: 'text-slate-500' },
@@ -64,6 +70,12 @@ const NCRTimelineModal: React.FC<NCRTimelineModalProps> = ({ isOpen, onClose, re
                             <span className={`px-3 py-1 rounded-full text-xs font-bold border shadow-sm ${isCanceled ? 'bg-red-100 text-red-700 border-red-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
                                 {isCanceled ? 'รายการถูกยกเลิก (CANCELED)' : `NCR No: ${report.ncrNo || report.id}`}
                             </span>
+                            {totalDuration !== null && (
+                                <div className="flex items-center gap-1 ml-4 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                                    <Clock className="w-4 h-4 text-indigo-600" />
+                                    <span className="text-xs font-bold text-indigo-700">รวมทั้งหมด: {totalDuration} วัน</span>
+                                </div>
+                            )}
                         </div>
                         <p className="text-slate-500 text-sm">ติดตามสถานะและประวัติการดำเนินงานของสินค้าคืน (Status Tracking Infographic)</p>
                     </div>
@@ -102,7 +114,7 @@ const NCRTimelineModal: React.FC<NCRTimelineModalProps> = ({ isOpen, onClose, re
                         {/* Connecting Line */}
                         <div className="hidden md:block absolute top-[85px] left-10 right-10 h-1.5 bg-slate-200 rounded-full"></div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 relative">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
                             {steps.map((step, index) => {
                                 let styles = styleMap[step.colorKey];
                                 let isActive = !!step.date;

@@ -240,6 +240,31 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
                             />
                         </div>
 
+                        {/* 6.5 Quantity & Unit */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">จำนวน (Quantity)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={formData.quantity || ''}
+                                    onChange={e => updateField('quantity', parseFloat(e.target.value))}
+                                    placeholder="ระบุจำนวน..."
+                                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-600"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">หน่วย (Unit)</label>
+                                <input
+                                    type="text"
+                                    value={formData.unit || ''}
+                                    onChange={e => updateField('unit', e.target.value)}
+                                    placeholder="เช่น กล่อง, พาเลท, ชิ้น..."
+                                    className="w-full p-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                />
+                            </div>
+                        </div>
+
                         {/* 7. Notes & Phone */}
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-1">หมายเหตุ (Notes)</label>
@@ -313,7 +338,12 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
 
                                 // 3. Allow Submission
                                 if (requestItems.length === 0) {
-                                    const dummyItem = { ...formData, productName: 'General Request', quantity: 1, unit: 'Lot' };
+                                    const dummyItem = {
+                                        ...formData,
+                                        productName: 'General Request',
+                                        quantity: formData.quantity || 1,
+                                        unit: formData.unit || 'Lot'
+                                    };
                                     handleRequestSubmit([dummyItem]);
                                 } else {
                                     handleRequestSubmit();

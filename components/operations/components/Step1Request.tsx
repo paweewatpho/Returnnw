@@ -86,14 +86,7 @@ export const Step1Request: React.FC<Step1RequestProps> = ({
         e.preventDefault();
 
         // NCR Validation
-        if (!formData.productName || !formData.productCode || !formData.founder) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'ข้อมูลไม่ครบถ้วน',
-                text: 'กรุณาระบุชื่อสินค้า, รหัสสินค้า และผู้พบปัญหา (Founder)'
-            });
-            return;
-        }
+        // Founder validation removed as requested. Only Quantity is required.
         if (!formData.quantity || formData.quantity <= 0) {
             Swal.fire({
                 icon: 'warning',

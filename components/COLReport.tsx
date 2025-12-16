@@ -354,6 +354,7 @@ const COLReport: React.FC<COLReportProps> = () => {
                 <th className="px-3 py-3 border-r min-w-[120px]">เลขที่เอกสาร (R)</th>
                 <th className="px-3 py-3 border-r min-w-[120px]">วันที่ใบคุมรถ</th>
                 <th className="px-3 py-3 border-r min-w-[120px]">เลขที่ใบคุม (TM)</th>
+                <th className="px-3 py-3 border-r min-w-[150px]">เลขที่ COL (COL No)</th>
                 <th className="px-3 py-3 border-r min-w-[200px]">สินค้า (Product)</th>
                 <th className="px-3 py-3 text-center min-w-[100px]">สถานะ</th>
                 <th className="px-3 py-3 text-center min-w-[100px]">Actions</th>
@@ -362,7 +363,7 @@ const COLReport: React.FC<COLReportProps> = () => {
             <tbody className="divide-y divide-slate-100">
               {paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={11} className="p-8 text-center text-slate-400 italic">
                     ไม่พบรายการ Collection ในช่วงเวลานี้
                     <div className="text-xs mt-2">ลองปรับตัวกรองหรือค้นหาด้วยคำอื่น</div>
                   </td>
@@ -417,6 +418,11 @@ const COLReport: React.FC<COLReportProps> = () => {
                     {/* TM No */}
                     <td className="px-3 py-2 border-r align-top">
                       {item.tmNo ? <span className="text-slate-700 font-medium">{item.tmNo}</span> : '-'}
+                    </td>
+
+                    {/* COL No */}
+                    <td className="px-3 py-2 border-r align-top">
+                      {item.collectionOrderId ? <span className="font-mono text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded text-[10px]">{item.collectionOrderId}</span> : '-'}
                     </td>
 
                     {/* Product */}
