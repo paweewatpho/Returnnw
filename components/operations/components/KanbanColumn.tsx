@@ -95,6 +95,34 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, status, icon:
                             {status === 'RTV' && item.dispositionDetails?.route && (
                                 <div className="text-[10px] text-amber-600 bg-amber-50 p-1 rounded mt-1">Route: {item.dispositionDetails.route}</div>
                             )}
+
+                            {/* Preliminary Decision Badge */}
+                            {item.preliminaryDecision && (
+                                <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] text-slate-400 font-bold">ตัดสินใจ:</span>
+                                        {item.preliminaryRoute && (
+                                            <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-bold">
+                                                {item.preliminaryRoute}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span className={`px-2 py-1 rounded text-center font-bold text-[10px] text-white shadow-sm border ${item.preliminaryDecision === 'Return' ? 'bg-blue-600 border-blue-700' :
+                                        item.preliminaryDecision === 'Sell' ? 'bg-green-600 border-green-700' :
+                                            item.preliminaryDecision === 'Scrap' ? 'bg-red-600 border-red-700' :
+                                                item.preliminaryDecision === 'Internal' ? 'bg-amber-500 border-amber-600' :
+                                                    item.preliminaryDecision === 'Claim' ? 'bg-orange-500 border-orange-600' :
+                                                        'bg-slate-500 border-slate-600'
+                                        }`}>
+                                        {item.preliminaryDecision === 'Return' ? '🚚 คืนสินค้า' :
+                                            item.preliminaryDecision === 'Sell' ? '💵 ขาย' :
+                                                item.preliminaryDecision === 'Scrap' ? '🗑️ ทำลาย' :
+                                                    item.preliminaryDecision === 'Internal' ? '🏠 ใช้ภายใน' :
+                                                        item.preliminaryDecision === 'Claim' ? '📄 เคลม' :
+                                                            item.preliminaryDecision}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}

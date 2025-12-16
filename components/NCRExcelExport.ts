@@ -238,7 +238,10 @@ export const exportNCRToExcel = async (formData: NCRFormData, ncrItems: NCRItem[
             // A roughly accurate calc for Thai Sarabun font ~ 1.5-2 width unit per char? It varies.
             // Let's assume roughly 35-40 chars per line for our merged column G:K.
             const productText = `[${item.productCode}] ${item.productName}\n${item.customerName || ''} ${item.destinationCustomer ? '(ปลายทาง: ' + item.destinationCustomer + ')' : ''}`;
-            const refText = `Ref: ${item.refNo}\nNeo: ${item.neoRefNo}`;
+            const refParts = [];
+            if (item.refNo) refParts.push(`Ref: ${item.refNo}`);
+            if (item.neoRefNo) refParts.push(`Neo: ${item.neoRefNo}`);
+            const refText = refParts.join('\n');
             const analysisText = `${item.problemSource}\n${item.hasCost ? `Cost: ${item.costAmount?.toLocaleString()}` : ''}`;
 
             const checkLines = (text: string, charsPerLine: number) => {

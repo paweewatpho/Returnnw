@@ -344,29 +344,30 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                                     {/* Preliminary Decision Badge */}
                                     {item.preliminaryDecision && (
                                         <div className="mt-3 pt-2 border-t border-slate-100">
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-500">การตัดสินใจเบื้องต้น:</span>
-                                                <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${item.preliminaryDecision === 'Return' ? 'bg-blue-100 text-blue-700' :
-                                                    item.preliminaryDecision === 'Sell' ? 'bg-green-100 text-green-700' :
-                                                        item.preliminaryDecision === 'Scrap' ? 'bg-red-100 text-red-700' :
-                                                            item.preliminaryDecision === 'Internal' ? 'bg-purple-100 text-purple-700' :
-                                                                item.preliminaryDecision === 'Claim' ? 'bg-orange-100 text-orange-700' :
-                                                                    'bg-slate-100 text-slate-700'
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-slate-500 font-bold">การตัดสินใจเบื้องต้น:</span>
+                                                    {item.preliminaryRoute && (
+                                                        <span className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-bold border border-indigo-100">
+                                                            {item.preliminaryRoute}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className={`px-3 py-1.5 rounded-lg text-center font-bold text-xs shadow-sm border ${item.preliminaryDecision === 'Return' ? 'bg-blue-600 text-white border-blue-700' :
+                                                    item.preliminaryDecision === 'Sell' ? 'bg-green-600 text-white border-green-700' :
+                                                        item.preliminaryDecision === 'Scrap' ? 'bg-red-600 text-white border-red-700' :
+                                                            item.preliminaryDecision === 'Internal' ? 'bg-amber-500 text-white border-amber-600' :
+                                                                item.preliminaryDecision === 'Claim' ? 'bg-orange-500 text-white border-orange-600' :
+                                                                    'bg-slate-500 text-white border-slate-600'
                                                     }`}>
-                                                    {item.preliminaryDecision === 'Return' ? 'คืนสินค้า' :
-                                                        item.preliminaryDecision === 'Sell' ? 'ขาย' :
-                                                            item.preliminaryDecision === 'Scrap' ? 'ทำลาย' :
-                                                                item.preliminaryDecision === 'Internal' ? 'ใช้ภายใน' :
-                                                                    item.preliminaryDecision === 'Claim' ? 'เคลม' :
+                                                    {item.preliminaryDecision === 'Return' ? '🚚 คืนสินค้า' :
+                                                        item.preliminaryDecision === 'Sell' ? '💵 ขาย' :
+                                                            item.preliminaryDecision === 'Scrap' ? '🗑️ ทำลาย' :
+                                                                item.preliminaryDecision === 'Internal' ? '🏠 ใช้ภายใน' :
+                                                                    item.preliminaryDecision === 'Claim' ? '📄 เคลม' :
                                                                         item.preliminaryDecision}
                                                 </span>
                                             </div>
-                                            {item.preliminaryRoute && (
-                                                <div className="flex items-center justify-between text-xs mt-1">
-                                                    <span className="text-slate-500">เส้นทาง:</span>
-                                                    <span className="text-slate-700 font-medium">{item.preliminaryRoute}</span>
-                                                </div>
-                                            )}
                                         </div>
                                     )}
 

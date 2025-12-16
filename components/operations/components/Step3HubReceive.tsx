@@ -175,30 +175,29 @@ export const Step3HubReceive: React.FC = () => {
 
                                     {/* Preliminary Decision - Enhanced Display */}
                                     {item.preliminaryDecision && (
-                                        <div className="mt-2 p-2 bg-gradient-to-r from-indigo-50/50 to-blue-50/50 rounded-lg border border-indigo-100">
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-600 font-semibold">การตัดสินใจเบื้องต้น:</span>
-                                                <span className={`px-2 py-1 rounded-full font-bold text-xs shadow-sm ${item.preliminaryDecision === 'Return' ? 'bg-blue-500 text-white' :
-                                                        item.preliminaryDecision === 'Sell' ? 'bg-green-500 text-white' :
-                                                            item.preliminaryDecision === 'Scrap' ? 'bg-red-500 text-white' :
-                                                                item.preliminaryDecision === 'Internal' ? 'bg-amber-500 text-white' :
-                                                                    item.preliminaryDecision === 'Claim' ? 'bg-orange-500 text-white' :
-                                                                        'bg-slate-500 text-white'
-                                                    }`}>
-                                                    {item.preliminaryDecision === 'Return' ? '🚚 คืนสินค้า' :
-                                                        item.preliminaryDecision === 'Sell' ? '💵 ขาย' :
-                                                            item.preliminaryDecision === 'Scrap' ? '🗑️ ทำลาย' :
-                                                                item.preliminaryDecision === 'Internal' ? '🏠 ใช้ภายใน' :
-                                                                    item.preliminaryDecision === 'Claim' ? '📄 เคลม' :
-                                                                        item.preliminaryDecision}
-                                                </span>
+                                        <div className="mt-2 text-xs">
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                <span className="font-bold text-slate-500">การตัดสินใจเบื้องต้น:</span>
+                                                {item.preliminaryRoute && (
+                                                    <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100 font-bold text-[10px]">
+                                                        {item.preliminaryRoute}
+                                                    </span>
+                                                )}
                                             </div>
-                                            {item.preliminaryRoute && (
-                                                <div className="flex items-center justify-between text-xs mt-1 bg-white/70 rounded px-2 py-0.5">
-                                                    <span className="text-slate-600">เส้นทาง:</span>
-                                                    <span className="text-indigo-700 font-bold">{item.preliminaryRoute}</span>
-                                                </div>
-                                            )}
+                                            <div className={`px-3 py-1.5 rounded-lg text-white font-bold text-center shadow-sm border ${item.preliminaryDecision === 'Return' ? 'bg-blue-600 border-blue-700' :
+                                                item.preliminaryDecision === 'Sell' ? 'bg-green-600 border-green-700' :
+                                                    item.preliminaryDecision === 'Scrap' ? 'bg-red-600 border-red-700' :
+                                                        item.preliminaryDecision === 'Internal' ? 'bg-amber-500 border-amber-600' :
+                                                            item.preliminaryDecision === 'Claim' ? 'bg-orange-500 border-orange-600' :
+                                                                'bg-slate-500 border-slate-600'
+                                                }`}>
+                                                {item.preliminaryDecision === 'Return' ? '🚚 คืนสินค้า' :
+                                                    item.preliminaryDecision === 'Sell' ? '💵 ขาย' :
+                                                        item.preliminaryDecision === 'Scrap' ? '🗑️ ทำลาย' :
+                                                            item.preliminaryDecision === 'Internal' ? '🏠 ใช้ภายใน' :
+                                                                item.preliminaryDecision === 'Claim' ? '📄 เคลม' :
+                                                                    item.preliminaryDecision}
+                                            </div>
                                         </div>
                                     )}
 

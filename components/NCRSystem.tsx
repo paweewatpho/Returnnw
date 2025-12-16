@@ -708,7 +708,7 @@ const NCRSystem: React.FC = () => {
                                         {WAREHOUSE_BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-3 gap-2">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-1">รหัสสินค้า <span className="text-red-500">*</span></label>
                                         <input type="text" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" value={newItem.productCode} onChange={e => setNewItem({ ...newItem, productCode: e.target.value })} placeholder="Code" />
@@ -716,6 +716,10 @@ const NCRSystem: React.FC = () => {
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-1">Ref No.</label>
                                         <input type="text" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" value={newItem.refNo} onChange={e => setNewItem({ ...newItem, refNo: e.target.value })} placeholder="Reference" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-1">Neo Ref.</label>
+                                        <input type="text" className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500" value={newItem.neoRefNo} onChange={e => setNewItem({ ...newItem, neoRefNo: e.target.value })} placeholder="Neo Ref" />
                                     </div>
                                 </div>
                             </div>

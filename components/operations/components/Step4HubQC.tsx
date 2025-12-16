@@ -252,30 +252,29 @@ export const Step4HubQC: React.FC = () => {
 
                                     {/* Preliminary Decision - Enhanced Display */}
                                     {qcSelectedItem.preliminaryDecision && (
-                                        <div className="mt-3 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200">
-                                            <div className="flex items-center justify-between">
+                                        <div className="mt-3 p-4 bg-white/50 rounded-lg border border-slate-100">
+                                            <div className="flex items-center justify-between mb-2">
                                                 <span className="text-sm font-bold text-slate-700">การตัดสินใจเบื้องต้น:</span>
-                                                <span className={`px-3 py-1.5 rounded-full font-bold text-sm shadow-sm ${qcSelectedItem.preliminaryDecision === 'Return' ? 'bg-blue-500 text-white' :
-                                                        qcSelectedItem.preliminaryDecision === 'Sell' ? 'bg-green-500 text-white' :
-                                                            qcSelectedItem.preliminaryDecision === 'Scrap' ? 'bg-red-500 text-white' :
-                                                                qcSelectedItem.preliminaryDecision === 'Internal' ? 'bg-amber-500 text-white' :
-                                                                    qcSelectedItem.preliminaryDecision === 'Claim' ? 'bg-orange-500 text-white' :
-                                                                        'bg-slate-500 text-white'
-                                                    }`}>
-                                                    {qcSelectedItem.preliminaryDecision === 'Return' ? '🚚 คืนสินค้า' :
-                                                        qcSelectedItem.preliminaryDecision === 'Sell' ? '💵 ขาย' :
-                                                            qcSelectedItem.preliminaryDecision === 'Scrap' ? '🗑️ ทำลาย' :
-                                                                qcSelectedItem.preliminaryDecision === 'Internal' ? '🏠 ใช้ภายใน' :
-                                                                    qcSelectedItem.preliminaryDecision === 'Claim' ? '📄 เคลม' :
-                                                                        qcSelectedItem.preliminaryDecision}
-                                                </span>
+                                                {qcSelectedItem.preliminaryRoute && (
+                                                    <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-bold border border-indigo-100">
+                                                        {qcSelectedItem.preliminaryRoute}
+                                                    </span>
+                                                )}
                                             </div>
-                                            {qcSelectedItem.preliminaryRoute && (
-                                                <div className="flex items-center justify-between mt-2 bg-white/70 rounded px-3 py-1">
-                                                    <span className="text-sm text-slate-600">เส้นทางแนะนำ:</span>
-                                                    <span className="text-sm text-indigo-700 font-bold">{qcSelectedItem.preliminaryRoute}</span>
-                                                </div>
-                                            )}
+                                            <div className={`px-4 py-2 rounded-lg text-white font-bold text-center text-sm shadow-md border ${qcSelectedItem.preliminaryDecision === 'Return' ? 'bg-blue-600 border-blue-700' :
+                                                qcSelectedItem.preliminaryDecision === 'Sell' ? 'bg-green-600 border-green-700' :
+                                                    qcSelectedItem.preliminaryDecision === 'Scrap' ? 'bg-red-600 border-red-700' :
+                                                        qcSelectedItem.preliminaryDecision === 'Internal' ? 'bg-amber-500 border-amber-600' :
+                                                            qcSelectedItem.preliminaryDecision === 'Claim' ? 'bg-orange-500 border-orange-600' :
+                                                                'bg-slate-500 border-slate-600'
+                                                }`}>
+                                                {qcSelectedItem.preliminaryDecision === 'Return' ? '🚚 คืนสินค้า' :
+                                                    qcSelectedItem.preliminaryDecision === 'Sell' ? '💵 ขาย' :
+                                                        qcSelectedItem.preliminaryDecision === 'Scrap' ? '🗑️ ทำลาย' :
+                                                            qcSelectedItem.preliminaryDecision === 'Internal' ? '🏠 ใช้ภายใน' :
+                                                                qcSelectedItem.preliminaryDecision === 'Claim' ? '📄 เคลม' :
+                                                                    qcSelectedItem.preliminaryDecision}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
