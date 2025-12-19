@@ -67,7 +67,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                             />
                         </div>
                         <h1 className="text-3xl font-bold text-slate-800 mb-2">
-                            ReturnNeosiam Pro
+                            Neosiam Return
                         </h1>
                         <p className="text-slate-500 text-sm">
                             ระบบจัดการสินค้าคืน (Return Management System)

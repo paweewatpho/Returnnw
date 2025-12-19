@@ -72,7 +72,7 @@ const MainApp: React.FC = () => {
       case AppView.COL_REPORT: return 'รายงาน COL (Collection Report)';
       case AppView.INVENTORY: return 'คลังสินค้า (Inventory)';
       case AppView.COLLECTION: return 'ระบบงานรับสินค้า (Inbound Collection System)';
-      default: return 'ReturnNeosiam Pro';
+      default: return 'Neosiam Return';
     }
   };
 

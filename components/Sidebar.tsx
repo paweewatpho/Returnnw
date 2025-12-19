@@ -57,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) => {
           className="w-10 h-10 object-contain bg-white rounded-lg p-1"
         />
         <div>
-          <h1 className="text-lg font-bold tracking-tight">ReturnNeosiam</h1>
+          <h1 className="text-lg font-bold tracking-tight">Neosiam Return</h1>
           <p className="text-xs text-slate-400">Management System</p>
         </div>
       </div>

@@ -537,12 +537,12 @@ const Dashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Root Cause Bar Chart */}
-          <div className="h-[250px]">
+          <div className="h-[350px]">
             <h4 className="text-sm font-bold text-slate-700 mb-2">Problem Source Breakdown</h4>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ncrStats.rootCauseData}>
+              <BarChart data={ncrStats.rootCauseData} margin={{ bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-45} textAnchor="end" height={60} />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-45} textAnchor="end" height={120} />
                 <YAxis hide />
                 <Tooltip />
                 <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={30} />
@@ -551,7 +551,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Process Cause Area Chart */}
-          <div className="h-[250px]">
+          <div className="h-[350px]">
             <h4 className="text-sm font-bold text-slate-700 mb-2">Process Issues (Causes)</h4>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
