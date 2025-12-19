@@ -319,9 +319,28 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ onClose, onC
                                 </div>
                                 <div className="text-xs text-slate-500 ml-auto flex items-center gap-2">
                                     {duplicateErrors.size > 0 && (
-                                        <span className="text-red-600 font-bold bg-white px-2 py-1 rounded border border-red-200 flex items-center gap-1">
-                                            <AlertCircle className="w-4 h-4" /> พบซ้ำ {duplicateErrors.size} Docs
-                                        </span>
+                                        <div className="flex items-center gap-2 animate-pulse">
+                                            <span className="text-red-600 font-bold bg-white px-2 py-1 rounded border border-red-200 flex items-center gap-1">
+                                                <AlertCircle className="w-4 h-4" /> พบซ้ำ {duplicateErrors.size} Docs
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    const filtered = parsedItems.filter(i => !duplicateErrors.has(i.documentNo || ''));
+                                                    setParsedItems(filtered);
+                                                    setDuplicateErrors(new Set());
+                                                    Swal.fire({
+                                                        icon: 'success',
+                                                        title: 'ลบรายการซ้ำเรียบร้อย',
+                                                        text: 'สามารถยืนยันการนำเข้าข้อมูลได้แล้ว',
+                                                        timer: 1500,
+                                                        showConfirmButton: false
+                                                    });
+                                                }}
+                                                className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg font-bold shadow-sm transition-all flex items-center gap-1"
+                                            >
+                                                นำออกให้ฉันที (Remove)
+                                            </button>
+                                        </div>
                                     )}
                                     <span>พบ {parsedItems.length} รายการ | จากไฟล์: {fileStats.name}</span>
                                 </div>
