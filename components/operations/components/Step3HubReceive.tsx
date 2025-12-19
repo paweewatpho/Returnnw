@@ -160,9 +160,11 @@ export const Step3HubReceive: React.FC = () => {
                     }).map(item => (
                         <div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all text-sm">
                             {/* Header Info */}
-                            <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-4 border-b border-slate-100 pb-3">
+                            <div className="grid grid-cols-2 md:grid-cols-9 gap-4 mb-4 border-b border-slate-100 pb-3">
                                 <div><span className="text-slate-500 text-xs block mb-1">สาขาต้นทาง</span><span className="font-bold text-slate-800 flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {item.branch}</span></div>
                                 <div><span className="text-slate-500 text-xs block mb-1">วันที่แจ้ง</span><span className="font-bold text-slate-800">{item.dateRequested || item.date}</span></div>
+                                <div><span className="text-slate-500 text-xs block mb-1">COL No</span><span className="font-mono font-bold text-blue-600">{item.colNumber || '-'}</span></div>
+                                <div><span className="text-slate-500 text-xs block mb-1">เลขที่เอกสาร (R)</span><span className="font-mono font-bold text-slate-800">{item.documentNo || '-'}</span></div>
                                 <div><span className="text-slate-500 text-xs block mb-1">เลขที่ NCR</span><span className="font-mono font-bold text-slate-800">{item.ncrNumber || '-'}</span></div>
                                 <div><span className="text-slate-500 text-xs block mb-1">เลขที่เอกสาร Neo</span><span className="font-mono font-bold text-slate-800">{item.neoRefNo || '-'}</span></div>
                                 <div><span className="text-slate-500 text-xs block mb-1">ชื่อลูกค้า</span><span className="font-bold text-slate-800 line-clamp-1" title={item.customerName}>{item.customerName || '-'}</span></div>
@@ -174,7 +176,17 @@ export const Step3HubReceive: React.FC = () => {
                             <div className="bg-slate-50 p-3 rounded-lg flex flex-col md:flex-row gap-4 items-start md:items-center">
                                 <div className="flex-1 min-w-0">
                                     <div className="flex flex-wrap gap-2 mb-1">
-                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-mono font-bold">{item.refNo}</span>
+                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="System Ref">{item.refNo}</span>
+                                        {item.documentNo && (
+                                            <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="Document No (R)">
+                                                {item.documentNo}
+                                            </span>
+                                        )}
+                                        {item.colNumber && (
+                                            <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="COL No">
+                                                {item.colNumber}
+                                            </span>
+                                        )}
                                         <span className="text-slate-600 font-mono font-bold">{item.productCode}</span>
                                     </div>
                                     <div className="font-bold text-slate-900 text-base mb-1 truncate" title={item.productName}>{item.productName}</div>

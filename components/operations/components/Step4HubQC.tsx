@@ -254,8 +254,8 @@ export const Step4HubQC: React.FC = () => {
                                 <div>
                                     <h3 className="text-2xl font-bold text-slate-800 mb-1">{qcSelectedItem.productName}</h3>
                                     <div className="flex gap-4 text-sm text-slate-500">
-                                        <span>ID: {qcSelectedItem.id}</span>
-                                        <span>Ref: {qcSelectedItem.refNo}</span>
+                                        <span>R No: <b>{qcSelectedItem.documentNo || '-'}</b></span>
+                                        <span>COL No: <b>{qcSelectedItem.colNumber || '-'}</b></span>
                                         <span>Qty: <b>{qcSelectedItem.quantity} {qcSelectedItem.unit}</b></span>
                                     </div>
 

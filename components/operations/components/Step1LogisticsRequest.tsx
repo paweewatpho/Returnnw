@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { FileText, Save, PlusCircle } from 'lucide-react';
+import { FileText, Save, PlusCircle, FileSpreadsheet } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { ReturnRecord } from '../../../types';
 import { BRANCH_LIST } from '../../../constants';
+import { ExcelImportModal } from './ExcelImportModal';
 // Logistics Request Form
 // Optimized for Inbound Collection System
 // Features: Branch Selection, Header Info, Simplified Item Entry
@@ -73,21 +74,44 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
         handleAddItem(null, { ...formData, quantity: finalQty, unit: formData.unit || 'ชิ้น' });
     };
 
+    const [showExcelModal, setShowExcelModal] = useState(false);
+
+    const handleBatchImport = (importedItems: Partial<ReturnRecord>[]) => {
+        // This function receives validated items from Excel Modal
+        // We pass them to parent handler (handleRequestSubmit logic handles array)
+        // Check handleRequestSubmit signature: (manualItems?: Partial<ReturnRecord>[]) => void
+        handleRequestSubmit(importedItems);
+    };
+
     return (
         <div className="h-full overflow-auto p-6 bg-slate-50">
+            {showExcelModal && (
+                <ExcelImportModal
+                    onClose={() => setShowExcelModal(false)}
+                    onConfirm={handleBatchImport}
+                />
+            )}
             <div className="max-w-4xl mx-auto space-y-6">
 
                 {/* Header Card */}
                 <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-                        <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 shadow-inner">
-                            <FileText className="w-6 h-6" />
+                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 shadow-inner">
+                                <FileText className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">1. ใบสั่งงานรับกลับ (Create Return Request)</h3>
+                                <p className="text-sm text-slate-500">กรอกข้อมูลสำหรับใบงานรับกลับ (เฉพาะ Header)</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-800">1. ใบสั่งงานรับกลับ (Create Return Request)</h3>
-                            <p className="text-sm text-slate-500">กรอกข้อมูลสำหรับใบงานรับกลับ (เฉพาะ Header)</p>
-                        </div>
+                        <button
+                            onClick={() => setShowExcelModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 font-bold transition-colors text-sm"
+                        >
+                            <FileSpreadsheet className="w-4 h-4" /> Import Excel
+                        </button>
                     </div>
 
                     <div className="space-y-6">
@@ -129,13 +153,12 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-1">
-                                    วันที่ใบคุมรถ <span className="text-red-500">*</span>
+                                    วันที่ใบคุมรถ (Control Date)
                                 </label>
                                 <input
                                     type="date"
                                     aria-label="วันที่ใบคุมรถ"
                                     title="วันที่ใบคุมรถ"
-                                    required
                                     value={formData.controlDate || formData.date || ''}
                                     onChange={e => {
                                         updateField('controlDate', e.target.value);
@@ -310,7 +333,7 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
                                     // 1. Validate Mandatory Fields
                                     const missingFields = [];
                                     if (!formData.branch) missingFields.push('สาขา (Branch)');
-                                    if (!formData.controlDate && !formData.date) missingFields.push('วันที่ใบคุมรถ (Control Date)');
+                                    // if (!formData.controlDate && !formData.date) missingFields.push('วันที่ใบคุมรถ (Control Date)');
                                     if (!formData.customerName) missingFields.push('ลูกค้าต้นทาง (Source Customer)');
 
                                     if (missingFields.length > 0) {

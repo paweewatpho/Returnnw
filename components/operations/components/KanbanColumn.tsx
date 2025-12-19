@@ -79,11 +79,13 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, status, icon:
                                 <div className="flex flex-col"><span className="text-[10px] text-slate-400">วันที่แจ้ง</span><span className="font-bold text-slate-700 truncate">{item.date}</span></div>
                             </div>
 
-                            {(item.neoRefNo || item.ncrNumber || item.collectionOrderId) && (
-                                <div className="grid grid-cols-2 gap-1">
-                                    {item.neoRefNo && <div className="flex flex-col"><span className="text-[10px] text-slate-400">เลขที่เอกสาร Neo</span><span className="font-medium text-slate-700 truncate" title={item.neoRefNo}>{item.neoRefNo}</span></div>}
-                                    {item.ncrNumber && <div className="flex flex-col"><span className="text-[10px] text-slate-400 text-red-500">เลขที่ NCR</span><span className="font-bold text-red-600 truncate" title={item.ncrNumber}>{item.ncrNumber}</span></div>}
-                                    {item.collectionOrderId && <div className="flex flex-col col-span-2"><span className="text-[10px] text-indigo-400 font-bold">COL No.</span><span className="font-mono text-xs text-indigo-600 truncate bg-indigo-50 px-1 rounded w-fit" title={item.collectionOrderId}>{item.collectionOrderId}</span></div>}
+                            {(item.neoRefNo || item.ncrNumber || item.collectionOrderId || item.documentNo) && (
+                                <div className="grid grid-cols-2 gap-1 mt-1">
+                                    {item.documentNo && <div className="flex flex-col"><span className="text-[10px] text-emerald-600 font-bold">R No.</span><span className="font-mono text-xs text-emerald-700 bg-emerald-50 px-1 rounded w-fit truncate" title={item.documentNo}>{item.documentNo}</span></div>}
+                                    {item.collectionOrderId && <div className="flex flex-col"><span className="text-[10px] text-indigo-600 font-bold">COL No.</span><span className="font-mono text-xs text-indigo-700 bg-indigo-50 px-1 rounded w-fit truncate" title={item.collectionOrderId}>{item.collectionOrderId}</span></div>}
+                                    {/* Fallback references */}
+                                    {item.neoRefNo && !item.documentNo && <div className="flex flex-col"><span className="text-[10px] text-slate-400">Ref Neo</span><span className="font-medium text-slate-700 truncate" title={item.neoRefNo}>{item.neoRefNo}</span></div>}
+                                    {item.ncrNumber && <div className="flex flex-col"><span className="text-[10px] text-red-500">NCR No</span><span className="font-bold text-red-600 truncate" title={item.ncrNumber}>{item.ncrNumber}</span></div>}
                                 </div>
                             )}
 
