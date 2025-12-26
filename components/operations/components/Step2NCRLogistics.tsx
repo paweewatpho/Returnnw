@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Swal from 'sweetalert2';
-import { Truck, MapPin, Printer, ArrowRight, Package, Box, Calendar, Layers, X, Info, Share2, PlusSquare, MinusSquare } from 'lucide-react';
+import { Truck, Printer, Package, Info, Share2, PlusSquare, MinusSquare, X } from 'lucide-react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord, TransportInfo } from '../../../types';
 import { RETURN_ROUTES } from '../../../constants';
@@ -21,7 +21,6 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
     // Decision Modal State
     const [isDecisionModalOpen, setIsDecisionModalOpen] = useState(false);
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
-    const [tempDecision, setTempDecision] = useState<'Return' | 'Sell' | 'Scrap' | 'Internal' | 'Claim' | null>(null);
     const [tempRoute, setTempRoute] = useState<string>('');
     const [isFieldSettled, setIsFieldSettled] = useState(false);
     const [fieldAmount, setFieldAmount] = useState<number>(0);
@@ -42,6 +41,7 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
     const [directDestination, setDirectDestination] = useState<string>('');
     const [customDestination, setCustomDestination] = useState<string>('');
     const [selectedBranch, setSelectedBranch] = useState<string>('All');
+    const [searchQuery, setSearchQuery] = useState<string>('');
 
     // Filter Logic
     const pendingItems = useMemo(() => {
@@ -68,9 +68,21 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
 
     const uniqueBranches = useMemo(() => Array.from(new Set(pendingItems.map(i => i.branch))).filter(Boolean), [pendingItems]);
 
-    const filteredItems = useMemo(() => pendingItems.filter(item =>
-        selectedBranch === 'All' || item.branch === selectedBranch
-    ), [pendingItems, selectedBranch]);
+    const filteredItems = useMemo(() => {
+        return pendingItems.filter(item => {
+            const matchesBranch = selectedBranch === 'All' || item.branch === selectedBranch;
+            const q = searchQuery.toLowerCase().trim();
+            const matchesSearch = !q ||
+                (item.refNo?.toLowerCase().includes(q)) ||
+                (item.ncrNumber?.toLowerCase().includes(q)) ||
+                (item.documentNo?.toLowerCase().includes(q)) ||
+                (item.collectionOrderId?.toLowerCase().includes(q)) ||
+                (item.productName?.toLowerCase().includes(q)) ||
+                (item.productCode?.toLowerCase().includes(q));
+
+            return matchesBranch && matchesSearch;
+        });
+    }, [pendingItems, selectedBranch, searchQuery]);
 
     // Grouping Logic
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -81,9 +93,10 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
             // Logic must match displayId logic to be consistent visually
             const isCOLItem = !!item.collectionOrderId || item.status === 'COL_Consolidated' || (item.id && item.id.startsWith('COL'));
             // Use trimmed display ID as key
+            const cleanRefNo = item.refNo && item.refNo !== '-' && !item.refNo.startsWith('RT-') ? item.refNo : '';
             const key = isCOLItem
                 ? (item.collectionOrderId || `COL-${item.id}`)
-                : (item.ncrNumber || item.id);
+                : (cleanRefNo || item.ncrNumber || item.id);
 
             if (!groups[key]) groups[key] = [];
             groups[key].push(item);
@@ -117,12 +130,7 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
         setSelectedIds(newSet);
     };
 
-    const handleToggle = (id: string) => {
-        const newSet = new Set(selectedIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedIds(newSet);
-    };
+
 
     const handleSelectAll = () => {
         if (selectedIds.size === filteredItems.length && filteredItems.length > 0) {
@@ -134,7 +142,6 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
 
     const handleAddDecision = (itemId: string) => {
         setEditingItemId(itemId);
-        setTempDecision('Return'); // Default to Return
         setTempRoute('');
         setIsFieldSettled(false);
         setFieldAmount(0);
@@ -306,6 +313,28 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                             {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
                         </select>
                     </div>
+
+                    <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 min-w-[200px]">
+                        <span className="text-sm font-bold text-slate-600 truncate">ค้นหาบิล:</span>
+                        <input
+                            type="text"
+                            placeholder="เลขที่บิล / NCR / สินค้า / R..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="bg-transparent text-sm font-medium outline-none text-slate-800 w-full"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                aria-label="ล้างการค้นหา"
+                                title="ล้างการค้นหา"
+                                className="text-slate-400 hover:text-slate-600"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+
                     <div className="text-sm text-slate-500">
                         รายการรอดำเนินการ: <span className="font-bold text-indigo-600">{filteredItems.length}</span>
                     </div>
@@ -349,10 +378,16 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                             // 2. NCR Items: Are NOT COL items, and have NCR markers at this stage
                             const isNCRItem = !isCOLItem && (item.documentType === 'NCR' || !!item.ncrNumber);
 
-                            // Determine Display ID (Fallback to COL-{id} if missing order id)
+                            // Determine Display ID - REFINED based on user feedback to prioritize manual refs
+                            // For NCR: Show Manual Ref No if available (and not internal RT- ID), else NCR Number
+                            // For COL: Show Document No (R) if available (and not internal RT- ID), else Collection Order ID
+                            const isInternalId = (val: string | undefined) => !!val && val.startsWith('RT-');
+                            const cleanRefNo = item.refNo && item.refNo !== '-' && !isInternalId(item.refNo) ? item.refNo : '';
+                            const cleanDocNo = item.documentNo && !isInternalId(item.documentNo) ? item.documentNo : '';
+
                             const displayId = isCOLItem
-                                ? (item.collectionOrderId || `COL-${item.id}`)
-                                : (item.ncrNumber || item.id);
+                                ? (cleanDocNo || item.collectionOrderId || '-')
+                                : (cleanRefNo || item.ncrNumber || '-');
 
                             return (
                                 <div
@@ -376,10 +411,35 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                                                     NCR
                                                 </span>
                                             )}
+                                        </div>
 
-                                            <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                        <div className="flex flex-col items-end gap-1">
+                                            {/* Primary Display ID (Ref for NCR, R No for COL) */}
+                                            <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                                 {displayId}
                                             </span>
+
+                                            {/* Secondary ID (NCR No for NCR, COL No for COL) - Only if different from primary */}
+                                            {isNCRItem && item.ncrNumber && item.ncrNumber !== displayId && (
+                                                <span className="text-[10px] font-mono text-red-500 font-bold bg-red-50 px-1 rounded border border-red-100">
+                                                    รายการ NCR: {item.ncrNumber}
+                                                </span>
+                                            )}
+                                            {isNCRItem && item.refNo && item.refNo !== '-' && item.refNo !== displayId && (
+                                                <span className="text-[10px] font-mono text-blue-600 font-bold bg-blue-50 px-1 rounded border border-blue-200">
+                                                    เลขที่บิล (Ref No.): {item.refNo}
+                                                </span>
+                                            )}
+                                            {isCOLItem && item.documentNo && item.documentNo !== displayId && (
+                                                <span className="text-[10px] font-mono text-emerald-600 font-bold bg-emerald-50 px-1 rounded border border-emerald-100">
+                                                    เลขที่เอกสาร (R): {item.documentNo}
+                                                </span>
+                                            )}
+                                            {isCOLItem && item.collectionOrderId && item.collectionOrderId !== displayId && (
+                                                <span className="text-[10px] font-mono text-indigo-600 font-bold bg-indigo-50 px-1 rounded border border-indigo-100">
+                                                    เลขที่ COL: {item.collectionOrderId}
+                                                </span>
+                                            )}
                                         </div>
 
                                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors 
@@ -447,7 +507,7 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                                             <>
                                                 <div className="flex items-center justify-between text-xs mt-1">
                                                     <span className="text-slate-500">เลข R:</span>
-                                                    <span className="font-mono text-slate-700">{item.documentNo || '-'}</span>
+                                                    <span className="font-mono font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded border border-emerald-100">{item.documentNo || '-'}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between text-xs">
                                                     <span className="text-slate-500">ปลายทาง:</span>
@@ -818,7 +878,7 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                                                             name="tempRoute"
                                                             value={route}
                                                             checked={tempRoute === route}
-                                                            onChange={(e) => { setTempDecision('Return'); setTempRoute(e.target.value); }}
+                                                            onChange={(e) => { setTempRoute(e.target.value); }}
                                                             className="hidden"
                                                         />
                                                         {route}
@@ -832,7 +892,7 @@ export const Step2NCRLogistics: React.FC<Step2NCRLogisticsProps> = ({ onConfirm 
                                                         name="tempRoute"
                                                         value="Other"
                                                         checked={tempRoute === 'Other' || (tempRoute && !RETURN_ROUTES.includes(tempRoute))}
-                                                        onChange={() => { setTempDecision('Return'); setTempRoute('Other'); }}
+                                                        onChange={() => { setTempRoute('Other'); }}
                                                         className="hidden"
                                                     />
                                                     อื่นๆ (Other)

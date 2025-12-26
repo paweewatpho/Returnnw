@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import {
   Truck, CheckCircle, Clock, FileText, Package, AlertOctagon, DollarSign, Trash2, MapPin, Box,
-  TrendingUp, Activity, AlertTriangle, Lock, X, RotateCcw
+  TrendingUp, Activity, AlertTriangle, RotateCcw
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -277,7 +277,7 @@ const Dashboard: React.FC = () => {
     // Calculate from NCR Reports
     ncrReports.filter(n => n.status !== 'Canceled').forEach(n => {
       // Use cost from Item if available, else from report root
-      const cost = n.item?.costAmount || (n as any).costAmount || 0;
+      const cost = n.item?.costAmount || (n as { costAmount?: number }).costAmount || 0;
       // Only add if not already counted via items to avoid double counting? 
       // For safety in this hybrid system, we'll assume NCR reports might cover things NOT in items list or additional costs.
       // But typically they are linked. Let's just sum NCR specific costs if we consider them "Extra".
@@ -312,31 +312,7 @@ const Dashboard: React.FC = () => {
     ].filter(i => i.value > 0);
   }, [items]);
 
-  // 4. Problem Analysis (Returns)
-  const problemAnalysisData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    items.forEach(i => {
-      if (i.problemAnalysis) {
-        const key = i.problemAnalysis;
-        counts[key] = (counts[key] || 0) + 1;
-      }
-    });
 
-    return Object.entries(counts)
-      .map(([name, value]) => {
-        const labels: Record<string, string> = {
-          'Customer': 'ลูกค้าต้นทาง',
-          'DestinationCustomer': 'ลูกค้าปลายทาง',
-          'Accounting': 'บัญชี',
-          'Keying': 'คีย์ข้อมูลผิด',
-          'Warehouse': 'คลังสินค้า',
-          'Transport': 'ขนส่ง',
-          'Other': 'อื่นๆ'
-        };
-        return { name: labels[name] || name, value };
-      })
-      .sort((a, b) => b.value - a.value);
-  }, [items]);
 
   // 5. NCR Root Cause & Process Stats
   const ncrStats = useMemo(() => {
@@ -345,7 +321,7 @@ const Dashboard: React.FC = () => {
 
     ncrReports.filter(n => n.status !== 'Canceled').forEach(report => {
       // Root Cause
-      let source = report.item?.problemSource || (report as any).problemSource || 'Other';
+      let source = report.item?.problemSource || (report as { problemSource?: string }).problemSource || 'Other';
 
       // Normalize Source (Merge Other/Others)
       const s = source.trim().toLowerCase();
@@ -686,9 +662,9 @@ const CountUpNumber = ({ end, duration = 1500 }: { end: number, duration?: numbe
 };
 
 // Component: Pipeline Card (Fresh Professional Design)
-const PipelineCard = ({ step, title, count, icon: Icon, variant = 'blue', desc }: any) => {
+const PipelineCard = ({ step, title, count, icon: Icon, variant = 'blue', desc }: { step: string, title: string, count: number, icon: React.ElementType, variant?: string, desc: string }) => {
   // Color Themes (Pastel & Clean)
-  const themes: any = {
+  const themes = {
     teal: { border: 'border-teal-200', bg: 'bg-teal-50', iconColor: 'text-teal-600', blob: 'bg-teal-100', hoverBorder: 'group-hover:border-teal-400' },
     blue: { border: 'border-blue-200', bg: 'bg-blue-50', iconColor: 'text-blue-600', blob: 'bg-blue-100', hoverBorder: 'group-hover:border-blue-400' },
     indigo: { border: 'border-indigo-200', bg: 'bg-indigo-50', iconColor: 'text-indigo-600', blob: 'bg-indigo-100', hoverBorder: 'group-hover:border-indigo-400' },
@@ -735,9 +711,9 @@ const PipelineCard = ({ step, title, count, icon: Icon, variant = 'blue', desc }
 };
 
 // Component: Stat Card (Financials - Premium Design)
-const StatCard = ({ title, value, subText, icon: Icon, variant = 'default' }: any) => {
+const StatCard = ({ title, value, subText, icon: Icon, variant = 'default' }: { title: string, value: string, subText: string, icon: React.ElementType, variant: string }) => {
   // Define styles for different variants
-  const styles: any = {
+  const styles = {
     dark: "bg-slate-900 text-white border-none shadow-xl shadow-slate-200 hover:shadow-slate-400/50",
     green: "bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-none shadow-xl shadow-emerald-200 hover:shadow-emerald-400/50",
     orange: "bg-gradient-to-br from-amber-400 to-orange-600 text-white border-none shadow-xl shadow-orange-200 hover:shadow-orange-400/50",
@@ -778,8 +754,8 @@ const StatCard = ({ title, value, subText, icon: Icon, variant = 'default' }: an
 };
 
 // Component: Stock Card (Vibrant Pill Design)
-const StockCard = ({ title, count, variant, icon: Icon, subTitle }: any) => {
-  const styles: any = {
+const StockCard = ({ title, count, variant, icon: Icon, subTitle }: { title: string, count: number, variant: string, icon?: React.ElementType, subTitle: string }) => {
+  const styles = {
     blue: "bg-gradient-to-br from-[#4f46e5] to-[#3b82f6] shadow-indigo-300", // Indigo - Blue
     orange: "bg-gradient-to-br from-[#f97316] to-[#ef4444] shadow-orange-300", // Orange - Red
     green: "bg-gradient-to-br from-[#10b981] to-[#059669] shadow-emerald-300", // Emerald

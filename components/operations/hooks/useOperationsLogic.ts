@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../../DataContext';
-import { ReturnRecord, ItemCondition, DispositionAction, ReturnStatus, TransportInfo } from '../../../types';
+import { ReturnRecord, ItemCondition, DispositionAction, TransportInfo } from '../../../types';
 import { getISODetails, RESPONSIBLE_MAPPING } from '../utils';
 import Swal from 'sweetalert2';
 
@@ -355,7 +355,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
     };
 
     const handleRequestSubmit = async (manualItems?: Partial<ReturnRecord>[]) => {
-        let itemsToProcess = manualItems && manualItems.length > 0 ? manualItems : [...requestItems];
+        const itemsToProcess = manualItems && manualItems.length > 0 ? manualItems : [...requestItems];
         if (itemsToProcess.length === 0) {
             Swal.fire({
                 icon: 'warning',
@@ -370,7 +370,6 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
 
         try {
             let successCount = 0;
-            let savedNcrNumbers: string[] = [];
 
             for (const item of itemsToProcess) {
                 let finalNcrNumber = item.ncrNumber;
@@ -389,7 +388,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 const record: ReturnRecord = {
                     ...item as ReturnRecord,
                     id: runningId,
-                    refNo: runningId,
+                    refNo: item.refNo || '-',
                     // Use the generated COL number
                     collectionOrderId: finalColNumber,
                     amount: (item.quantity || 0) * (item.priceBill || 0),
@@ -413,7 +412,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 if (success) {
                     // Only create NCR Report if it is explicitly an NCR document
                     if (record.documentType === 'NCR') {
-                        const ncrRecord: any = {
+                        const ncrRecord = {
                             id: finalNcrNumber + '-' + record.id,
                             ncrNo: finalNcrNumber,
                             date: record.dateRequested,
@@ -564,7 +563,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                     transportPlate: cleanPlate,
                     transportDriver: cleanDriver,
                     transportCompany: cleanCompany,
-                    disposition: null as any
+                    disposition: null
                 }
                 : {
                     status: 'DirectReturn',
@@ -779,11 +778,11 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
         };
 
         if (splitDisposition) {
-            (splitItem as any).disposition = splitDisposition;
-            (splitItem as any).dateGraded = today;
+            splitItem.disposition = splitDisposition;
+            splitItem.dateGraded = today;
         } else {
-            delete (splitItem as any).disposition;
-            delete (splitItem as any).dateGraded;
+            splitItem.disposition = undefined;
+            splitItem.dateGraded = undefined;
         }
 
         const createSplitSuccess = await addReturnRecord(splitItem);
@@ -930,10 +929,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
         });
     };
 
-    const handleCompleteJob = async (id: string) => {
-        const today = new Date().toISOString().split('T')[0];
-        await updateReturnRecord(id, { status: 'Completed', dateCompleted: today }); // Assuming Completed is valid
-    };
+
 
     const toggleSelection = (id: string) => {
         const newSet = new Set(selectedItemIds);
@@ -981,10 +977,12 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 setDocSelectedItem(item);
                 setShowStep4SplitModal(true);
             },
-            handleStep4SplitSubmit: async (splitQty: number, newDisposition: DispositionAction, isBreakdown: boolean = false, rate: number = 1, newUnit: string = '', mainDisposition?: DispositionAction) => {
+            handleStep4SplitSubmit: async (_splitQty: number, _newDisposition: DispositionAction) => {
+                void _splitQty;
+                void _newDisposition;
                 if (!docSelectedItem) return;
-                const currentQty = docSelectedItem.quantity || 1;
-                const totalAvailable = isBreakdown ? (currentQty * rate) : currentQty;
+                // Removed unused variables
+
 
                 // Add split logic logic if needed, previously was empty in some contexts but let's keep it safe
                 Swal.fire('Split functionality pending', 'This feature is pending implementation for Step 4 direct usage.', 'info');

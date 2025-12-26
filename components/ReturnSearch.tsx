@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../DataContext';
 import { BRANCH_LIST } from '../constants';
 import { SearchFilters, ReturnStatus, ReturnRecord, DispositionAction } from '../types';
-import { Search, Filter, Calendar, AlertCircle, CheckCircle, Clock, XCircle, ChevronDown, MapPin, Eye, FileText, Truck, RotateCcw, Trash2, Home, ShieldCheck, AlertTriangle, User, Phone, Building2, Package, Activity, Download, ChevronLeft, ChevronRight, Lock, Edit } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, Clock, XCircle, MapPin, Eye, FileText, Truck, RotateCcw, Trash2, Home, ShieldCheck, AlertTriangle, User, Phone, Building2, Package, Activity, Download, ChevronLeft, ChevronRight, Lock, Edit } from 'lucide-react';
 
 interface ExtendedSearchFilters extends SearchFilters {
   branch: string;
@@ -160,7 +160,7 @@ const ReturnSearch: React.FC = () => {
     return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${config.color}`}><Icon className="w-3 h-3" /> {config.label}</span>;
   };
 
-  const TimelineItem = ({ title, date, icon: Icon, active, last }: { title: string, date?: string, icon: any, active: boolean, last?: boolean }) => (
+  const TimelineItem = ({ title, date, icon: Icon, active, last }: { title: string, date?: string, icon: React.ElementType, active: boolean, last?: boolean }) => (
     <div className="flex flex-col items-center relative flex-1">
       <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 z-10 ${active ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}><Icon className="w-4 h-4" /></div>
       {!last && (<div className={`absolute top-4 left-1/2 w-full h-0.5 -translate-y-1/2 ${active && date ? 'bg-blue-600' : 'bg-slate-200'}`}></div>)}
@@ -247,8 +247,8 @@ const ReturnSearch: React.FC = () => {
                       <div className="space-y-2 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
                         {selectedItem.actionReject && (<p><span className="font-bold w-32 inline-block">ส่งคืน (Reject):</span> {selectedItem.actionRejectQty} units</p>)}
                         {selectedItem.actionRejectSort && (<p><span className="font-bold w-32 inline-block">คัดแยกเพื่อส่งคืน:</span> {selectedItem.actionRejectSortQty} units</p>)}
-                        {selectedItem.actionRework && (<p><span className="font-bold w-32 inline-block">แก้ไข (Rework):</span> {selectedItem.actionReworkQty} units - <i className="text-slate-500">"{selectedItem.actionReworkMethod}"</i></p>)}
-                        {selectedItem.actionSpecialAcceptance && (<p><span className="font-bold w-32 inline-block">ยอมรับกรณีพิเศษ:</span> {selectedItem.actionSpecialAcceptanceQty} units - <i className="text-slate-500">"{selectedItem.actionSpecialAcceptanceReason}"</i></p>)}
+                        {selectedItem.actionRework && (<p><span className="font-bold w-32 inline-block">แก้ไข (Rework):</span> {selectedItem.actionReworkQty} units - <i className="text-slate-500">&quot;{selectedItem.actionReworkMethod}&quot;</i></p>)}
+                        {selectedItem.actionSpecialAcceptance && (<p><span className="font-bold w-32 inline-block">ยอมรับกรณีพิเศษ:</span> {selectedItem.actionSpecialAcceptanceQty} units - <i className="text-slate-500">&quot;{selectedItem.actionSpecialAcceptanceReason}&quot;</i></p>)}
                         {selectedItem.actionScrap && (<p><span className="font-bold w-32 inline-block">ทำลาย (Scrap):</span> {selectedItem.actionScrapQty} units</p>)}
                         {selectedItem.actionReplace && (<p><span className="font-bold w-32 inline-block">เปลี่ยนสินค้าใหม่:</span> {selectedItem.actionReplaceQty} units</p>)}
                         {!selectedItem.actionReject && !selectedItem.actionRework && !selectedItem.actionScrap && !selectedItem.actionSpecialAcceptance && <p className="text-slate-400 italic">ไม่มีการดำเนินการเบื้องต้นที่บันทึกไว้</p>}

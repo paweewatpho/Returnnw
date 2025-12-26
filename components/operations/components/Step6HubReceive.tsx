@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Truck, Inbox, MapPin, CheckCircle, PlusSquare, MinusSquare, Layers } from 'lucide-react';
+import { Truck, Inbox, MapPin, CheckCircle, PlusSquare, MinusSquare, Layers, X } from 'lucide-react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord } from '../../../types';
 import Swal from 'sweetalert2';
@@ -10,6 +10,7 @@ export const Step6HubReceive: React.FC = () => {
     const [filterBranch, setFilterBranch] = React.useState<string>('');
     const [filterCustomer, setFilterCustomer] = React.useState<string>('');
     const [filterDestination, setFilterDestination] = React.useState<string>('');
+    const [filterRef, setFilterRef] = React.useState<string>('');
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -39,7 +40,7 @@ export const Step6HubReceive: React.FC = () => {
         let processType: 'SINGLE' | 'GROUP' = 'SINGLE';
 
         if (isGroup) {
-            const { isConfirmed, isDenied, isDismissed } = await Swal.fire({
+            const { isConfirmed, isDismissed } = await Swal.fire({
                 title: 'ตัวเลือกการรับเข้า (Receive Options)',
                 html: `
                     <div class="text-left">
@@ -115,8 +116,6 @@ export const Step6HubReceive: React.FC = () => {
         }
     };
 
-
-
     const handleHubReceiveAll = async () => {
         if (filteredItems.length === 0) return;
 
@@ -167,12 +166,20 @@ export const Step6HubReceive: React.FC = () => {
     // Filtered items
     const filteredItems = React.useMemo(() => {
         return incomingItems.filter(item => {
-            const matchBranch = !filterBranch || item.branch === filterBranch;
-            const matchCustomer = !filterCustomer || (item.customerName && item.customerName.toLowerCase().includes(filterCustomer.toLowerCase()));
-            const matchDestination = !filterDestination || (item.destinationCustomer && item.destinationCustomer.toLowerCase().includes(filterDestination.toLowerCase()));
-            return matchBranch && matchCustomer && matchDestination;
+            const matchesBranch = !filterBranch || item.branch === filterBranch;
+            const matchesCustomer = !filterCustomer || (item.customerName || '').toLowerCase().includes(filterCustomer.toLowerCase());
+            const matchesDestination = !filterDestination || (item.destinationCustomer || '').toLowerCase().includes(filterDestination.toLowerCase());
+
+            const q = filterRef.toLowerCase().trim();
+            const matchesRef = !q ||
+                (item.refNo?.toLowerCase().includes(q)) ||
+                (item.ncrNumber?.toLowerCase().includes(q)) ||
+                (item.documentNo?.toLowerCase().includes(q)) ||
+                (item.collectionOrderId?.toLowerCase().includes(q));
+
+            return matchesBranch && matchesCustomer && matchesDestination && matchesRef;
         });
-    }, [incomingItems, filterBranch, filterCustomer, filterDestination]);
+    }, [incomingItems, filterBranch, filterCustomer, filterDestination, filterRef]);
 
     // Grouping
     const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
@@ -224,8 +231,23 @@ export const Step6HubReceive: React.FC = () => {
 
             {/* Filters */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4 space-y-3 sticky top-0 z-10">
-                <div className="text-sm font-bold text-slate-700 mb-2">ตัวกรอง (Filters)</div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex justify-between items-center">
+                    <div className="text-sm font-bold text-slate-700">ตัวกรอง (Filters)</div>
+                    {(filterBranch || filterCustomer || filterDestination || filterRef) && (
+                        <button
+                            onClick={() => {
+                                setFilterBranch('');
+                                setFilterCustomer('');
+                                setFilterDestination('');
+                                setFilterRef('');
+                            }}
+                            className="text-xs text-blue-600 font-bold hover:underline"
+                        >
+                            ล้างทั้งหมด
+                        </button>
+                    )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">สาขาต้นทาง</label>
                         <select
@@ -265,6 +287,30 @@ export const Step6HubReceive: React.FC = () => {
                             onChange={(e) => setFilterDestination(e.target.value)}
                         />
                     </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">เลขที่บิล / Ref No.</label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                className="w-full p-2 pr-8 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                aria-label="เลขที่บิล / เอกสารอ้างอิง (Ref No.)"
+                                title="เลขที่บิล / เอกสารอ้างอิง (Ref No.)"
+                                placeholder="ค้นหาเลขบิล / NCR / R..."
+                                value={filterRef}
+                                onChange={(e) => setFilterRef(e.target.value)}
+                            />
+                            {filterRef && (
+                                <button
+                                    onClick={() => setFilterRef('')}
+                                    aria-label="ล้างการค้นหา"
+                                    title="ล้างการค้นหา"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -275,115 +321,113 @@ export const Step6HubReceive: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    ) : (
-                    <div className="space-y-4">
-                        {[...groupedItems]
-                            .sort((a, b) => (b.rep.ncrNumber || b.rep.id).localeCompare(a.rep.ncrNumber || a.rep.id))
-                            .map(group => {
-                                const { key: groupKey, items: gItems, rep: item } = group;
-                                const isExpanded = expandedGroups.has(groupKey);
+                    {[...groupedItems]
+                        .sort((a, b) => (b.rep.ncrNumber || b.rep.id).localeCompare(a.rep.ncrNumber || a.rep.id))
+                        .map(group => {
+                            const { key: groupKey, items: gItems, rep: item } = group;
+                            const isExpanded = expandedGroups.has(groupKey);
 
-                                return (
-                                    <div key={groupKey} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all text-sm">
-                                        {/* Header Info - Using Representative */}
-                                        <div className="grid grid-cols-2 md:grid-cols-9 gap-4 mb-4 border-b border-slate-100 pb-3 relative">
-                                            <div><span className="text-slate-500 text-xs block mb-1">สาขาต้นทาง</span><span className="font-bold text-slate-800 flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {item.branch}</span></div>
-                                            <div><span className="text-slate-500 text-xs block mb-1">วันที่แจ้ง</span><span className="font-bold text-slate-800">{item.dateRequested || item.date}</span></div>
-                                            <div><span className="text-slate-500 text-xs block mb-1">COL No</span><span className="font-mono font-bold text-blue-600">{item.collectionOrderId || '-'}</span></div>
-                                            <div><span className="text-slate-500 text-xs block mb-1">เลขที่เอกสาร (R)</span><span className="font-mono font-bold text-slate-800">{item.documentNo || '-'}</span></div>
-                                            <div><span className="text-slate-500 text-xs block mb-1">NCR No.</span><span className="font-mono font-bold text-slate-800">{item.ncrNumber || '-'}</span></div>
-                                            <div><span className="text-slate-500 text-xs block mb-1">Neo Ref</span><span className="font-mono font-bold text-slate-800">{item.neoRefNo || '-'}</span></div>
-                                            <div><span className="text-slate-500 text-xs block mb-1">ลูกค้า</span><span className="font-bold text-slate-800 line-clamp-1" title={item.customerName}>{item.customerName || '-'}</span></div>
-                                            <div><span className="text-slate-500 text-xs block mb-1">ผู้พบปัญหา</span><span className="font-bold text-slate-800 line-clamp-1" title={item.founder}>{item.founder || '-'}</span></div>
-                                            <div><span className="text-slate-500 text-xs block mb-1">ปลายทาง</span><span className="font-bold text-slate-800 line-clamp-1" title={item.destinationCustomer}>{item.destinationCustomer || '-'}</span></div>
+                            return (
+                                <div key={groupKey} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all text-sm">
+                                    {/* Header Info - Using Representative */}
+                                    <div className="grid grid-cols-2 md:grid-cols-9 gap-4 mb-4 border-b border-slate-100 pb-3 relative">
+                                        <div><span className="text-slate-500 text-xs block mb-1">สาขาต้นทาง</span><span className="font-bold text-slate-800 flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {item.branch}</span></div>
+                                        <div><span className="text-slate-500 text-xs block mb-1">วันที่แจ้ง</span><span className="font-bold text-slate-800">{item.dateRequested || item.date}</span></div>
+                                        <div><span className="text-slate-500 text-xs block mb-1">COL No</span><span className="font-mono font-bold text-blue-600">{item.collectionOrderId || '-'}</span></div>
+                                        <div><span className="text-slate-500 text-xs block mb-1">เลขที่เอกสาร (R)</span><span className="font-mono font-bold text-slate-800">{item.documentNo || '-'}</span></div>
+                                        <div><span className="text-slate-500 text-xs block mb-1">NCR No.</span><span className="font-mono font-bold text-slate-800">{item.ncrNumber || '-'}</span></div>
+                                        <div><span className="text-slate-500 text-xs block mb-1">Neo Ref</span><span className="font-mono font-bold text-slate-800">{item.neoRefNo || '-'}</span></div>
+                                        <div><span className="text-slate-500 text-xs block mb-1">ลูกค้า</span><span className="font-bold text-slate-800 line-clamp-1" title={item.customerName}>{item.customerName || '-'}</span></div>
+                                        <div><span className="text-slate-500 text-xs block mb-1">ผู้พบปัญหา</span><span className="font-bold text-slate-800 line-clamp-1" title={item.founder}>{item.founder || '-'}</span></div>
+                                        <div><span className="text-slate-500 text-xs block mb-1">ปลายทาง</span><span className="font-bold text-slate-800 line-clamp-1" title={item.destinationCustomer}>{item.destinationCustomer || '-'}</span></div>
 
-                                            {/* Group Badge */}
-                                            {gItems.length > 1 && (
-                                                <div className="absolute top-0 right-0 -mt-2 -mr-2">
-                                                    <span className="bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                                                        <Layers className="w-3 h-3" /> {gItems.length}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Main Product Action */}
-                                        <div className="bg-slate-50 p-3 rounded-lg flex flex-col md:flex-row gap-4 items-center">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex flex-wrap gap-2 mb-1">
-                                                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="System Ref">{item.refNo}</span>
-                                                    {item.documentNo && (
-                                                        <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="Document No (R)">
-                                                            {item.documentNo}
-                                                        </span>
-                                                    )}
-                                                    {item.collectionOrderId && (
-                                                        <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="COL No">
-                                                            {item.collectionOrderId}
-                                                        </span>
-                                                    )}
-                                                    <span className="text-slate-600 font-mono font-bold">{item.productCode}</span>
-                                                </div>
-                                                <div className="font-bold text-slate-900 text-base mb-1 truncate" title={item.productName}>{item.productName}</div>
-                                                {item.problemDetail && <p className="text-xs text-slate-500 truncate">{item.problemDetail}</p>}
-                                            </div>
-
-                                            <div className="text-center min-w-[80px] bg-white px-3 py-1 rounded border border-slate-200">
-                                                <span className="text-slate-400 text-[10px] block">จำนวน</span>
-                                                <span className="font-bold text-lg text-blue-600">{item.quantity}</span> <span className="text-xs text-slate-500">{item.unit}</span>
-                                            </div>
-
-                                            <button onClick={() => handleHubReceive(item, gItems)} aria-label="รับเข้า Hub" title="รับเข้า Hub" disabled={isSubmitting} className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-wait">
-                                                {isSubmitting ? (
-                                                    <>⏳ กำลังรับ...</>
-                                                ) : (
-                                                    <><CheckCircle className="w-4 h-4" /> รับเข้า Hub</>
-                                                )}
-                                            </button>
-                                        </div>
-
-                                        {/* Expand Button & Hidden List */}
+                                        {/* Group Badge */}
                                         {gItems.length > 1 && (
-                                            <div className="mt-2">
-                                                <button
-                                                    onClick={() => handleToggleExpand(groupKey)}
-                                                    className={`flex items-center justify-center gap-1 w-full py-1.5 rounded text-[11px] font-bold border transition-all
-                                                    ${isExpanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'}`}
-                                                >
-                                                    {isExpanded ? <MinusSquare className="w-3 h-3" /> : <PlusSquare className="w-3 h-3" />}
-                                                    {isExpanded ? 'ซ่อนรายการอื่น' : `ดูรายการอื่นอีก ${gItems.length - 1} รายการ (+)`}
-                                                </button>
-
-                                                {isExpanded && (
-                                                    <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-100 animate-slide-down">
-                                                        {gItems.slice(1).map(subItem => (
-                                                            <div key={subItem.id} className="bg-slate-50/50 p-2 rounded border border-slate-100 flex flex-col md:flex-row gap-3 items-center ml-4 border-l-4 border-l-slate-300">
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex gap-2 mb-0.5">
-                                                                        <span className="text-[10px] font-mono text-slate-500">{subItem.productCode}</span>
-                                                                    </div>
-                                                                    <div className="font-bold text-slate-700 text-sm truncate" title={subItem.productName}>{subItem.productName}</div>
-                                                                </div>
-                                                                <div className="text-center min-w-[60px]">
-                                                                    <span className="font-bold text-slate-600">{subItem.quantity}</span> <span className="text-[10px] text-slate-400">{subItem.unit}</span>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => handleHubReceive(subItem, [])}
-                                                                    disabled={isSubmitting}
-                                                                    className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded hover:bg-amber-200 disabled:opacity-50"
-                                                                >
-                                                                    รับเข้า
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                            <div className="absolute top-0 right-0 -mt-2 -mr-2">
+                                                <span className="bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                                                    <Layers className="w-3 h-3" /> {gItems.length}
+                                                </span>
                                             </div>
                                         )}
                                     </div>
-                                );
-                            })}
-                    </div>
+
+                                    {/* Main Product Action */}
+                                    <div className="bg-slate-50 p-3 rounded-lg flex flex-col md:flex-row gap-4 items-center">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex flex-wrap gap-2 mb-1">
+                                                {item.refNo && item.refNo !== '-' && <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="เลขที่อ้างอิง (Ref No.)">Ref: {item.refNo}</span>}
+                                                {item.ncrNumber && <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="รายการ NCR">NCR: {item.ncrNumber}</span>}
+                                                {item.documentNo && (
+                                                    <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="เลขที่เอกสาร (R)">
+                                                        R: {item.documentNo}
+                                                    </span>
+                                                )}
+                                                {item.collectionOrderId && (
+                                                    <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded font-mono font-bold" title="เลขที่ COL">
+                                                        {item.collectionOrderId}
+                                                    </span>
+                                                )}
+                                                <span className="text-slate-600 font-mono font-bold">{item.productCode}</span>
+                                            </div>
+                                            <div className="font-bold text-slate-900 text-base mb-1 truncate" title={item.productName}>{item.productName}</div>
+                                            {item.problemDetail && <p className="text-xs text-slate-500 truncate">{item.problemDetail}</p>}
+                                        </div>
+
+                                        <div className="text-center min-w-[80px] bg-white px-3 py-1 rounded border border-slate-200">
+                                            <span className="text-slate-400 text-[10px] block">จำนวน</span>
+                                            <span className="font-bold text-lg text-blue-600">{item.quantity}</span> <span className="text-xs text-slate-500">{item.unit}</span>
+                                        </div>
+
+                                        <button onClick={() => handleHubReceive(item, gItems)} aria-label="รับเข้า Hub" title="รับเข้า Hub" disabled={isSubmitting} className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-wait">
+                                            {isSubmitting ? (
+                                                <>⏳ กำลังรับ...</>
+                                            ) : (
+                                                <><CheckCircle className="w-4 h-4" /> รับเข้า Hub</>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Expand Button & Hidden List */}
+                                    {gItems.length > 1 && (
+                                        <div className="mt-2">
+                                            <button
+                                                onClick={() => handleToggleExpand(groupKey)}
+                                                className={`flex items-center justify-center gap-1 w-full py-1.5 rounded text-[11px] font-bold border transition-all
+                                                ${isExpanded ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100'}`}
+                                            >
+                                                {isExpanded ? <MinusSquare className="w-3 h-3" /> : <PlusSquare className="w-3 h-3" />}
+                                                {isExpanded ? 'ซ่อนรายการอื่น' : `ดูรายการอื่นอีก ${gItems.length - 1} รายการ (+)`}
+                                            </button>
+
+                                            {isExpanded && (
+                                                <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-100 animate-slide-down">
+                                                    {gItems.slice(1).map(subItem => (
+                                                        <div key={subItem.id} className="bg-slate-50/50 p-2 rounded border border-slate-100 flex flex-col md:flex-row gap-3 items-center ml-4 border-l-4 border-l-slate-300">
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex gap-2 mb-0.5">
+                                                                    <span className="text-[10px] font-mono text-slate-500">{subItem.productCode}</span>
+                                                                </div>
+                                                                <div className="font-bold text-slate-700 text-sm truncate" title={subItem.productName}>{subItem.productName}</div>
+                                                            </div>
+                                                            <div className="text-center min-w-[60px]">
+                                                                <span className="font-bold text-slate-600">{subItem.quantity}</span> <span className="text-[10px] text-slate-400">{subItem.unit}</span>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleHubReceive(subItem, [])}
+                                                                disabled={isSubmitting}
+                                                                className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded hover:bg-amber-200 disabled:opacity-50"
+                                                            >
+                                                                รับเข้า
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                 </div>
             )}
         </div>

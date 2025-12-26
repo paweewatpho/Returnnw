@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, RotateCcw, ShieldCheck, Home, Trash2, FileText, AlertOctagon } from 'lucide-react';
+import { Truck, RotateCcw, ShieldCheck, Home, Trash2, FileText, AlertOctagon, Search, X } from 'lucide-react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord, DispositionAction } from '../../../types';
 import { KanbanColumn } from './KanbanColumn';
@@ -23,6 +23,7 @@ interface Step5HubDocsProps {
 
 export const Step5HubDocs: React.FC<Step5HubDocsProps> = ({ onPrintDocs }) => {
     const { items, updateReturnRecord } = useData();
+    const [searchQuery, setSearchQuery] = React.useState('');
 
     // Filter Items: Status 'NCR_QCCompleted' or 'QCCompleted' (Legacy)
     const processedItems = React.useMemo(() => {
@@ -30,10 +31,23 @@ export const Step5HubDocs: React.FC<Step5HubDocsProps> = ({ onPrintDocs }) => {
     }, [items]);
 
     // Fallback for items with missing disposition (Ghost Items repair)
-    const safeItems = processedItems.map(i => ({
-        ...i,
-        disposition: i.disposition || 'InternalUse'
-    }));
+    const safeItems = React.useMemo(() => {
+        return processedItems.map(i => ({
+            ...i,
+            disposition: i.disposition || 'InternalUse' as DispositionAction
+        })).filter(i => {
+            const q = searchQuery.toLowerCase().trim();
+            if (!q) return true;
+            return (
+                (i.refNo?.toLowerCase().includes(q)) ||
+                (i.ncrNumber?.toLowerCase().includes(q)) ||
+                (i.documentNo?.toLowerCase().includes(q)) ||
+                (i.collectionOrderId?.toLowerCase().includes(q)) ||
+                (i.productName?.toLowerCase().includes(q)) ||
+                (i.productCode?.toLowerCase().includes(q))
+            );
+        });
+    }, [processedItems, searchQuery]);
 
     const handleSplitClick = (item: ReturnRecord) => {
         // Placeholder for split logic
@@ -65,35 +79,70 @@ export const Step5HubDocs: React.FC<Step5HubDocsProps> = ({ onPrintDocs }) => {
     const otherItems = safeItems.filter(i => i.disposition !== 'RTV');
 
     return (
-        <div className="h-full overflow-x-auto p-4 flex gap-4">
-            {/* 1. General RTV - Amber */}
-            <KanbanColumn
-                title="สินค้าสำหรับส่งคืน (RTV)"
-                status="RTV"
-                icon={Truck}
-                color="bg-amber-500"
-                items={rtvGeneralItems}
-                onPrintClick={onPrintDocs}
-                onSplitClick={handleSplitClick}
-                overrideFilter={true}
-            />
+        <div className="h-full flex flex-col p-4 bg-slate-50/50">
+            {/* Filter Bar */}
+            <div className="mb-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+                <div className="flex items-center gap-2 text-slate-700 font-bold min-w-max">
+                    <FileText className="w-5 h-5 text-indigo-500" />
+                    <span>จัดการเอกสารจบงาน</span>
+                </div>
 
-            <KanbanColumn title="สินค้าสำหรับขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าสำหรับเคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
-            <KanbanColumn title="สินค้าสำหรับทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
+                <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="ค้นหาเลขบิล / NCR / สินค้า / R..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            aria-label="ล้างการค้นหา"
+                            title="ล้างการค้นหา"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
 
-            {/* 6. Collection Return (COL ID) - Teal - Special Channel */}
-            <KanbanColumn
-                title="งานรับสินค้า Collection Return (COL ID)"
-                status="RTV"
-                icon={FileText}
-                color="bg-teal-600"
-                items={rtvCollectionItems}
-                onPrintClick={onPrintDocs}
-                onSplitClick={handleSplitClick}
-                overrideFilter={true}
-            />
+                <div className="text-xs text-slate-500">
+                    รายการทั้งหมด: <span className="font-bold text-slate-700">{safeItems.length}</span>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-x-auto flex gap-4 pb-4">
+                {/* 1. General RTV - Amber */}
+                <KanbanColumn
+                    title="สินค้าสำหรับส่งคืน (RTV)"
+                    status="RTV"
+                    icon={Truck}
+                    color="bg-amber-500"
+                    items={rtvGeneralItems}
+                    onPrintClick={onPrintDocs}
+                    onSplitClick={handleSplitClick}
+                    overrideFilter={true}
+                />
+
+                <KanbanColumn title="สินค้าสำหรับขาย (Restock)" status="Restock" icon={RotateCcw} color="bg-green-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
+                <KanbanColumn title="สินค้าสำหรับเคลม (Claim)" status="Claim" icon={ShieldCheck} color="bg-blue-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
+                <KanbanColumn title="สินค้าใช้ภายใน (Internal)" status="InternalUse" icon={Home} color="bg-purple-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
+                <KanbanColumn title="สินค้าสำหรับทำลาย (Scrap)" status="Recycle" icon={Trash2} color="bg-red-500" items={otherItems} onPrintClick={onPrintDocs} onSplitClick={handleSplitClick} />
+
+                {/* 6. Collection Return (COL ID) - Teal - Special Channel */}
+                <KanbanColumn
+                    title="งานรับสินค้า Collection Return (COL ID)"
+                    status="RTV"
+                    icon={FileText}
+                    color="bg-teal-600"
+                    items={rtvCollectionItems}
+                    onPrintClick={onPrintDocs}
+                    onSplitClick={handleSplitClick}
+                    overrideFilter={true}
+                />
+            </div>
         </div>
     );
 };

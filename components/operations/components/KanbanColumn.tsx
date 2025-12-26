@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Printer, GitFork, Link, PlusSquare, MinusSquare, Layers, RotateCcw } from 'lucide-react';
+import { Printer, GitFork, Link, PlusSquare, MinusSquare, RotateCcw } from 'lucide-react';
 import { ReturnRecord, DispositionAction } from '../../../types';
 
 interface KanbanColumnProps {
     title: string;
     status: DispositionAction;
-    icon: any;
+    icon: React.ElementType;
     color: string;
     items: ReturnRecord[];
     onPrintClick: (status: DispositionAction, list: ReturnRecord[]) => void;
@@ -126,11 +126,16 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, status, icon:
 
                 {(item.neoRefNo || item.ncrNumber || item.collectionOrderId || item.documentNo) && (
                     <div className="grid grid-cols-2 gap-1 mt-1">
-                        {item.documentNo && <div className="flex flex-col"><span className="text-[10px] text-emerald-600 font-bold">R No.</span><span className="font-mono text-xs text-emerald-700 bg-emerald-50 px-1 rounded w-fit truncate" title={item.documentNo}>{item.documentNo}</span></div>}
-                        {item.collectionOrderId && <div className="flex flex-col"><span className="text-[10px] text-indigo-600 font-bold">COL No.</span><span className="font-mono text-xs text-indigo-700 bg-indigo-50 px-1 rounded w-fit truncate" title={item.collectionOrderId}>{item.collectionOrderId}</span></div>}
+                        {item.documentNo && <div className="flex flex-col"><span className="text-[10px] text-emerald-600 font-bold">เลขที่เอกสาร (R)</span><span className="font-mono text-xs text-emerald-700 bg-emerald-50 px-1 rounded w-fit truncate" title={item.documentNo}>{item.documentNo}</span></div>}
+                        {item.collectionOrderId && <div className="flex flex-col"><span className="text-[10px] text-indigo-600 font-bold">เลขที่ COL</span><span className="font-mono text-xs text-indigo-700 bg-indigo-50 px-1 rounded w-fit truncate" title={item.collectionOrderId}>{item.collectionOrderId}</span></div>}
 
-                        {item.neoRefNo && !item.documentNo && <div className="flex flex-col"><span className="text-[10px] text-slate-400">Ref Neo</span><span className="font-medium text-slate-700 truncate" title={item.neoRefNo}>{item.neoRefNo}</span></div>}
-                        {item.ncrNumber && <div className="flex flex-col"><span className="text-[10px] text-red-500">NCR No</span><span className="font-bold text-red-600 truncate" title={item.ncrNumber}>{item.ncrNumber}</span></div>}
+                        {item.refNo && item.refNo !== '-' && (
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-blue-600 font-bold">เลขที่บิล (Ref No.)</span>
+                                <span className="font-bold text-blue-600 truncate" title={item.refNo}>{item.refNo}</span>
+                            </div>
+                        )}
+                        {item.ncrNumber && <div className="flex flex-col"><span className="text-[10px] text-red-500 font-bold">รายการ NCR</span><span className="font-bold text-red-600 truncate" title={item.ncrNumber}>{item.ncrNumber}</span></div>}
                     </div>
                 )}
 
@@ -255,7 +260,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, status, icon:
             </div>
 
             {columnItems.length > 0 && (
-                <button onClick={() => (onPrintClick as any)(status, columnItems)} aria-label={`ออกเอกสาร (${columnItems.length})`} className="mt-4 w-full py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center justify-center gap-2 transition-colors">
+                <button onClick={() => onPrintClick(status, columnItems)} aria-label={`ออกเอกสาร (${columnItems.length})`} className="mt-4 w-full py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center justify-center gap-2 transition-colors">
                     <Printer className="w-4 h-4" /> ออกเอกสาร ({columnItems.length})
                 </button>
             )}

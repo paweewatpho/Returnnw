@@ -206,13 +206,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = snapshot.val();
       // FIX: Add robust filtering to prevent crashes from malformed data
       const loadedItems = data
-        ? (Object.values(data) as any[])
-          .map((item: any) => ({
+        ? (Object.values(data) as unknown[])
+          .map((item: { date?: string; productName?: string;[key: string]: unknown }) => ({
             ...item,
             // Fix for Missing Date: Fallback to today if missing
-            date: item.date || new Date().toISOString().split('T')[0],
+            date: (item.date as string) || new Date().toISOString().split('T')[0],
             // Fix for Missing Product Name: Default value
-            productName: item.productName || "ไม่พบข้อมูลสินค้า"
+            productName: (item.productName as string) || "ไม่พบข้อมูลสินค้า"
           }))
           .filter((item): item is ReturnRecord => {
             // 1. Basic Object Check
@@ -222,17 +222,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // removed 'productName' from strict check as we defaulted it above
             const requiredStrings = ['id', 'date', 'status', 'branch', 'customerName', 'productCode'];
             for (const field of requiredStrings) {
-              if (typeof (item as any)[field] !== 'string') {
+              if (typeof (item as Record<string, unknown>)[field] !== 'string') {
                 console.warn(`🛡️ Data Hardening: Filtering out invalid ReturnRecord (missing/bad ${field})`, item);
                 return false;
               }
             }
 
             // 3. Numeric Fields Check & Auto-fix
-            if (typeof item.quantity !== 'number') {
+            if (typeof (item as Record<string, unknown>).quantity !== 'number') {
               // Attempt to parse string to number
-              if (typeof item.quantity === 'string' && !isNaN(parseFloat(item.quantity))) {
-                (item as any).quantity = parseFloat(item.quantity);
+              if (typeof (item as Record<string, unknown>).quantity === 'string' && !isNaN(parseFloat((item as Record<string, unknown>).quantity as string))) {
+                (item as unknown as { quantity: number | string }).quantity = parseFloat((item as Record<string, unknown>).quantity as string);
               } else {
                 console.warn(`🛡️ Data Hardening: Filtering out invalid ReturnRecord (bad quantity)`, item);
                 return false;
@@ -258,18 +258,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = snapshot.val();
       // FIX: Add robust filtering for NCR reports as well
       const loadedReports = data
-        ? (Object.values(data) as any[])
+        ? (Object.values(data) as unknown[])
           .filter((report): report is NCRRecord => {
-            if (!report || typeof report !== 'object') return false;
+            const r = report as Record<string, unknown>;
+            if (!r || typeof r !== 'object') return false;
 
             // Header checks
-            if (typeof report.id !== 'string' || typeof report.date !== 'string' || typeof report.status !== 'string') {
+            if (typeof r.id !== 'string' || typeof r.date !== 'string' || typeof r.status !== 'string') {
               console.warn("🛡️ Data Hardening: Filtering out invalid NCR (missing header fields).", report);
               return false;
             }
 
             // Item checks (handle both nested and potential flat structures for backward compat)
-            const itemData = report.item || report;
+            const itemData = (r.item as Record<string, unknown>) || r;
             if (!itemData || typeof itemData !== 'object') {
               console.warn("🛡️ Data Hardening: Invalid NCR Item structure.", report);
               return false;
@@ -373,8 +374,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await set(ref(db, 'return_records/' + item.id), item);
       return true;
-    } catch (error: any) {
-      if (error.code === 'PERMISSION_DENIED') {
+    } catch (error: unknown) {
+      if ((error as { code: string }).code === 'PERMISSION_DENIED') {
         console.warn("⚠️ Write Permission Denied: Cannot save return record.");
         alert("Access Denied: Check Firebase Realtime Database Rules. Developer tip: Set rules to 'allow read, write: if true;' for testing.");
       } else {
@@ -435,8 +436,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await update(ref(db, 'return_records/' + id), data);
       return true;
-    } catch (error: any) {
-      if (error.code === 'PERMISSION_DENIED') {
+    } catch (error: unknown) {
+      if ((error as { code: string }).code === 'PERMISSION_DENIED') {
         console.warn("⚠️ Update Permission Denied.");
         alert("Access Denied: Cannot update record.");
       } else {
@@ -451,8 +452,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await remove(ref(db, 'return_records/' + id));
       return true;
-    } catch (error: any) {
-      if (error.code === 'PERMISSION_DENIED') {
+    } catch (error: unknown) {
+      if ((error as { code: string }).code === 'PERMISSION_DENIED') {
         console.warn("⚠️ Delete Permission Denied.");
         alert("Access Denied: Cannot delete this return record.");
       } else {
@@ -467,8 +468,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await set(ref(db, 'ncr_reports/' + item.id), item);
       return true;
-    } catch (error: any) {
-      if (error.code === 'PERMISSION_DENIED') {
+    } catch (error: unknown) {
+      if ((error as { code: string }).code === 'PERMISSION_DENIED') {
         console.warn("⚠️ Write Permission Denied: Cannot save NCR report.");
         alert("Access Denied: Check Firebase Realtime Database Rules. Developer tip: Set rules to 'allow read, write: if true;' for testing.");
       } else {
@@ -484,7 +485,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 1. Get the current (old) record before update to find linked items
       const oldNCR = ncrReports.find(r => r.id === id);
       const oldNcrNo = oldNCR?.ncrNo;
-      const oldItemData = oldNCR?.item || (oldNCR as any);
+      const oldItemData = oldNCR?.item || (oldNCR as unknown as Record<string, unknown>);
       const oldProductCode = oldItemData?.productCode;
 
       // 2. Perform the update on ncr_reports
@@ -501,7 +502,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (linkedReturns.length > 0) {
           const fullNCR = { ...oldNCR, ...data } as NCRRecord;
-          const newItemData = fullNCR.item || (fullNCR as any);
+          const newItemData = (fullNCR.item || fullNCR) as unknown as Partial<ReturnRecord>;
 
           // Prepare synchronized data for ReturnRecord
           const syncData: Partial<ReturnRecord> = {
@@ -565,8 +566,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       return true;
-    } catch (error: any) {
-      if (error.code === 'PERMISSION_DENIED') {
+    } catch (error: unknown) {
+      if ((error as { code: string }).code === 'PERMISSION_DENIED') {
         console.warn("⚠️ Update Permission Denied.");
         alert("Access Denied: Cannot update NCR report.");
       } else {
@@ -587,7 +588,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 3. SYNC to ReturnRecord - Also cancel the linked items in Hub
       if (oldNCR && oldNCR.ncrNo) {
-        const oldItemData = oldNCR.item || (oldNCR as any);
+        const oldItemData = oldNCR.item || (oldNCR as unknown as Record<string, unknown>);
         const linkedReturns = items.filter(i =>
           i.ncrNumber === oldNCR.ncrNo &&
           i.productCode === oldItemData.productCode
@@ -596,7 +597,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         for (const ret of linkedReturns) {
           // You might want to update status to 'Canceled' or some specific status
           // Operations Hub filters out 'Canceled' anyway in some views
-          await update(ref(db, 'return_records/' + ret.id), { status: 'Canceled' as any });
+          await update(ref(db, 'return_records/' + ret.id), { status: 'Canceled' });
         }
         if (linkedReturns.length > 0) {
           console.log(`🚫 Canceled ${linkedReturns.length} linked Return Records in Hub`);
@@ -604,8 +605,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       return true;
-    } catch (error: any) {
-      if (error.code === 'PERMISSION_DENIED') {
+    } catch (error: unknown) {
+      if ((error as { code: string }).code === 'PERMISSION_DENIED') {
         console.warn("⚠️ Cancel Permission Denied.");
         alert("Access Denied: Cannot cancel NCR report.");
       } else {

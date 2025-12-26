@@ -50,8 +50,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isOpen = f
         message: 'System is connected to Realtime Database'
       });
       alert("✅ เชื่อมต่อ Realtime Database สำเร็จ! (Connection Successful)\nข้อมูลถูกบันทึกไปยัง path: /connection_test");
-    } catch (error: any) {
-      alert(`❌ เชื่อมต่อล้มเหลว (Failed): ${error.message}\nกรุณาตรวจสอบ Config หรือ Security Rules`);
+    } catch (error: unknown) {
+      alert(`❌ เชื่อมต่อล้มเหลว (Failed): ${(error as Error).message}\nกรุณาตรวจสอบ Config หรือ Security Rules`);
     }
   };
 

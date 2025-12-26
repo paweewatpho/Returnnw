@@ -5,7 +5,7 @@ import { ReturnRecord } from '../../../../types';
 
 interface ActionSectionProps {
     formData: Partial<ReturnRecord>;
-    updateField: (field: keyof ReturnRecord, value: any) => void;
+    updateField: (field: keyof ReturnRecord, value: ReturnRecord[keyof ReturnRecord]) => void;
     handleCheckboxToggle: (field: keyof ReturnRecord, resetFields?: (keyof ReturnRecord)[]) => void;
 }
 

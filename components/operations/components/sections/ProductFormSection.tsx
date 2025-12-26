@@ -5,7 +5,7 @@ import { ReturnRecord } from '../../../../types';
 
 interface ProductFormSectionProps {
     formData: Partial<ReturnRecord>;
-    updateField: (field: keyof ReturnRecord, value: any) => void;
+    updateField: (field: keyof ReturnRecord, value: ReturnRecord[keyof ReturnRecord]) => void;
     uniqueProductCodes: string[];
     uniqueProductNames: string[];
 }
@@ -21,11 +21,11 @@ export const ProductFormSection: React.FC<ProductFormSectionProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1">เลขที่อ้างอิง (Ref No.) <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">เลขที่บิล / เอกสารอ้างอิง (Ref No.) <span className="text-red-500">*</span></label>
                     <input
                         type="text"
-                        aria-label="เลขที่อ้างอิง"
-                        title="เลขที่อ้างอิง"
+                        aria-label="เลขที่บิล / เอกสารอ้างอิง"
+                        title="เลขที่บิล / เอกสารอ้างอิง"
                         required
                         value={formData.refNo || ''}
                         onChange={e => updateField('refNo', e.target.value)}
@@ -157,7 +157,7 @@ export const ProductFormSection: React.FC<ProductFormSectionProps> = ({
                             step="0.01"
                             value={formData.priceSell || ''}
                             onChange={e => updateField('priceSell', parseFloat(e.target.value))}
-                            onBlur={e => updateField('priceSell', parseFloat(parseFloat(e.target.value as any).toFixed(2)))}
+                            onBlur={e => updateField('priceSell', parseFloat(parseFloat(e.target.value).toFixed(2)))}
                             className="w-full p-2.5 pl-9 bg-slate-50 border border-slate-300 rounded text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                             placeholder="0.00"
                         />

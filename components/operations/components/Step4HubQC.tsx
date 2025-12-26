@@ -1,7 +1,7 @@
 
 
-import React, { useState, useEffect } from 'react';
-import { Activity, ClipboardList, GitFork, Save, Truck, Search, Undo, PlusSquare, MinusSquare, Layers } from 'lucide-react';
+import React, { useState } from 'react';
+import { Activity, ClipboardList, GitFork, Save, Truck, Undo, PlusSquare, MinusSquare, Layers, X } from 'lucide-react';
 import { useData } from '../../../DataContext';
 import Swal from 'sweetalert2';
 import { ReturnRecord, ItemCondition, DispositionAction } from '../../../types';
@@ -26,6 +26,7 @@ export const Step4HubQC: React.FC = () => {
     });
     const [isCustomRoute, setIsCustomRoute] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Split State
     const [showSplitMode, setShowSplitMode] = useState(false);
@@ -50,10 +51,22 @@ export const Step4HubQC: React.FC = () => {
             }
 
             // Filter by status: Items waiting for QC at Hub
-            // We include both NCR specific status and generic Hub Received status
-            return item.status === 'NCR_HubReceived' || item.status === 'ReceivedAtHub';
+            const matchesStatus = item.status === 'NCR_HubReceived' || item.status === 'ReceivedAtHub';
+            if (!matchesStatus) return false;
+
+            // Search Filter
+            const q = searchQuery.toLowerCase().trim();
+            if (!q) return true;
+
+            return (
+                (item.refNo?.toLowerCase().includes(q)) ||
+                (item.ncrNumber?.toLowerCase().includes(q)) ||
+                (item.documentNo?.toLowerCase().includes(q)) ||
+                (item.productName?.toLowerCase().includes(q)) ||
+                (item.productCode?.toLowerCase().includes(q))
+            );
         });
-    }, [items, ncrReports]);
+    }, [items, ncrReports, searchQuery]);
 
     // Grouping Logic for Sidebar
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -290,6 +303,27 @@ export const Step4HubQC: React.FC = () => {
                     <span>คิวรอตรวจสอบ ({receivedItems.length})</span>
                     <Activity className="w-4 h-4 text-blue-500" />
                 </div>
+                <div className="p-2 border-b border-slate-50 bg-slate-50/50">
+                    <div className="relative group">
+                        <input
+                            type="text"
+                            placeholder="ค้นหาเลขบิล / NCR / สินค้า..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-3 pr-8 py-1.5 text-xs bg-white border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 outline-none transition-all"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                aria-label="ล้างคำค้นหา"
+                                title="ล้างคำค้นหา"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>
+                </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                     {groupedItems.length === 0 ? (
                         <div className="p-4 text-center text-slate-400 text-xs italic">ไม่มีสินค้าที่ต้องตรวจสอบ</div>
@@ -319,10 +353,11 @@ export const Step4HubQC: React.FC = () => {
                                         </div>
                                         <div className="text-sm font-medium text-slate-800 truncate mb-1" title={item.productName}>{item.productName}</div>
 
-                                        {/* Doc Info Badge */}
                                         <div className="flex flex-wrap gap-1 mb-1">
-                                            {item.documentNo && <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded border border-slate-200 font-bold">R: {item.documentNo}</span>}
-                                            {item.colNumber && <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded border border-indigo-100">COL: {item.colNumber}</span>}
+                                            {item.documentNo && <span className="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 font-bold">เลขที่เอกสาร (R): {item.documentNo}</span>}
+                                            {item.refNo && item.refNo !== '-' && <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100 font-bold">เลขที่บิล (Ref No.): {item.refNo}</span>}
+                                            {item.ncrNumber && <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-600 rounded border border-red-100 font-bold">รายการ NCR: {item.ncrNumber}</span>}
+                                            {item.colNumber && <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded border border-indigo-100">เลขที่ COL: {item.colNumber}</span>}
                                         </div>
 
                                         <div className="flex justify-between items-end mt-2">
@@ -350,7 +385,7 @@ export const Step4HubQC: React.FC = () => {
                                             {/* Sub Items List */}
                                             {isExpanded && (
                                                 <div className="bg-slate-50 border-t border-slate-100 divide-y divide-slate-100 animate-slide-down">
-                                                    {gItems.map((subItem, idx) => {
+                                                    {gItems.map((subItem) => {
                                                         // Determine if this specific sub-item is selected
                                                         const isSubSelected = qcSelectedItem?.id === subItem.id;
                                                         // Don't hide the rep item in the list, show ALL items in the group to avoid confusion
@@ -424,10 +459,12 @@ export const Step4HubQC: React.FC = () => {
                                 <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
                                     <div>
                                         <h3 className="text-2xl font-bold text-slate-800 mb-1">{qcSelectedItem.productName}</h3>
-                                        <div className="flex gap-4 text-sm text-slate-500">
-                                            <span>R No: <b>{qcSelectedItem.documentNo || '-'}</b></span>
-                                            <span>COL No: <b>{qcSelectedItem.colNumber || '-'}</b></span>
-                                            <span>Qty: <b>{qcSelectedItem.quantity} {qcSelectedItem.unit}</b></span>
+                                        <div className="flex flex-wrap gap-4 text-sm text-slate-500">
+                                            {qcSelectedItem.documentNo && <span>เลขที่เอกสาร (R): <b className="text-emerald-600">{qcSelectedItem.documentNo}</b></span>}
+                                            {qcSelectedItem.refNo && qcSelectedItem.refNo !== '-' && <span>เลขที่บิล (Ref No.): <b className="text-blue-600">{qcSelectedItem.refNo}</b></span>}
+                                            {qcSelectedItem.ncrNumber && <span>รายการ NCR: <b>{qcSelectedItem.ncrNumber}</b></span>}
+                                            {qcSelectedItem.colNumber && <span>เลขที่ COL: <b>{qcSelectedItem.colNumber}</b></span>}
+                                            <span>จำนวน: <b>{qcSelectedItem.quantity} {qcSelectedItem.unit}</b></span>
                                         </div>
 
                                         {/* Preliminary Decision - Enhanced Display */}
@@ -677,7 +714,7 @@ export const Step4HubQC: React.FC = () => {
                                                                     </div>
                                                                 </div>
                                                                 <div className="text-[10px] text-orange-500 bg-orange-50 p-2 rounded mt-3">
-                                                                    * รายการนี้จะถูกส่งกลับไปที่ "คิวรอตรวจสอบ" เพื่อให้คุณตัดสินใจ (Disposition) อีกครั้ง
+                                                                    * รายการนี้จะถูกส่งกลับไปที่ &quot;คิวรอตรวจสอบ&quot; เพื่อให้คุณตัดสินใจ (Disposition) อีกครั้ง
                                                                 </div>
 
                                                                 {/* Split Disposition Selector */}
@@ -690,7 +727,7 @@ export const Step4HubQC: React.FC = () => {
                                                                         ))}
                                                                     </select>
                                                                     <div className="text-[10px] text-slate-400 mt-1">
-                                                                        {splitDisposition ? <span className="text-green-600 font-bold">รายการนี้จะไปที่ Step 4 (Docs) ทันที</span> : "เลือกข้อนี้เพื่อจบงานรายการแยกทันที"}
+                                                                        {splitDisposition ? <span className="text-green-600 font-bold">รายการนี้จะไปที่ Step 4 (Docs) ทันที</span> : 'เลือกข้อนี้เพื่อจบงานรายการแยกทันที'}
                                                                     </div>
                                                                 </div>
                                                             </div>

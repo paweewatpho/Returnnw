@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FileText, Save, PlusCircle, FileSpreadsheet } from 'lucide-react';
+import React from 'react';
+import { FileText, Save, FileSpreadsheet } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { ReturnRecord } from '../../../types';
 import { BRANCH_LIST } from '../../../constants';
@@ -28,30 +28,23 @@ The "Add Item" flow is standard.
 interface Step1LogisticsRequestProps {
     formData: Partial<ReturnRecord>;
     requestItems: Partial<ReturnRecord>[];
-    isCustomBranch: boolean;
-    initialData?: Partial<ReturnRecord> | null;
+
 
     // Actions
     setFormData: React.Dispatch<React.SetStateAction<Partial<ReturnRecord>>>;
-    setIsCustomBranch: (val: boolean) => void;
-    setRequestItems: React.Dispatch<React.SetStateAction<Partial<ReturnRecord>[]>>;
-    handleAddItem: (e: React.FormEvent | null, overrideData?: Partial<ReturnRecord>) => void;
-    handleRemoveItem: (index: number) => void;
     handleRequestSubmit: (manualItems?: Partial<ReturnRecord>[]) => void;
 
     // Dropdown Data
     uniqueCustomers?: string[];
     uniqueDestinations?: string[];
-    uniqueProductCodes?: string[];
-    uniqueProductNames?: string[];
     existingItems?: ReturnRecord[];
 }
 
 export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
-    formData, requestItems, isCustomBranch, initialData,
-    setFormData, setIsCustomBranch, setRequestItems,
-    handleAddItem, handleRemoveItem, handleRequestSubmit,
-    uniqueCustomers = [], uniqueDestinations = [], uniqueProductCodes = [], uniqueProductNames = [], existingItems = []
+    formData, requestItems,
+    setFormData,
+    handleRequestSubmit,
+    uniqueCustomers = [], uniqueDestinations = [], existingItems = []
 }) => {
 
     // Ensure Document Type is LOGISTICS
@@ -59,19 +52,8 @@ export const Step1LogisticsRequest: React.FC<Step1LogisticsRequestProps> = ({
         setFormData(prev => ({ ...prev, documentType: 'LOGISTICS' }));
     }, [setFormData]);
 
-    const updateField = (field: keyof ReturnRecord, value: any) => {
+    const updateField = (field: keyof ReturnRecord, value: ReturnRecord[keyof ReturnRecord]) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-    };
-
-    const onAddItemClick = (e: React.FormEvent) => {
-        e.preventDefault();
-        // Logistics Items need less strict validation
-        // Product Name is optional per request
-
-        const finalQty = formData.quantity ?? 1;
-        // Validation removed as per request (Quantity not required)
-
-        handleAddItem(null, { ...formData, quantity: finalQty, unit: formData.unit || 'ชิ้น' });
     };
 
     const handleImportClick = async () => {

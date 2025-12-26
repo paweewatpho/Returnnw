@@ -5,7 +5,7 @@ import { RESPONSIBLE_MAPPING } from '../../utils';
 
 interface CostSectionProps {
     formData: Partial<ReturnRecord>;
-    updateField: (field: keyof ReturnRecord, value: any) => void;
+    updateField: (field: keyof ReturnRecord, value: ReturnRecord[keyof ReturnRecord]) => void;
 }
 
 export const CostSection: React.FC<CostSectionProps> = ({ formData, updateField }) => {

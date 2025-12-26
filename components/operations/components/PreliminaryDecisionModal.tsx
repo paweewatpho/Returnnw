@@ -5,7 +5,7 @@ import { RETURN_ROUTES } from '../../../constants';
 interface PreliminaryDecisionModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (decision: string, route?: string) => void;
+    onConfirm: (decision: string, route?: string, settlementData?: { isFieldSettled?: boolean; amount?: number; evidence?: string; name?: string; position?: string; }) => void;
 }
 
 export const PreliminaryDecisionModal: React.FC<PreliminaryDecisionModalProps> = ({ isOpen, onClose, onConfirm }) => {
@@ -33,7 +33,8 @@ export const PreliminaryDecisionModal: React.FC<PreliminaryDecisionModalProps> =
         const finalRoute = selectedRoute === 'Other' ? otherRoute : selectedRoute;
 
         // Pass everything back
-        (onConfirm as any)('Return', finalRoute, {
+        // Pass everything back
+        onConfirm('Return', finalRoute, {
             isFieldSettled,
             amount: fieldAmount,
             evidence: fieldEvidence,

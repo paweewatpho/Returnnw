@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-import { getAnalytics } from 'firebase/analytics';
+
 import { getAuth } from 'firebase/auth';
 
 // Your web app's Firebase configuration

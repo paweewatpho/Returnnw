@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, ClipboardList, Truck, DollarSign, Trash2, AlertTriangle, Search, Wrench, ImageIcon, Box } from 'lucide-react';
+import { X, Save, ClipboardList, Truck, DollarSign, Trash2, AlertTriangle, Search, Wrench, ImageIcon } from 'lucide-react';
 import { ReturnRecord } from '../../../types';
 import { BRANCH_LIST, RETURN_ROUTES } from '../../../constants';
 import { RESPONSIBLE_MAPPING } from '../utils';
@@ -17,14 +17,12 @@ export const ItemAnalysisModal: React.FC<ItemAnalysisModalProps> = ({ isOpen, on
     const [activeTab, setActiveTab] = useState<'problem' | 'analysis' | 'action' | 'cost'>('problem');
 
     // Preliminary Decision State (managed separately for logic, syncs with formData)
-    const [preliminaryDecision, setPreliminaryDecision] = useState<string>('');
     const [preliminaryRoute, setPreliminaryRoute] = useState<string>('');
     const [preliminaryOtherRoute, setPreliminaryOtherRoute] = useState<string>('');
 
     useEffect(() => {
         if (isOpen && item) {
             setFormData({ ...item });
-            setPreliminaryDecision(item.preliminaryDecision || '');
             setPreliminaryRoute(item.preliminaryRoute || '');
             // Logic for 'Other' route
             if (item.preliminaryRoute && !RETURN_ROUTES.includes(item.preliminaryRoute) && item.preliminaryRoute !== 'Other') {
@@ -353,12 +351,12 @@ export const ItemAnalysisModal: React.FC<ItemAnalysisModalProps> = ({ isOpen, on
                                         <div className="flex flex-wrap gap-2">
                                             {RETURN_ROUTES.map(route => (
                                                 <label key={route} className={`px-3 py-1 rounded border cursor-pointer transition-all ${preliminaryRoute === route ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 hover:bg-indigo-50/50'}`}>
-                                                    <input type="radio" name="route" value={route} checked={preliminaryRoute === route} onChange={(e) => { setPreliminaryDecision('Return'); setPreliminaryRoute(e.target.value); }} className="hidden" />
+                                                    <input type="radio" name="route" value={route} checked={preliminaryRoute === route} onChange={(e) => { setPreliminaryRoute(e.target.value); }} className="hidden" />
                                                     {route}
                                                 </label>
                                             ))}
                                             <label className={`px-3 py-1 rounded border cursor-pointer transition-all ${preliminaryRoute === 'Other' ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-bold' : 'bg-slate-50 hover:bg-indigo-50/50'}`}>
-                                                <input type="radio" name="route" value="Other" checked={preliminaryRoute === 'Other'} onChange={(e) => { setPreliminaryDecision('Return'); setPreliminaryRoute(e.target.value); }} className="hidden" />
+                                                <input type="radio" name="route" value="Other" checked={preliminaryRoute === 'Other'} onChange={(e) => { setPreliminaryRoute(e.target.value); }} className="hidden" />
                                                 อื่นๆ (Other)
                                             </label>
                                         </div>

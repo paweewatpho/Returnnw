@@ -59,6 +59,7 @@ export const canEditStep = (
  * @param step - หมายเลข Step
  * @returns true = ดูได้, false = ไม่สามารถดู
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const canViewStep = (userRole: UserRole | undefined, _step: number): boolean => {
     if (!userRole) return false;
 

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle, Search, Calendar, MapPin, FileCheck, XCircle } from 'lucide-react';
 import { useData } from '../../../DataContext';
-import { ReturnRecord } from '../../../types';
 import { DispositionBadge } from './DispositionBadge';
 
 export const StepCompleted: React.FC = () => {
@@ -24,6 +23,9 @@ export const StepCompleted: React.FC = () => {
                     item.productCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     item.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.refNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.documentNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.collectionOrderId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     item.ncrNumber?.toLowerCase().includes(searchTerm.toLowerCase()));
         }).sort((a, b) => {
             // Sort by dateCompleted descending, then fallback to date
@@ -79,20 +81,29 @@ export const StepCompleted: React.FC = () => {
                 </div>
             </div>
 
-            {/* Toolbar */}
             <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div className="relative w-72">
+                <div className="relative w-80">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                         type="text"
-                        placeholder="Search items..."
+                        placeholder="เลขบิล / NCR / R / COL / สินค้า..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-9 pr-4 py-2 w-full border border-slate-300 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
+                        className="pl-9 pr-8 py-2 w-full border border-slate-300 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
                     />
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    {searchTerm && (
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            aria-label="ล้างการค้นหา"
+                            title="ล้างการค้นหา"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                            <XCircle className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
                 <div className="text-sm text-slate-500">
-                    Showing <span className="font-bold text-slate-800">{completedItems.length}</span> items
+                    รายการทั้งหมด: <span className="font-bold text-slate-800">{completedItems.length}</span> รายการ
                 </div>
             </div>
 
@@ -102,7 +113,7 @@ export const StepCompleted: React.FC = () => {
                     <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0 shadow-sm z-10">
                         <tr>
                             <th className="p-4">Status</th>
-                            <th className="p-4">ID / NCR No.</th>
+                            <th className="p-4">IDs (NCR / R / Ref)</th>
                             <th className="p-4">สินค้า (Product)</th>
                             <th className="p-4 text-center">จำนวน</th>
                             <th className="p-4">สาขา (Branch)</th>
@@ -134,9 +145,28 @@ export const StepCompleted: React.FC = () => {
                                             </span>
                                         )}
                                     </td>
-                                    <td className="p-4">
-                                        <div className="font-bold text-slate-800">{item.ncrNumber || item.id}</div>
-                                        <div className="text-xs text-slate-400 font-mono">{item.id}</div>
+                                    <td className="p-4 space-y-1">
+                                        {item.documentNo && (
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1 rounded">R No.</span>
+                                                <span className="font-mono text-xs font-bold text-emerald-700">{item.documentNo}</span>
+                                            </div>
+                                        )}
+                                        {item.refNo && item.refNo !== '-' && (
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-1 rounded">Ref (บิล)</span>
+                                                <span className="font-mono text-xs font-bold text-blue-600">{item.refNo}</span>
+                                            </div>
+                                        )}
+                                        {item.ncrNumber && (
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[10px] font-bold bg-red-100 text-red-800 px-1 rounded">รายการ NCR</span>
+                                                <span className="font-mono text-xs font-bold text-red-600">{item.ncrNumber}</span>
+                                            </div>
+                                        )}
+                                        {!item.documentNo && (!item.refNo || item.refNo === '-') && !item.ncrNumber && (
+                                            <div className="text-xs text-slate-400 font-mono">{item.id}</div>
+                                        )}
                                     </td>
                                     <td className="p-4">
                                         <div className="font-medium text-slate-800">{item.productName}</div>

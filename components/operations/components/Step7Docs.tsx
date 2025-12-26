@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Truck, RotateCcw, ShieldCheck, Home, Trash2, FileText, AlertOctagon } from 'lucide-react';
+import { RotateCcw, ShieldCheck, Home, Trash2, FileText, AlertOctagon } from 'lucide-react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord, DispositionAction } from '../../../types';
 import { KanbanColumn } from './KanbanColumn';
@@ -64,7 +64,7 @@ export const Step7Docs: React.FC<Step7DocsProps> = ({ onPrintDocs }) => {
         }
     };
 
-    const handleSplitClick = (item: ReturnRecord) => {
+    const handleSplitClick = () => {
         Swal.fire({
             icon: 'info',
             title: 'ฟีเจอร์ยังไม่เปิดใช้งาน (Under Construction)',
@@ -151,7 +151,7 @@ export const Step7Docs: React.FC<Step7DocsProps> = ({ onPrintDocs }) => {
     const itemsRestock = safeItems.filter(i => i.disposition === 'Restock');
     const itemsClaim = safeItems.filter(i => i.disposition === 'Claim');
     const itemsInternal = safeItems.filter(i => i.disposition === 'InternalUse');
-    const itemsScrap = safeItems.filter(i => i.disposition === 'Recycle' || i.disposition === 'Scrap' as any);
+    const itemsScrap = safeItems.filter(i => i.disposition === 'Recycle' || (i.disposition as string) === 'Scrap');
 
     return (
         <div className="h-full flex flex-col p-4">
