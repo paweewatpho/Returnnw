@@ -1,9 +1,9 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { NCRItem } from '../DataContext';
+import { NCRItem } from '../types';
 
 // Define Interface for FormData (Partial based on usage)
-interface NCRFormData {
+export interface NCRFormData {
     toDept: string;
     date: string;
     branch: string;

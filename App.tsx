@@ -8,6 +8,7 @@ import COLReport from './components/COLReport';
 import Inventory from './components/Inventory';
 import CollectionSystem from './components/CollectionSystem';
 import LoginPage from './components/LoginPage';
+import Settings from './components/Settings';
 
 import { AppView, ReturnRecord } from './types';
 import { Bell, Menu } from 'lucide-react';
@@ -58,6 +59,8 @@ const MainApp: React.FC = () => {
           setCurrentView(view);
           if (step) setOperationsInitialStep(step);
         }} />;
+      case AppView.SETTINGS:
+        return <Settings />;
 
       default:
         return <Dashboard />;
@@ -73,6 +76,7 @@ const MainApp: React.FC = () => {
       case AppView.COL_REPORT: return 'รายงาน COL';
       case AppView.INVENTORY: return 'คลังสินค้า (Inventory)';
       case AppView.COLLECTION: return 'งานรับสินค้า (Collection)';
+      case AppView.SETTINGS: return 'การตั้งค่าระบบ (Settings)';
       default: return 'Neosiam Return';
     }
   };

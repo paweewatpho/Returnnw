@@ -2,160 +2,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { db } from './firebase';
 import { ref, onValue, set, update, remove, runTransaction } from 'firebase/database';
-import { ReturnRecord } from './types';
+import { ReturnRecord, NCRRecord, SystemConfig } from './types';
 import Swal from 'sweetalert2';
 
-// Interface for NCR Item (the product list inside an NCR)
-export interface NCRItem {
-  id: string;
-  branch: string;
-  refNo: string;
-  neoRefNo: string;
-  productCode: string;
-  productName: string;
-  customerName: string;
-  destinationCustomer: string;
-  quantity: number;
-  unit: string;
-  pricePerUnit?: number;
-  priceBill: number;
-  priceSell?: number;
-  expiryDate: string;
-  hasCost: boolean;
-  costAmount?: number;
-  costResponsible: string;
-  problemSource: string;
-  preliminaryDecision?: string | null;
-  preliminaryRoute?: string;
-  isFieldSettled?: boolean;
-  fieldSettlementAmount?: number;
-  fieldSettlementEvidence?: string;
-  fieldSettlementName?: string;
-  fieldSettlementPosition?: string;
+// Types moved to types.ts
 
-  // New: Matching ReturnRecord/NCRRecord flags for per-item tracking
-  problemDamaged?: boolean;
-  problemDamagedInBox?: boolean;
-  problemLost?: boolean;
-  problemMixed?: boolean;
-  problemWrongInv?: boolean;
-  problemLate?: boolean;
-  problemDuplicate?: boolean;
-  problemWrong?: boolean;
-  problemIncomplete?: boolean;
-  problemOver?: boolean;
-  problemWrongInfo?: boolean;
-  problemShortExpiry?: boolean;
-  problemTransportDamage?: boolean;
-  problemAccident?: boolean;
-  problemPOExpired?: boolean;
-  problemNoBarcode?: boolean;
-  problemNotOrdered?: boolean;
-  problemOther?: boolean;
-  problemOtherText?: string;
-  problemDetail?: string;
-
-  actionReject?: boolean;
-  actionRejectQty?: number;
-  actionRejectSort?: boolean;
-  actionRejectSortQty?: number;
-  actionRework?: boolean;
-  actionReworkQty?: number;
-  actionReworkMethod?: string;
-  actionSpecialAcceptance?: boolean;
-  actionSpecialAcceptanceQty?: number;
-  actionSpecialAcceptanceReason?: string;
-  actionScrap?: boolean;
-  actionScrapQty?: number;
-  actionReplace?: boolean;
-  actionReplaceQty?: number;
-
-  // Root Cause Specifics
-  causePackaging?: boolean;
-  causeTransport?: boolean;
-  causeOperation?: boolean;
-  causeEnv?: boolean;
-  causeDetail?: string;
-  preventionDetail?: string;
-  preventionDueDate?: string;
-}
-
-// EXPANDED Interface for the main NCR Record
-// This now includes all fields from the NCRSystem form state
-export interface NCRRecord {
-  id: string; // Composite key: ncrNo-itemId
-  ncrNo: string;
-
-  // Header fields
-  toDept: string;
-  date: string;
-  copyTo: string;
-  founder: string;
-  poNo: string;
-
-  // Item details (denormalized for reporting)
-  item: NCRItem;
-
-  // Problem details
-  problemDamaged: boolean;
-  problemDamagedInBox: boolean;
-  problemLost: boolean;
-  problemMixed: boolean;
-  problemWrongInv: boolean;
-  problemLate: boolean;
-  problemDuplicate: boolean;
-  problemWrong: boolean;
-  problemIncomplete: boolean;
-  problemOver: boolean;
-  problemWrongInfo: boolean;
-  problemShortExpiry: boolean;
-  problemTransportDamage: boolean;
-  problemAccident: boolean;
-  problemPOExpired: boolean;
-  problemNoBarcode: boolean;
-  problemNotOrdered: boolean;
-  problemOther: boolean;
-  problemOtherText: string;
-  problemDetail: string;
-
-  // Action details
-  actionReject: boolean;
-  actionRejectQty: number;
-  actionRejectSort: boolean;
-  actionRejectSortQty: number;
-  actionRework: boolean;
-  actionReworkQty: number;
-  actionReworkMethod: string;
-  actionSpecialAcceptance: boolean;
-  actionSpecialAcceptanceQty: number;
-  actionSpecialAcceptanceReason: string;
-  actionScrap: boolean;
-  actionScrapQty: number;
-  actionReplace: boolean;
-  actionReplaceQty: number;
-  dueDate: string;
-  approver: string;
-  approverPosition: string;
-  approverDate: string;
-
-  // Cause & Prevention
-  causePackaging: boolean;
-  causeTransport: boolean;
-  causeOperation: boolean;
-  causeEnv: boolean;
-  causeDetail: string;
-  preventionDetail: string;
-  preventionDueDate: string;
-  responsiblePerson: string;
-  responsiblePosition: string;
-
-  // Closing
-  qaAccept: boolean;
-  qaReject: boolean;
-  qaReason: string;
-
-  status: 'Open' | 'Closed' | 'Canceled' | 'Settled_OnField'; // Add 'Canceled' for soft delete, 'Settled_OnField' for bypass
-}
 
 
 interface DataContextType {
@@ -168,6 +19,8 @@ interface DataContextType {
   addNCRReport: (item: NCRRecord) => Promise<boolean>;
   updateNCRReport: (id: string, data: Partial<NCRRecord>) => Promise<boolean>;
   deleteNCRReport: (id: string) => Promise<boolean>; // This will now be a "cancel" operation
+  systemConfig: SystemConfig;
+  updateSystemConfig: (config: Partial<SystemConfig>) => Promise<boolean>;
   getNextNCRNumber: () => Promise<string>;
   getNextReturnNumber: () => Promise<string>;
   getNextCollectionNumber: () => Promise<string>;
@@ -184,6 +37,8 @@ const DataContext = createContext<DataContextType>({
   addNCRReport: async () => false,
   updateNCRReport: async () => false,
   deleteNCRReport: async () => false,
+  systemConfig: {},
+  updateSystemConfig: async () => false,
   getNextNCRNumber: async () => 'NCR-ERROR-0000',
   getNextReturnNumber: async () => 'RT-ERROR-0000',
   getNextCollectionNumber: async () => 'COL-ERROR-0000',
@@ -195,6 +50,13 @@ export const useData = () => useContext(DataContext);
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<ReturnRecord[]>([]);
   const [ncrReports, setNcrReports] = useState<NCRRecord[]>([]);
+  const [systemConfig, setSystemConfig] = useState<SystemConfig>({
+    telegram: {
+      botToken: '8523483845:AAH63mYzb4xDe7kTWs3NMQLdX1RYWRzn8L0',
+      chatId: '-1002744751386',
+      enabled: true
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -293,9 +155,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setNcrReports([]);
     });
 
+    // Subscribe to System Config
+    const configRef = ref(db, 'system_config');
+    const unsubConfig = onValue(configRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setSystemConfig(prev => ({
+          ...prev,
+          ...data,
+          telegram: {
+            ...prev.telegram,
+            ...(data.telegram || {})
+          }
+        }));
+      }
+    });
+
     return () => {
       unsubReturn();
       unsubNCR();
+      unsubConfig();
     };
   }, []);
 
@@ -772,11 +651,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return deletedCount;
   };
 
+  const updateSystemConfig = async (config: Partial<SystemConfig>): Promise<boolean> => {
+    try {
+      await update(ref(db, 'system_config'), config);
+      return true;
+    } catch (error) {
+      console.error("Error updating system config:", error);
+      return false;
+    }
+  };
+
   return (
     <DataContext.Provider value={{
-      items, ncrReports, loading, addReturnRecord, updateReturnRecord, deleteReturnRecord,
+      items, ncrReports, loading, systemConfig, addReturnRecord, updateReturnRecord, deleteReturnRecord,
       addNCRReport, updateNCRReport, deleteNCRReport, getNextNCRNumber, getNextReturnNumber, getNextCollectionNumber,
-      runDataIntegrityCheck
+      runDataIntegrityCheck, updateSystemConfig
     }}>
       {children}
     </DataContext.Provider>

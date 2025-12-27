@@ -1,7 +1,8 @@
 ﻿
 import React, { useState, useEffect, useMemo } from 'react';
-import { useData, NCRRecord, NCRItem } from '../DataContext';
-import { ReturnRecord } from '../types';
+import { useData } from '../DataContext';
+import { ReturnRecord, NCRRecord, NCRItem } from '../types';
+import { sendTelegramMessage } from '../utils/telegramService';
 import { Save, Printer, Image as ImageIcon, AlertTriangle, Plus, Trash2, X, Loader, CheckCircle, XCircle, HelpCircle, Download, Lock, Truck } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { BRANCH_LIST, RETURN_ROUTES } from '../constants';
@@ -13,7 +14,7 @@ import { exportNCRToExcel } from './NCRExcelExport';
 
 
 const NCRSystem: React.FC = () => {
-    const { addNCRReport, getNextNCRNumber, addReturnRecord, ncrReports } = useData();
+    const { addNCRReport, getNextNCRNumber, addReturnRecord, ncrReports, systemConfig } = useData();
 
     // --- State: Main Form Data ---
     // Note: We keep global problem/action flags in formData for backward compatibility or summary views,
@@ -367,6 +368,19 @@ const NCRSystem: React.FC = () => {
             setSaveResult({ success: true, message: "บันทึกข้อมูลสำเร็จ", ncrNo: newNcrNo });
             setShowResultModal(true);
             if (isPrinting) setTimeout(() => window.print(), 500);
+
+            // TELEGRAM NOTIFICATION
+            if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId) {
+                // Send notification for each item (or a summary)
+                // Sending summary is better for multiple items
+                const summaryMessage = `🔔 <b>แจ้งเตือน NCR ใหม่ (เลขที่ ${newNcrNo})</b>\n----------------------------------\nจำนวนรายการ: ${ncrItems.length} รายการ\nผู้พบปัญหา: ${formData.founder}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
+
+                await sendTelegramMessage(
+                    systemConfig.telegram.botToken,
+                    systemConfig.telegram.chatId,
+                    summaryMessage
+                );
+            }
         } else {
             setSaveResult({ success: false, message: "บันทึกข้อมูลล้มเหลวบางส่วน" });
             setShowResultModal(true);

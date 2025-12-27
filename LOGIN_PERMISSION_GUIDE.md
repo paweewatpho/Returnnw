@@ -8,8 +8,10 @@
 
 ## 👥 **User Roles ทั้งหมด (7 Roles)**
 
+<!-- markdownlint-disable MD060 -->
+
 | Role | ชื่อภาษาไทย | จำนวนแนะนำ | สี Badge |
-|------|------------|-----------|----------|
+| :--- | :--- | :--- | :--- |
 | `ADMIN` | ผู้ดูแลระบบ | 1-2 คน | 🔴 แดง |
 | `NCR_OPERATOR` | พนักงาน NCR | 2-3 คน | 🔵 น้ำเงิน |
 | `COL_OPERATOR` | พนักงาน Collection | 2-3 คน | 🟠 ส้ม |
@@ -17,6 +19,8 @@
 | `QC_OPERATOR` | พนักงาน QC | 1-2 คน | 🟢 เขียว |
 | `CLOSURE_OPERATOR` | พนักงานปิดงาน | 1 คน | 🟣 ม่วง |
 | `VIEWER` | ผู้ดูข้อมูล | 1-2 คน | ⚫ เทา |
+
+<!-- markdownlint-enable MD060 -->
 
 ---
 
@@ -29,8 +33,10 @@
 3. คลิก "เข้าสู่ระบบ"
 
 **Password สำหรับทุก Account (Development):**
-```
-password123
+
+```text
+888 (Admin)
+1234 (Others)
 ```
 
 ### **วิธีที่ 2: Quick Login (Development Mode)**
@@ -44,64 +50,59 @@ password123
 ## 📧 **รายการ User Accounts**
 
 ### **1. ADMIN**
-```
+
+```text
 Email: admin@neosiam.com
-Password: password123
+Password: 888
 ชื่อ: ผู้ดูแลระบบ (Admin)
 ```
 
 ### **2. NCR Operators**
-```
-Email: ncr.staff1@neosiam.com
-Password: password123
-ชื่อ: สมชาย ใจดี (NCR Staff)
 
-Email: ncr.staff2@neosiam.com
-Password: password123
-ชื่อ: สมหญิง รักงาน (NCR Staff)
+```text
+Email: ncr@neosiam.com
+Password: 1234
+ชื่อ: พนักงาน NCR (NCR Staff)
 ```
 
 ### **3. COL Operators**
-```
-Email: col.staff1@neosiam.com
-Password: password123
-ชื่อ: วิชัย ขยัน (COL Staff)
 
-Email: col.staff2@neosiam.com
-Password: password123
-ชื่อ: สุดา มานะ (COL Staff)
+```text
+Email: col@neosiam.com
+Password: 1234
+ชื่อ: พนักงาน Collection (COL Staff)
 ```
 
 ### **4. REQUEST_ENTRY**
-```
-Email: request.entry1@neosiam.com
-Password: password123
-ชื่อ: ส้มโอ จันทร์เพ็ญ (Data Entry)
 
-Email: request.entry2@neosiam.com
-Password: password123
-ชื่อ: มะนาว สดใส (Data Entry)
+```text
+Email: request@neosiam.com
+Password: 1234
+ชื่อ: พนักงานคีย์ใบสั่งงาน (Data Entry)
 ```
 
 ### **5. QC Operator**
-```
-Email: qc.inspector@neosiam.com
-Password: password123
-ชื่อ: ชัยวัฒน์ ละเอียด (QC Inspector)
+
+```text
+Email: qc@neosiam.com
+Password: 1234
+ชื่อ: พนักงาน QC (QC Inspector)
 ```
 
 ### **6. CLOSURE Operator**
-```
-Email: closure.staff@neosiam.com
-Password: password123
-ชื่อ: ปิยะ สมบูรณ์ (Closure Staff)
+
+```text
+Email: closure@neosiam.com
+Password: 1234
+ชื่อ: พนักงานปิดงาน (Closure Staff)
 ```
 
 ### **7. VIEWER**
-```
-Email: finance@neosiam.com
-Password: password123
-ชื่อ: บัญชี การเงิน (Finance Viewer)
+
+```text
+Email: viewer@neosiam.com
+Password: 1234
+ชื่อ: ผู้ดูข้อมูล/ผู้จัดการ (Ops Manager)
 ```
 
 ---
@@ -109,9 +110,11 @@ Password: password123
 ## 🔑 **Permission Matrix**
 
 ### **ADMIN**
+
 - ✅ ทุกอย่าง (Full Access)
 
 ### **NCR_OPERATOR**
+
 - ✅ Step 1: Return Request (NCR)
 - ✅ Step 2: NCR Logistics
 - ✅ NCR System (Full Access)
@@ -119,6 +122,7 @@ Password: password123
 - 👁️ อื่นๆ (Read-Only)
 
 ### **COL_OPERATOR**
+
 - ✅ Step 1: Return Request (COL)
 - ✅ COL Step 2: Job Accept
 - ✅ COL Step 3: Physical Receive
@@ -128,21 +132,25 @@ Password: password123
 - 👁️ อื่นๆ (Read-Only)
 
 ### **REQUEST_ENTRY**
+
 - ✅ Step 1: Return Request (COL) เท่านั้น
 - ✅ Collection System (Create Request)
 - 👁️ อื่นๆ (Read-Only)
 
 ### **QC_OPERATOR**
+
 - ✅ Step 3: Hub Receive
 - ✅ Step 4: QC
 - ✅ Step 5: Docs
 - 👁️ อื่นๆ (Read-Only)
 
 ### **CLOSURE_OPERATOR**
+
 - ✅ Step 6: Closure เท่านั้น
 - 👁️ อื่นๆ (Read-Only)
 
 ### **VIEWER**
+
 - 👁️ ทุกอย่าง (Read-Only)
 - ❌ Settings (No Access)
 
@@ -151,6 +159,7 @@ Password: password123
 ## 🛠️ **ฟีเจอร์ที่เพิ่มเข้ามา**
 
 ### **1. Login Page**
+
 - 🎨 UI สวยงาม modern design
 - 🔐 Email/Password Authentication
 - 👁️ แสดง/ซ่อน Password
@@ -158,18 +167,21 @@ Password: password123
 - 🎭 Animated Background
 
 ### **2. Permission System**
+
 - ✅ Role-Based Access Control (RBAC)
 - ✅ Permission Helper Functions
 - ✅ UI ปรับตามสิทธิ์อัตโนมัติ
 - ✅ Sidebar กรอง Menu ตาม Role
 
 ### **3. Sidebar Enhancements**
+
 - 👤 แสดงข้อมูล User & Role
 - 🎨 Badge สีตาม Role
 - 🚪 ปุ่ม Logout ใช้งานได้
 - 🔍 Menu กรองตามสิทธิ์
 
 ### **4. LocalStorage Persistence**
+
 - 💾 บันทึก Login Session
 - 🔄 Auto-login เมื่อ Refresh
 - 🚪 Clear Session เมื่อ Logout
@@ -178,7 +190,7 @@ Password: password123
 
 ## 📁 **ไฟล์ที่สร้างใหม่**
 
-```
+```text
 returnneosiam-pro/
 ├── utils/
 │   └── permissions.ts          # Permission Helper Functions
@@ -193,7 +205,7 @@ returnneosiam-pro/
 
 ## 📁 **ไฟล์ที่แก้ไข**
 
-```
+```text
 returnneosiam-pro/
 ├── AuthContext.tsx             # อัพเดท login function
 ├── App.tsx                     # เพิ่ม LoginPage & Permission Check
@@ -206,17 +218,19 @@ returnneosiam-pro/
 ## 🔧 **การทดสอบ**
 
 ### **1. ทดสอบ Login**
+
 ```bash
 # เปิด Browser ไปที่
 http://localhost:3000
 
 # ทดสอบ Login ด้วย
 Email: admin@neosiam.com
-Password: password123
+Password: 888
 ```
 
 ### **2. ทดสอบ Permissions**
-```
+
+```text
 1. Login ด้วย NCR_OPERATOR
    → ตรวจสอบว่าเห็นแค่ NCR Menu
    
@@ -228,7 +242,8 @@ Password: password123
 ```
 
 ### **3. ทดสอบ Logout**
-```
+
+```text
 1. คลิกปุ่ม "ออกจากระบบ" ใน Sidebar
 2. Confirm การ Logout
 3. ตรวจสอบว่ากลับไปหน้า Login
@@ -239,14 +254,16 @@ Password: password123
 ## 🚨 **การแก้ไขปัญหา**
 
 ### **ปัญหา: Login ไม่ได้**
-```
+
+```text
 ✅ ตรวจสอบ Email ว่าถูกต้อง
-✅ ตรวจสอบ Password (ต้องเป็น password123)
+✅ ตรวจสอบ Password (Admin: 888, Others: 1234)
 ✅ เปิด Console ดู Error
 ```
 
 ### **ปัญหา: Logout แล้วยัง Login อยู่**
-```
+
+```text
 ✅ เคลียร์ LocalStorage
    - เปิด DevTools > Application > Local Storage
    - ลบ returnneo_user
@@ -254,7 +271,8 @@ Password: password123
 ```
 
 ### **ปัญหา: Menu บางตัวหายไป**
-```
+
+```text
 ✅ ตรวจสอบ Role ของ User
 ✅ ดู Permission Matrix ว่า Role นี้มีสิทธิ์หรือไม่
 ✅ Login ด้วย ADMIN เพื่อเข้าถึงทุกอย่าง
@@ -265,6 +283,7 @@ Password: password123
 ## 📚 **การใช้งาน Permission Functions**
 
 ### **ตรวจสอบสิทธิ์แก้ไข Step**
+
 ```typescript
 import { canEditStep } from './utils/permissions';
 import { useAuth } from './AuthContext';
@@ -280,6 +299,7 @@ if (canEdit) {
 ```
 
 ### **ตรวจสอบสิทธิ์เข้าถึง Module**
+
 ```typescript
 import { getModuleAccess } from './utils/permissions';
 
@@ -294,6 +314,7 @@ if (access === 'FULL') {
 ```
 
 ### **ตรวจสอบสิทธิ์ Export รายงาน**
+
 ```typescript
 import { canExportReport } from './utils/permissions';
 
@@ -307,11 +328,13 @@ if (canExportReport(user?.role)) {
 ## 🔐 **Security Best Practices**
 
 ### **สำหรับ Development:**
+
 - ✅ ใช้ Mock Users ได้ตามสบาย
-- ✅ Password เป็น `password123` ทั้งหมด
+- ✅ Password เป็น `888` (Admin) และ `1234` (Others)
 - ✅ Quick Login เปิดใช้งาน
 
 ### **สำหรับ Production:**
+
 - ⚠️ **ปิด Quick Login** (ลบออกจาก LoginPage.tsx)
 - ⚠️ **เปลี่ยน Password** ให้แข็งแรง (8+ ตัวอักษร, ตัวพิมพ์ใหญ่/เล็ก, ตัวเลข, สัญลักษณ์)
 - ⚠️ **ใช้ Firebase Authentication** แทน Mock Login
@@ -324,7 +347,8 @@ if (canExportReport(user?.role)) {
 ## 📞 **ติดต่อ**
 
 หากมีปัญหาหรือคำถาม:
-- 📧 Email: it.support@neosiam.com
+
+- 📧 Email: <it.support@neosiam.com>
 - 💬 Line: @neosiam-support
 
 ---
@@ -342,4 +366,4 @@ if (canExportReport(user?.role)) {
 ✅ LocalStorage Persistence
 ✅ Role-Based Menu Filtering
 
-**พร้อมใช้งานได้เลย! 🚀**
+### ✅ พร้อมใช้งานได้เลย! 🚀

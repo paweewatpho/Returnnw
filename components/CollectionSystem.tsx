@@ -67,7 +67,7 @@ interface CollectionSystemProps {
 
 const CollectionSystem: React.FC<CollectionSystemProps> = ({ onNavigate }) => {
     // Hooks
-    const { addReturnRecord, getNextReturnNumber, items, updateReturnRecord } = useData();
+    const { items } = useData();
     const { state, derived, actions } = useOperationsLogic();
 
     // Local state for Navigation
@@ -116,7 +116,7 @@ const CollectionSystem: React.FC<CollectionSystemProps> = ({ onNavigate }) => {
                         ].map((item) => (
                             <button
                                 key={item.id}
-                                onClick={() => setCurrentStep(item.id as any)}
+                                onClick={() => setCurrentStep(item.id as 1 | 2 | 3 | 4)}
                                 className={`w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition-all duration-200
                                     ${currentStep === item.id
                                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50 translate-x-1'
@@ -163,7 +163,7 @@ const CollectionSystem: React.FC<CollectionSystemProps> = ({ onNavigate }) => {
                             {/* Back Button for Step 2, 3, 4 */}
                             {currentStep > 1 && (
                                 <button
-                                    onClick={() => setCurrentStep((currentStep - 1) as any)}
+                                    onClick={() => setCurrentStep((currentStep - 1) as 1 | 2 | 3 | 4)}
                                     className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all font-medium text-sm"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

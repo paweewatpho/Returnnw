@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord, ItemCondition, DispositionAction, TransportInfo } from '../../../types';
 import { getISODetails, RESPONSIBLE_MAPPING } from '../utils';
+import { sendTelegramMessage } from '../../../utils/telegramService';
 import Swal from 'sweetalert2';
 
 export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, onClearInitialData?: () => void) => {
-    const { items, addReturnRecord, updateReturnRecord, addNCRReport, getNextNCRNumber, getNextReturnNumber, getNextCollectionNumber } = useData();
+    const { items, addReturnRecord, updateReturnRecord, addNCRReport, getNextNCRNumber, getNextReturnNumber, getNextCollectionNumber, systemConfig } = useData();
 
     // Workflow State
     const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
@@ -515,7 +516,22 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 setCustomProblemType('');
                 setCustomRootCause('');
                 setIsCustomBranch(false);
+                setIsCustomBranch(false);
                 setActiveStep(2);
+
+                // TELEGRAM NOTIFICATION
+                if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId) {
+                    const isNCR = itemsToProcess.some(i => i.documentType === 'NCR' || !!i.ncrNumber);
+
+                    if (isNCR) {
+                        const ncrNo = itemsToProcess[0].ncrNumber || 'NCR-NEW';
+                        const summary = `🔔 <b>แจ้งเตือน NCR ใหม่ (แจ้งคืนสินค้า)</b>\n----------------------------------\nจำนวนรายการ: ${itemsToProcess.length} รายการ\nสาขา: ${itemsToProcess[0].branch}\nเลขที่ NCR: ${ncrNo}\nผู้แจ้ง: ${itemsToProcess[0].founder}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
+                        await sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, summary);
+                    } else {
+                        const summary = `📦 <b>มีรายการขอคืนสินค้าใหม่ (Collection)</b>\n----------------------------------\nจำนวนรายการ: ${itemsToProcess.length} รายการ\nสาขา: ${itemsToProcess[0].branch}\nบิลเลขที่: ${itemsToProcess[0].invoiceNo || '-'}\nลูกค้า: ${itemsToProcess[0].customerName}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
+                        await sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, summary);
+                    }
+                }
             }
         } catch (error) {
             console.error("Submission error:", error);
@@ -578,12 +594,10 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 };
 
             // Force finding items from current state
-            // Use rigorous string comparison
             const selectedItems = items.filter(i => selectedIds.includes(String(i.id)));
 
             if (!selectedItems || selectedItems.length === 0) {
                 console.error("Critical Error: Items not found for IDs:", selectedIds);
-                console.log("Current Items:", items.map(i => i.id));
                 Swal.fire({
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
@@ -591,6 +605,8 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 });
                 return;
             }
+
+            // Set Pending State & Open Doc Modal for Confirmation
 
             // Set Pending State & Open Doc Modal for Confirmation
             setPendingLogisticsTx({
@@ -862,7 +878,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
             // Logistics Pending Check
             if (pendingLogisticsTx) {
                 let successCount = 0;
-                // No need to redeclare today
+                const affectedItems = items.filter(i => pendingLogisticsTx.ids.includes(i.id));
 
                 for (const id of pendingLogisticsTx.ids) {
                     const success = await updateReturnRecord(id, {
@@ -870,7 +886,30 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                     });
                     if (success) successCount++;
                 }
+
                 if (successCount > 0) {
+                    // Send Notification
+                    if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId && affectedItems.length > 0) {
+                        const ncrCount = affectedItems.filter(i => i.documentType === 'NCR' || !!i.ncrNumber).length;
+                        const colCount = affectedItems.length - ncrCount;
+
+                        let typeTag = '';
+                        if (ncrCount > 0 && colCount > 0) typeTag = `[NCR: ${ncrCount}, COL: ${colCount}]`;
+                        else if (ncrCount > 0) typeTag = `[NCR: ${ncrCount}]`;
+                        else typeTag = `[COL: ${colCount}]`;
+
+                        const head = affectedItems[0];
+                        const route = pendingLogisticsTx.updatePayload.dispositionRoute || '-';
+                        const isDirect = pendingLogisticsTx.updatePayload.status === 'DirectReturn';
+                        const typeLabel = isDirect ? '🚛 ส่งคืนตรง (Direct Return)' : '🚚 ส่งเข้า HUB (นครสวรรค์)';
+                        const plate = pendingLogisticsTx.updatePayload.transportPlate || '-';
+                        const driver = pendingLogisticsTx.updatePayload.transportDriver || '-';
+
+                        const message = `<b>${typeLabel} ${typeTag}</b>\n----------------------------------\n📍 ต้นทาง: ${head.branch}\n🏁 ปลายทาง: ${route}\n📦 จำนวน: ${successCount} รายการ\n🚛 ทะเบียน: ${plate}\n👤 คนขับ: ${driver}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
+
+                        sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, message);
+                    }
+
                     Swal.fire({
                         icon: 'success',
                         title: 'ดำเนินการสำเร็จ',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, RotateCcw, ShieldCheck, Home, Trash2, FileText, AlertOctagon, Search, X } from 'lucide-react';
+import { Truck, RotateCcw, ShieldCheck, Home, Trash2, FileText, Search, X } from 'lucide-react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord, DispositionAction } from '../../../types';
 import { KanbanColumn } from './KanbanColumn';
@@ -22,7 +22,7 @@ interface Step5HubDocsProps {
 }
 
 export const Step5HubDocs: React.FC<Step5HubDocsProps> = ({ onPrintDocs }) => {
-    const { items, updateReturnRecord } = useData();
+    const { items } = useData();
     const [searchQuery, setSearchQuery] = React.useState('');
 
     // Filter Items: Status 'NCR_QCCompleted' or 'QCCompleted' (Legacy)
@@ -49,7 +49,7 @@ export const Step5HubDocs: React.FC<Step5HubDocsProps> = ({ onPrintDocs }) => {
         });
     }, [processedItems, searchQuery]);
 
-    const handleSplitClick = (item: ReturnRecord) => {
+    const handleSplitClick = () => {
         // Placeholder for split logic
         Swal.fire({
             icon: 'info',

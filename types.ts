@@ -16,6 +16,160 @@ export interface User {
   photoURL?: string;
 }
 
+// Interface for NCR Item (the product list inside an NCR)
+export interface NCRItem {
+  id: string;
+  branch: string;
+  refNo: string;
+  neoRefNo: string;
+  productCode: string;
+  productName: string;
+  customerName: string;
+  destinationCustomer: string;
+  quantity: number;
+  unit: string;
+  pricePerUnit?: number;
+  priceBill: number;
+  priceSell?: number;
+  expiryDate: string;
+  hasCost: boolean;
+  costAmount?: number;
+  costResponsible: string;
+  problemSource: string;
+  preliminaryDecision?: string | null;
+  preliminaryRoute?: string;
+  isFieldSettled?: boolean;
+  fieldSettlementAmount?: number;
+  fieldSettlementEvidence?: string;
+  fieldSettlementName?: string;
+  fieldSettlementPosition?: string;
+
+  // New: Matching ReturnRecord/NCRRecord flags for per-item tracking
+  problemDamaged?: boolean;
+  problemDamagedInBox?: boolean;
+  problemLost?: boolean;
+  problemMixed?: boolean;
+  problemWrongInv?: boolean;
+  problemLate?: boolean;
+  problemDuplicate?: boolean;
+  problemWrong?: boolean;
+  problemIncomplete?: boolean;
+  problemOver?: boolean;
+  problemWrongInfo?: boolean;
+  problemShortExpiry?: boolean;
+  problemTransportDamage?: boolean;
+  problemAccident?: boolean;
+  problemPOExpired?: boolean;
+  problemNoBarcode?: boolean;
+  problemNotOrdered?: boolean;
+  problemOther?: boolean;
+  problemOtherText?: string;
+  problemDetail?: string;
+
+  actionReject?: boolean;
+  actionRejectQty?: number;
+  actionRejectSort?: boolean;
+  actionRejectSortQty?: number;
+  actionRework?: boolean;
+  actionReworkQty?: number;
+  actionReworkMethod?: string;
+  actionSpecialAcceptance?: boolean;
+  actionSpecialAcceptanceQty?: number;
+  actionSpecialAcceptanceReason?: string;
+  actionScrap?: boolean;
+  actionScrapQty?: number;
+  actionReplace?: boolean;
+  actionReplaceQty?: number;
+
+  // Root Cause Specifics
+  causePackaging?: boolean;
+  causeTransport?: boolean;
+  causeOperation?: boolean;
+  causeEnv?: boolean;
+  causeDetail?: string;
+  preventionDetail?: string;
+  preventionDueDate?: string;
+  lotNo?: string;
+}
+
+// EXPANDED Interface for the main NCR Record
+// This now includes all fields from the NCRSystem form state
+export interface NCRRecord {
+  id: string; // Composite key: ncrNo-itemId
+  ncrNo: string;
+
+  // Header fields
+  toDept: string;
+  date: string;
+  copyTo: string;
+  founder: string;
+  poNo: string;
+
+  // Item details (denormalized for reporting)
+  item: NCRItem;
+
+  // Problem details
+  problemDamaged: boolean;
+  problemDamagedInBox: boolean;
+  problemLost: boolean;
+  problemMixed: boolean;
+  problemWrongInv: boolean;
+  problemLate: boolean;
+  problemDuplicate: boolean;
+  problemWrong: boolean;
+  problemIncomplete: boolean;
+  problemOver: boolean;
+  problemWrongInfo: boolean;
+  problemShortExpiry: boolean;
+  problemTransportDamage: boolean;
+  problemAccident: boolean;
+  problemPOExpired: boolean;
+  problemNoBarcode: boolean;
+  problemNotOrdered: boolean;
+  problemOther: boolean;
+  problemOtherText: string;
+  problemDetail: string;
+
+  // Action details
+  actionReject: boolean;
+  actionRejectQty: number;
+  actionRejectSort: boolean;
+  actionRejectSortQty: number;
+  actionRework: boolean;
+  actionReworkQty: number;
+  actionReworkMethod: string;
+  actionSpecialAcceptance: boolean;
+  actionSpecialAcceptanceQty: number;
+  actionSpecialAcceptanceReason: string;
+  actionScrap: boolean;
+  actionScrapQty: number;
+  actionReplace: boolean;
+  actionReplaceQty: number;
+  dueDate: string;
+  approver: string;
+  approverPosition: string;
+  approverDate: string;
+
+  // Cause & Prevention
+  causePackaging: boolean;
+  causeTransport: boolean;
+  causeOperation: boolean;
+  causeEnv: boolean;
+  causeDetail: string;
+  preventionDetail: string;
+  preventionDueDate: string;
+  responsiblePerson: string;
+  responsiblePosition: string;
+
+  // Closing
+  qaAccept: boolean;
+  qaReject: boolean;
+  qaReason: string;
+
+  status: 'Open' | 'Closed' | 'Canceled' | 'Settled_OnField'; // Add 'Canceled' for soft delete, 'Settled_OnField' for bypass
+  images?: string[];
+}
+
 export interface ProcessStep {
   id: number;
   title: string;
@@ -46,7 +200,8 @@ export enum AppView {
   NCR_REPORT = 'NCR_REPORT',
   INVENTORY = 'INVENTORY',
   COLLECTION = 'COLLECTION',
-  COL_REPORT = 'COL_REPORT'
+  COL_REPORT = 'COL_REPORT',
+  SETTINGS = 'SETTINGS'
 }
 
 export type CollectionStatus = 'PENDING' | 'ASSIGNED' | 'COLLECTED' | 'CONSOLIDATED' | 'FAILED';
@@ -365,4 +520,14 @@ export interface SearchFilters {
   status: ReturnStatus | 'All';
   category: string;
   query: string;
+}
+
+export interface TelegramConfig {
+  botToken: string;
+  chatId: string;
+  enabled: boolean;
+}
+
+export interface SystemConfig {
+  telegram?: TelegramConfig;
 }

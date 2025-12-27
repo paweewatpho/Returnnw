@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../DataContext';
 import {
-  FileText, Search, Download, RotateCcw, Calendar, Truck, User,
+  Search, Download, RotateCcw, Calendar, Truck,
   Printer, Edit, Trash2, X, Save, PlusSquare, MinusSquare, Layers
 } from 'lucide-react';
 import { ReturnRecord, ReturnStatus } from '../types';
@@ -357,7 +357,7 @@ const COLReport: React.FC<COLReportProps> = () => {
           }
         });
 
-        if (password === '1234') {
+        if (password === '888') {
           let successCount = 0;
           await Promise.all(relatedItems.map(async (i) => {
             const success = await deleteReturnRecord(i.id);

@@ -47,7 +47,7 @@ const Dashboard: React.FC = () => {
 
     if (!password) return; // User cancelled
 
-    if (password !== '1234') {
+    if (password !== '888') {
       await Swal.fire({
         title: 'รหัสผ่านไม่ถูกต้อง',
         text: 'Access Denied',
@@ -123,7 +123,7 @@ const Dashboard: React.FC = () => {
 
     if (!password) return;
 
-    if (password !== '1234') {
+    if (password !== '888') {
       await Swal.fire({
         title: 'รหัสผ่านไม่ถูกต้อง',
         text: 'Access Denied',

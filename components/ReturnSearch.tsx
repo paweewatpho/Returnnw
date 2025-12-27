@@ -73,7 +73,7 @@ const ReturnSearch: React.FC = () => {
   };
 
   const handleVerifyPasswordAndDelete = async () => {
-    if (passwordInput === '1234') {
+    if (passwordInput === '888') {
       if (pendingDeleteItem) {
         const success = await deleteReturnRecord(pendingDeleteItem.id);
         if (success) {
@@ -95,7 +95,7 @@ const ReturnSearch: React.FC = () => {
   };
 
   const handleVerifyPasswordAndEdit = () => {
-    if (passwordInput === '1234') {
+    if (passwordInput === '888') {
       setShowEditModal(false); // Close password modal
       // The editingItem is already set, so the edit modal will open.
     } else {

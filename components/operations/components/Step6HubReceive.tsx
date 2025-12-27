@@ -3,10 +3,11 @@ import React from 'react';
 import { Truck, Inbox, MapPin, CheckCircle, PlusSquare, MinusSquare, Layers, X } from 'lucide-react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord } from '../../../types';
+import { sendTelegramMessage } from '../../../utils/telegramService';
 import Swal from 'sweetalert2';
 
 export const Step6HubReceive: React.FC = () => {
-    const { items, updateReturnRecord, ncrReports } = useData();
+    const { items, updateReturnRecord, ncrReports, systemConfig } = useData();
     const [filterBranch, setFilterBranch] = React.useState<string>('');
     const [filterCustomer, setFilterCustomer] = React.useState<string>('');
     const [filterDestination, setFilterDestination] = React.useState<string>('');
@@ -101,6 +102,23 @@ export const Step6HubReceive: React.FC = () => {
                     dateHubReceived: new Date().toISOString().split('T')[0]
                 });
             }));
+
+            // TELEGRAM NOTIFICATION: Hub Received
+            if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId && itemsToProcess.length > 0) {
+                const ncrCount = itemsToProcess.filter(i => i.documentType === 'NCR' || !!i.ncrNumber).length;
+                const colCount = itemsToProcess.length - ncrCount;
+
+                let typeTag = '';
+                if (ncrCount > 0 && colCount > 0) typeTag = `[NCR: ${ncrCount}, COL: ${colCount}]`;
+                else if (ncrCount > 0) typeTag = `[NCR]`;
+                else typeTag = `[Collection]`;
+
+                const head = itemsToProcess[0];
+                const typeLabel = `📍 รับสินค้าเข้า HUB ${typeTag}`;
+                const message = `<b>${typeLabel}</b>\n----------------------------------\n📍 ต้นทาง: ${head.branch}\n📦 รวม: ${itemsToProcess.length} รายการ\n📝 สถานะ: รับเข้าคลังเรียบร้อย\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
+
+                sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, message);
+            }
 
             await Swal.fire({
                 icon: 'success',

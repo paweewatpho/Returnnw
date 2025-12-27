@@ -2,7 +2,7 @@ import { User, UserRole } from '../types';
 
 /**
  * Mock Users สำหรับการทดสอบระบบ
- * Password ทั้งหมดเป็น: 1234 (สำหรับ development เท่านั้น)
+ * Password: Admin=888, Others=1234 (สำหรับ development เท่านั้น)
  */
 
 export const MOCK_USERS: User[] = [
@@ -73,18 +73,21 @@ export const MOCK_USERS: User[] = [
 /**
  * Mock Login Function
  * @param email - Email address
- * @param password - Password (ใช้ '1234' สำหรับทุก User)
+ * @param password - Password (Admin: 888, Others: 1234)
  * @returns User object หรือ null ถ้า login ไม่สำเร็จ
  */
 export const mockLogin = (email: string, password: string): User | null => {
-    // ในการใช้งานจริงควรใช้ Firebase Authentication
-    // สำหรับ Mock ให้ใช้ password เดียวกันทั้งหมด
-    if (password !== '1234') {
+    const user = MOCK_USERS.find(u => u.email === email);
+    if (!user) return null;
+
+    // Admin ใช้ 888, user อื่นๆ ใช้ 1234
+    const validPassword = user.role === 'ADMIN' ? '888' : '1234';
+
+    if (password !== validPassword) {
         return null;
     }
 
-    const user = MOCK_USERS.find(u => u.email === email);
-    return user || null;
+    return user;
 };
 
 /**
@@ -109,8 +112,3 @@ export const getUsersByRole = (role: UserRole): User[] => {
  * รายการ Email สำหรับการทดสอบ
  */
 export const MOCK_USER_EMAILS = MOCK_USERS.map(u => u.email);
-
-/**
- * Default Test Password
- */
-export const DEFAULT_PASSWORD = '1234';
