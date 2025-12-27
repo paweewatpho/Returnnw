@@ -7,7 +7,7 @@ import { sendTelegramMessage } from '../../../utils/telegramService';
 import Swal from 'sweetalert2';
 
 export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, onClearInitialData?: () => void) => {
-    const { items, addReturnRecord, updateReturnRecord, addNCRReport, getNextNCRNumber, getNextReturnNumber, getNextCollectionNumber, systemConfig } = useData();
+    const { items, addReturnRecord, updateReturnRecord, addNCRReport, getNextNCRNumber, getNextReturnNumber, getNextCollectionNumber, systemConfig, ncrReports } = useData();
 
     // Workflow State
     const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
@@ -170,6 +170,14 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
     // Exclude DirectReturn from here as requested
     // Step 7 Input: HubReceived (Docs)
     const step7Items = items.filter(i => {
+        // Check for verification (If NCR Report is Canceled, hide it)
+        if (i.ncrNumber) {
+            const linkedReport = ncrReports.find(r => r.ncrNo === i.ncrNumber);
+            if (linkedReport && linkedReport.status === 'Canceled') {
+                return false;
+            }
+        }
+
         const isNCR = i.documentType === 'NCR' || !!i.ncrNumber || i.status.startsWith('NCR_');
         const isCollection = !isNCR;
 
@@ -519,18 +527,64 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 setIsCustomBranch(false);
                 setActiveStep(2);
 
-                // TELEGRAM NOTIFICATION
                 if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId) {
                     const isNCR = itemsToProcess.some(i => i.documentType === 'NCR' || !!i.ncrNumber);
 
-                    if (isNCR) {
-                        const ncrNo = itemsToProcess[0].ncrNumber || 'NCR-NEW';
-                        const summary = `🔔 <b>แจ้งเตือน NCR ใหม่ (แจ้งคืนสินค้า)</b>\n----------------------------------\nจำนวนรายการ: ${itemsToProcess.length} รายการ\nสาขา: ${itemsToProcess[0].branch}\nเลขที่ NCR: ${ncrNo}\nผู้แจ้ง: ${itemsToProcess[0].founder}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
-                        await sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, summary);
-                    } else {
-                        const summary = `📦 <b>มีรายการขอคืนสินค้าใหม่ (Collection)</b>\n----------------------------------\nจำนวนรายการ: ${itemsToProcess.length} รายการ\nสาขา: ${itemsToProcess[0].branch}\nบิลเลขที่: ${itemsToProcess[0].invoiceNo || '-'}\nลูกค้า: ${itemsToProcess[0].customerName}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
-                        await sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, summary);
-                    }
+                    // Common Data (Take from first item or formData)
+                    const firstItem = itemsToProcess[0];
+                    const msgDate = new Date().toLocaleString('th-TH');
+                    const branch = firstItem.branch || '-';
+                    const founder = firstItem.founder || '-';
+                    const customerName = firstItem.customerName || '-';
+                    const destCustomer = firstItem.destinationCustomer || '-';
+                    const neoRef = firstItem.neoRefNo || '-';
+                    const refNo = firstItem.refNo || '-';
+                    const docNo = isNCR ? (firstItem.ncrNumber || 'NCR-NEW') : (firstItem.collectionOrderId || 'COL-NEW');
+                    const problemDetail = firstItem.problemDetail || firstItem.reason || '-';
+                    const qty = itemsToProcess.reduce((acc, i) => acc + (i.quantity || 0), 0);
+                    const problemSource = firstItem.problemSource || firstItem.problemAnalysis || '-';
+
+                    // Process Checkboxes (using first item as representative for batch)
+                    const item = firstItem;
+                    const problemProcess = [
+                        item.problemDamaged && 'ชำรุด', item.problemDamagedInBox && 'ชำรุดในกล่อง', item.problemLost && 'สูญหาย',
+                        item.problemMixed && 'สินค้าสลับ', item.problemWrongInv && 'สินค้าไม่ตรง INV', item.problemLate && 'ส่งช้า',
+                        item.problemDuplicate && 'ส่งซ้ำ', item.problemWrong && 'ส่งผิด', item.problemIncomplete && 'ส่งของไม่ครบ',
+                        item.problemOver && 'ส่งของเกิน', item.problemWrongInfo && 'ข้อมูลผิด', item.problemShortExpiry && 'สินค้าอายุสั้น',
+                        item.problemTransportDamage && 'สินค้าเสียหายบนรถ', item.problemAccident && 'อุบัติเหตุ', item.problemPOExpired && 'PO. หมดอายุ',
+                        item.problemNoBarcode && 'บาร์โค๊ตไม่ขึ้น', item.problemNotOrdered && 'ไม่ได้สั่งสินค้า', item.problemOther && `อื่นๆ (${item.problemOtherText})`
+                    ].filter(Boolean).join(', ');
+
+                    const costInfo = item.hasCost
+                        ? `ใช่ (Amount: ${item.costAmount} บาท, Resp: ${item.costResponsible})`
+                        : 'ไม่ระบุ';
+
+                    const fieldSettlementInfo = item.isFieldSettled
+                        ? `จบงานหน้างาน (จ่าย: ${item.fieldSettlementAmount} บาท, ผู้รับผิดชอบ: ${item.fieldSettlementName} - ${item.fieldSettlementPosition})`
+                        : 'ไม่มี';
+
+                    const headerTitle = isNCR ? '🚨 NCR Report (New)' : '📦 Collection Report (New)';
+
+                    const detailedMessage = `${headerTitle}
+----------------------------------
+<b>วันที่ :</b> ${msgDate}
+<b>สาขา :</b> ${branch}
+<b>ผู้พบปัญหา (Founder) :</b> ${founder}
+<b>ลูกค้า (Customer Name) :</b> ${customerName}
+<b>ลูกค้าปลายทาง (Dest. Customer) :</b> ${destCustomer}
+<b>Neo Ref No. :</b> ${neoRef}
+<b>เลขที่บิล / Ref No. :</b> ${refNo}
+<b>เลขที่เอกสาร (${isNCR ? 'NCR' : 'COL'}) :</b> ${docNo}
+<b>รายละเอียดของปัญหา :</b> ${problemDetail}
+<b>จำนวนสินค้า :</b> ${qty} ${firstItem.unit || 'ชิ้น'} (รวม ${itemsToProcess.length} รายการ)
+<b>วิเคราะห์ปัญหาเกิดจาก :</b> ${problemSource}
+<b>พบปัญหาที่กระบวนการ :</b> ${problemProcess || '-'}
+<b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
+<b>Field Settlement :</b> ${fieldSettlementInfo}
+----------------------------------
+🔗 <i>Status: Requested</i>`;
+
+                    await sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, detailedMessage);
                 }
             }
         } catch (error) {

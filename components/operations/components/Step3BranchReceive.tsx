@@ -1,6 +1,6 @@
 import React from 'react';
-import { Activity, Box, CheckSquare, Calendar, RotateCcw, X, Truck, Layers, PlusSquare, MinusSquare } from 'lucide-react';
-import { createPortal } from 'react-dom';
+import { Activity, Box, CheckSquare, Calendar, RotateCcw, Layers, PlusSquare, MinusSquare } from 'lucide-react';
+// import { createPortal } from 'react-dom'; (Removed)
 import Swal from 'sweetalert2';
 import { useData } from '../../../DataContext';
 import { ReturnRecord } from '../../../types';
@@ -189,6 +189,7 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
 
                 // Gather Items
                 const rows = document.querySelectorAll('.item-row');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const itemsData: any[] = [];
                 let isValid = true;
 
@@ -252,7 +253,7 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                     } else if (itemData.isNew) {
                         // 2. Create New Item
                         // Inherit metadata from first selected item
-                        let template = selectedItems[0];
+                        const template = selectedItems[0];
                         if (!template && selectedItems.length === 0) {
                             // Should not happen as we check length > 0
                             // But if add button used without selection? (Button is hidden if no selection)
@@ -329,6 +330,7 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
                     showConfirmButton: false
                 });
             } catch (error) {
+                console.error("Undo error:", error);
                 Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถย้อนกลับได้', 'error');
             } finally {
                 setIsSubmitting(false);

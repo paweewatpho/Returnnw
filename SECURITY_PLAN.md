@@ -2,7 +2,12 @@
 
 ## Current State
 
-Currently, the application uses a hardcoded password (`8888`) for sensitive operations such as:
+Currently, the application uses hardcoded passwords:
+
+- **Admin**: `888` (for Dashboard Reset, Data Integrity)
+- **General Operations**: `1234` (for Undo, Edit Reports)
+
+Sensitive operations such as:
 
 - Undoing closure steps (`Step8Closure`).
 - Editing/Deleting Collection Reports.

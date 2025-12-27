@@ -2,7 +2,8 @@
 
 ## ✅ **User Accounts ที่พร้อมใช้งาน (อัพเดทแล้ว)**
 
-**Password ทุก Account:** `8888`
+**Password Admin:** `888`
+**Password อื่นๆ:** `1234`
 
 ---
 
@@ -10,7 +11,7 @@
 
 ```
 Email: admin@neosiam.com
-Password: 8888
+Password: 888
 ชื่อแสดง: System Admin
 ```
 
@@ -20,7 +21,7 @@ Password: 8888
 
 ```
 Email: ncr@neosiam.com
-Password: 8888
+Password: 1234
 ชื่อแสดง: NCR Staff Operators
 ```
 
@@ -30,7 +31,7 @@ Password: 8888
 
 ```
 Email: col@neosiam.com
-Password: 8888
+Password: 1234
 ชื่อแสดง: COL Staff
 ```
 
@@ -40,7 +41,7 @@ Password: 8888
 
 ```
 Email: request@neosiam.com
-Password: 8888
+Password: 1234
 ชื่อแสดง: COL Staff REQUEST Operators
 ```
 
@@ -50,7 +51,7 @@ Password: 8888
 
 ```
 Email: qc@neosiam.com
-Password: 8888
+Password: 1234
 ชื่อแสดง: QC Inspector
 ```
 
@@ -60,7 +61,7 @@ Password: 8888
 
 ```
 Email: closure@neosiam.com
-Password: 8888
+Password: 1234
 ชื่อแสดง: Closure Staff
 ```
 
@@ -70,7 +71,7 @@ Password: 8888
 
 ```
 Email: viewer@neosiam.com
-Password: 8888
+Password: 1234
 ชื่อแสดง: Ops Manager
 ```
 
@@ -92,9 +93,9 @@ Password: 8888
 
 ## 📝 **สรุปการเปลี่ยนแปลง**
 
-**เดิม:** Password = `password123`, Email = `ncr.staff1@neosiam.com`  
-**ใหม่:** Password = `8888`, Email = `ncr@neosiam.com`
+**เดิม:** Password = `8888`  
+**ใหม่:** Admin = `888`, Others = `1234`
 
-✅ Username สั้นลง ง่ายต่อการจำ  
-✅ Password เรียบง่าย (8888)  
-✅ Email สั้นลง (ลบ.staff1, .staff2 ออก)
+✅ แยกสิทธิ์ Admin และ User ชัดเจน
+✅ Password Admin สั้นกระชับ (888)
+✅ Password User มาตรฐาน (1234)

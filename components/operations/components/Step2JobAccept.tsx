@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardList, Truck, X, Calendar, RotateCcw, Trash2, PlusSquare, MinusSquare, Layers } from 'lucide-react';
+import { ClipboardList, Truck, X, Calendar, Trash2, PlusSquare, MinusSquare, Layers } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { useData } from '../../../DataContext';
 import { ReturnRecord, CollectionOrder } from '../../../types';
@@ -92,6 +92,7 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
     };
 
     // Bulk Update for Group (Maintain Consistency)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleUpdateGroup = async (groupItems: ReturnRecord[], field: keyof ReturnRecord, value: any) => {
         // Optimistic UI update handled by Firebase listener, but we trigger updates for all
         for (const item of groupItems) {
@@ -230,6 +231,7 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                     await deleteReturnRecord(id);
                     await Swal.fire({ icon: 'success', title: 'ลบเรียบร้อย', timer: 1500, showConfirmButton: false });
                 } catch (error) {
+                    console.error('Delete error:', error);
                     Swal.fire('Error', 'ไม่สามารถลบได้', 'error');
                 } finally {
                     setIsSubmitting(false);
@@ -272,6 +274,7 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                     await Swal.fire({ icon: 'success', title: `ลบสำเร็จ ${successCount} รายการ`, timer: 2000, showConfirmButton: false });
                     setSelectedIds([]);
                 } catch (error) {
+                    console.error('Delete error:', error);
                     Swal.fire('Error', 'ลบไม่สำเร็จบางรายการ', 'error');
                 } finally {
                     setIsSubmitting(false);
@@ -349,7 +352,7 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                                     </td>
                                 </tr>
                             ) : (
-                                groupedItems.map((group, gIndex) => {
+                                groupedItems.map((group) => {
                                     const { rep, items: gItems, key: gKey } = group;
                                     const expanded = expandedGroups.has(gKey);
 
@@ -511,7 +514,7 @@ export const Step2JobAccept: React.FC<Step2JobAcceptProps> = ({ onComplete }) =>
                                                     {/* Expanded Items List */}
                                                     {expanded && gItems.length > 1 && (
                                                         <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 mt-1 animate-slide-down">
-                                                            {gItems.slice(1).map((subItem, idx) => (
+                                                            {gItems.slice(1).map((subItem) => (
                                                                 <div key={subItem.id} className="flex justify-between items-start pl-2 border-l-2 border-indigo-200 group">
                                                                     <div className="flex flex-col gap-0.5">
                                                                         <div className="font-bold text-slate-700 text-xs">{subItem.productCode || ''}</div>

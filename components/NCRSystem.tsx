@@ -373,12 +373,62 @@ const NCRSystem: React.FC = () => {
             if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId) {
                 // Send notification for each item (or a summary)
                 // Sending summary is better for multiple items
-                const summaryMessage = `🔔 <b>แจ้งเตือน NCR ใหม่ (เลขที่ ${newNcrNo})</b>\n----------------------------------\nจำนวนรายการ: ${ncrItems.length} รายการ\nผู้พบปัญหา: ${formData.founder}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
+                // TELEGRAM NOTIFICATION
+                const msgDate = new Date().toLocaleString('th-TH');
+                const founder = formData.founder || '-';
+                const branch = formData.branch || ncrItems[0]?.branch || '-';
+                const customerName = ncrItems[0]?.customerName || '-';
+                const destCustomer = ncrItems[0]?.destinationCustomer || '-';
+                const neoRef = ncrItems[0]?.neoRefNo || '-';
+                const refNo = ncrItems[0]?.refNo || '-';
+                const docNo = newNcrNo; // เลข R / NCR No
+                const problemDetail = formData.problemDetail || '-';
+                const qty = ncrItems.reduce((acc, item) => acc + (item.quantity || 0), 0);
+                const problemSource = formData.problemSource || '-';
+
+                // Get Selected Problems (Process)
+                const problemProcess = [
+                    formData.problemDamaged && 'ชำรุด', formData.problemDamagedInBox && 'ชำรุดในกล่อง', formData.problemLost && 'สูญหาย',
+                    formData.problemMixed && 'สินค้าสลับ', formData.problemWrongInv && 'สินค้าไม่ตรง INV', formData.problemLate && 'ส่งช้า',
+                    formData.problemDuplicate && 'ส่งซ้ำ', formData.problemWrong && 'ส่งผิด', formData.problemIncomplete && 'ส่งของไม่ครบ',
+                    formData.problemOver && 'ส่งของเกิน', formData.problemWrongInfo && 'ข้อมูลผิด', formData.problemShortExpiry && 'สินค้าอายุสั้น',
+                    formData.problemTransportDamage && 'สินค้าเสียหายบนรถ', formData.problemAccident && 'อุบัติเหตุ', formData.problemPOExpired && 'PO. หมดอายุ',
+                    formData.problemNoBarcode && 'บาร์โค๊ตไม่ขึ้น', formData.problemNotOrdered && 'ไม่ได้สั่งสินค้า', formData.problemOther && `อื่นๆ (${formData.problemOtherText})`
+                ].filter(Boolean).join(', ');
+
+                // Cost Tracking
+                const costInfo = formData.hasCost
+                    ? `ใช่ (Amount: ${formData.costAmount} บาท, Resp: ${formData.costResponsible})`
+                    : 'ไม่ระบุ';
+
+                // Field Settlement
+                const fieldSettlementInfo = formData.isFieldSettled
+                    ? `จบงานหน้างาน (จ่าย: ${formData.fieldSettlementAmount} บาท, ผู้รับผิดชอบ: ${formData.fieldSettlementName} - ${formData.fieldSettlementPosition})`
+                    : 'ไม่มี';
+
+                const detailedMessage = `🚨 <b>NCR Report (New)</b>
+----------------------------------
+<b>วันที่ :</b> ${msgDate}
+<b>สาขา :</b> ${branch}
+<b>ผู้พบปัญหา (Founder) :</b> ${founder}
+<b>ลูกค้า (Customer Name) :</b> ${customerName}
+<b>ลูกค้าปลายทาง (Dest. Customer) :</b> ${destCustomer}
+<b>Neo Ref No. :</b> ${neoRef}
+<b>เลขที่บิล / Ref No. :</b> ${refNo}
+<b>เลขที่เอกสาร (NCR No) :</b> ${docNo}
+<b>รายละเอียดของปัญหา :</b> ${problemDetail}
+<b>จำนวนสินค้า :</b> ${qty} ${ncrItems[0]?.unit || 'ชิ้น'} (รวม ${ncrItems.length} รายการ)
+<b>วิเคราะห์ปัญหาเกิดจาก :</b> ${problemSource}
+<b>พบปัญหาที่กระบวนการ :</b> ${problemProcess || '-'}
+<b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
+<b>Field Settlement :</b> ${fieldSettlementInfo}
+----------------------------------
+🔗 <i>Status: Open</i>`;
 
                 await sendTelegramMessage(
                     systemConfig.telegram.botToken,
                     systemConfig.telegram.chatId,
-                    summaryMessage
+                    detailedMessage
                 );
             }
         } else {

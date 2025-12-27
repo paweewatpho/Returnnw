@@ -58,6 +58,10 @@ export interface NCRItem {
   problemWrongInfo?: boolean;
   problemShortExpiry?: boolean;
   problemTransportDamage?: boolean;
+
+  // Added for compatibility with legacy data
+  founder?: string;
+  problemAnalysisDetail?: string;
   problemAccident?: boolean;
   problemPOExpired?: boolean;
   problemNoBarcode?: boolean;
