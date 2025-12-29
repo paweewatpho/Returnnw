@@ -229,11 +229,21 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
   };
 
   // Pagination Logic
-  const totalPages = Math.ceil(filteredNcrReports.length / itemsPerPage);
-  const paginatedReports = useMemo(() => {
+  const groupedReports = useMemo(() => {
+    const groups: Record<string, NCRRecord[]> = {};
+    filteredNcrReports.forEach(report => {
+      const gId = report.ncrNo || report.id;
+      if (!groups[gId]) groups[gId] = [];
+      groups[gId].push(report);
+    });
+    return Object.values(groups);
+  }, [filteredNcrReports]);
+
+  const totalPages = Math.ceil(groupedReports.length / itemsPerPage);
+  const paginatedGroups = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredNcrReports.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredNcrReports, currentPage, itemsPerPage]);
+    return groupedReports.slice(startIndex, startIndex + itemsPerPage);
+  }, [groupedReports, currentPage, itemsPerPage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -456,10 +466,11 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paginatedReports.length === 0 ? (
-                <tr><td colSpan={10} className="p-8 text-center text-slate-400 italic">ไม่พบรายการ NCR ในช่วงเวลานี้</td></tr>
+              {paginatedGroups.length === 0 ? (
+                <tr><td colSpan={11} className="p-8 text-center text-slate-400 italic">ไม่พบรายการ NCR ในช่วงเวลานี้</td></tr>
               ) : (
-                paginatedReports.map((report) => {
+                paginatedGroups.map((group) => {
+                  const report = group[0];
                   const itemData = report.item || (report as unknown as NCRItem);
                   // Ensure productName has a fallback
                   if (!itemData.productName) itemData.productName = 'Unknown Product';
@@ -467,75 +478,95 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
                   const isCanceled = report.status === 'Canceled';
 
                   return (
-                    <React.Fragment key={report.id}>
-                      <tr key={report.id} className={`hover:bg-slate-50 ${isCanceled ? 'line-through text-slate-400 bg-slate-50' : ''}`}>
-                        <td className={`px-0.5 py-1 sticky left-0 border-r text-center ${isCanceled ? 'bg-slate-100' : 'bg-white hover:bg-slate-50'}`}>
+                    <React.Fragment key={report.ncrNo || report.id}>
+                      <tr className={`hover:bg-slate-50 transition-all ${isCanceled ? 'line-through text-slate-400 bg-slate-50' : ''}`}>
+                        <td className={`px-0.5 py-2 sticky left-0 border-r text-center ${isCanceled ? 'bg-slate-100' : 'bg-white hover:bg-slate-50'}`}>
                           <button
                             onClick={() => handleOpenTimeline(report)}
-                            className="p-0.5 rounded-full hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
+                            className="p-1 rounded-full hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
                             title="ดู Timeline (View Infographic)"
                           >
-                            <div className="bg-blue-50 border border-blue-200 rounded-full p-0.5">
-                              <Search className="w-3 h-3" />
+                            <div className="bg-blue-50 border border-blue-200 rounded-full p-1">
+                              <Search className="w-3.5 h-3.5" />
                             </div>
                           </button>
                         </td>
-                        <td className={`px-1 py-1 sticky left-6 border-r w-[80px] ${isCanceled ? 'bg-slate-100' : 'bg-white hover:bg-slate-50'}`}>
+                        <td className={`px-1 py-1 sticky left-6 border-r w-[90px] ${isCanceled ? 'bg-slate-100' : 'bg-white hover:bg-slate-50'}`}>
                           <div className="flex gap-1 mb-0.5">
-                            <span className="px-1 rounded text-[8px] font-bold bg-purple-100 text-purple-600 border border-purple-200">NCR</span>
+                            <span className="px-1 rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">NCR</span>
                           </div>
                           <button
                             onClick={() => handleViewNCRForm(report)}
                             disabled={isCanceled}
-                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline text-left block truncate w-full disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed text-[10px]"
-                            title="ดูใบแจ้งปัญหาระบบ (View NCR Form)"
+                            className="font-bold text-blue-700 hover:text-blue-800 hover:underline text-left block truncate w-full disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed text-[11px]"
+                            title="ดูแบบฟอร์ม (View Full NCR)"
                           >
                             {report.ncrNo || report.id}
                           </button>
-                          <div className="text-[9px] text-slate-500">{formatDate(report.date)}</div>
-                          <div className="mt-0.5">
+                          <div className="text-[9px] text-slate-500 font-medium">{formatDate(report.date)}</div>
+                          <div className="mt-1">
                             {isCanceled ? (
-                              <span className="inline-flex items-center gap-0.5 text-[8px] text-slate-500 font-bold bg-slate-200 px-1 py-0 rounded border border-slate-300"><CircleX className="w-2 h-2" /> ยกเลิก</span>
+                              <span className="inline-flex items-center gap-0.5 text-[8px] text-slate-500 font-bold bg-slate-200 px-1 py-0.5 rounded border border-slate-300"><CircleX className="w-2.5 h-2.5" /> ยกเลิก</span>
                             ) : report.status === 'Closed' ? (
-                              <span className="inline-flex items-center gap-0.5 text-[8px] text-green-600 font-bold bg-green-50 px-1 py-0 rounded border border-green-100"><CircleCheck className="w-2 h-2" /> Closed</span>
+                              <span className="inline-flex items-center gap-0.5 text-[8px] text-green-700 font-bold bg-green-50 px-1 py-0.5 rounded border border-green-200"><CircleCheck className="w-2.5 h-2.5" /> Closed</span>
                             ) : (
-                              <span className="inline-flex items-center gap-0.5 text-[8px] text-amber-500 font-bold bg-amber-50 px-1 py-0 rounded border border-amber-100"><Clock className="w-2 h-2" /> {report.status === 'Open' ? (correspondingReturn ? correspondingReturn.status : 'Open') : report.status}</span>
+                              <span className="inline-flex items-center gap-0.5 text-[8px] text-amber-600 font-bold bg-amber-50 px-1 py-0.5 rounded border border-amber-200"><Clock className="w-2.5 h-2.5" /> {report.status === 'Open' ? (correspondingReturn ? correspondingReturn.status : 'Open') : report.status}</span>
                             )}
                           </div>
                         </td>
-                        <td className="px-1 py-1 max-w-[150px]">
-                          <div className={`font-bold flex items-center gap-1 text-[10px] ${isCanceled ? '' : 'text-blue-600'}`}>
-                            <Package className="w-2.5 h-2.5 flex-shrink-0" /> <span className="truncate">{itemData.productCode}</span>
+                        <td className="px-1 py-1 min-w-[180px]">
+                          <div className="space-y-1.5">
+                            {group.map((r, idx) => {
+                              const rItem = r.item || (r as unknown as NCRItem);
+                              return (
+                                <div key={r.id || idx} className={`p-1 rounded text-[10px] ${idx > 0 ? 'border-t border-slate-100 pt-1.5' : ''}`}>
+                                  <div className={`font-bold flex items-center gap-1 mb-0.5 ${isCanceled ? '' : 'text-indigo-600'}`}>
+                                    <Package className="w-3 h-3 flex-shrink-0" />
+                                    <span>{rItem.productCode}</span>
+                                  </div>
+                                  <div className={`line-clamp-2 leading-snug ${isCanceled ? '' : 'text-slate-700'}`} title={rItem.productName}>
+                                    {rItem.productName}
+                                  </div>
+                                  <div className="text-[9px] text-slate-500 font-medium mt-0.5">
+                                    จำนวน: <b className="text-slate-700">{rItem.quantity} {rItem.unit}</b>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                          <div className={`text-[10px] truncate ${isCanceled ? '' : 'text-slate-700'}`} title={itemData.productName}>{itemData.productName}</div>
-                          <div className="text-[9px] text-slate-500 truncate">Qty: {itemData.quantity} {itemData.unit}</div>
                         </td>
                         <td className="px-1 py-1 max-w-[120px]">
-                          <div className={`flex items-start gap-1 font-medium text-[10px] ${isCanceled ? '' : 'text-slate-700'}`}>
-                            <span className="line-clamp-2 leading-tight" title={itemData.customerName}>{itemData.customerName || '-'}</span>
+                          <div className={`flex items-start gap-1 font-bold text-[10px] leading-tight ${isCanceled ? '' : 'text-slate-800'}`}>
+                            <span className="line-clamp-3" title={itemData.customerName}>{itemData.customerName || '-'}</span>
                           </div>
                         </td>
                         <td className="px-1 py-1 max-w-[80px]">
-                          <div className="text-[10px] text-slate-600 truncate" title={itemData.founder || report.founder || correspondingReturn?.founder}>{itemData.founder || report.founder || correspondingReturn?.founder || '-'}</div>
+                          <div className="text-[10px] font-medium text-slate-600 truncate" title={report.founder}>{report.founder || '-'}</div>
                         </td>
                         <td className="px-1 py-1 max-w-[100px]">
-                          <div className="flex flex-col text-[9px] leading-tight text-slate-600">
-                            <div className="truncate" title={`From: ${itemData.branch}`}><span className="font-bold">F:</span> {itemData.branch}</div>
-                            <div className="truncate" title={`To: ${itemData.destinationCustomer}`}><span className="font-bold">T:</span> {itemData.destinationCustomer || '-'}</div>
+                          <div className="flex flex-col text-[10px] leading-tight text-slate-600">
+                            <div className="truncate mb-1" title={`From: ${itemData.branch}`}>
+                              <span className="px-1 bg-slate-100 rounded text-[9px] font-bold mr-1">F:</span>{itemData.branch}
+                            </div>
+                            <div className="truncate" title={`To: ${itemData.destinationCustomer}`}>
+                              <span className="px-1 bg-slate-100 rounded text-[9px] font-bold mr-1">T:</span>{itemData.destinationCustomer || '-'}
+                            </div>
                           </div>
                         </td>
                         <td className="px-1 py-1 max-w-[120px]">
-                          <div className={`text-[10px] font-bold leading-tight ${isCanceled ? '' : 'text-slate-700'} mb-0.5 line-clamp-1 truncate`} title={report.problemDetail}>{report.problemDetail}</div>
-                          <div className={`text-[8px] p-0.5 px-1 rounded border inline-block max-w-full truncate ${isCanceled ? 'bg-slate-100' : 'bg-slate-100 border-slate-200'}`}>
+                          <div className={`text-[10px] font-bold leading-tight ${isCanceled ? '' : 'text-slate-800'} mb-1.5 line-clamp-2`} title={report.problemDetail}>{report.problemDetail}</div>
+                          <div className={`text-[9px] p-0.5 px-1.5 rounded-full border inline-block font-bold ${isCanceled ? 'bg-slate-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
                             {itemData.problemSource}
                           </div>
                         </td>
-                        <td className="px-1 py-1 text-right w-[60px]">
-                          {itemData.hasCost ? (
-                            <div className="flex flex-col items-end">
-                              <span className={`font-bold flex items-center gap-0.5 text-[10px] ${isCanceled ? '' : 'text-red-600'}`}>
-                                <DollarSign className="w-2.5 h-2.5" /> {itemData.costAmount?.toLocaleString()}
+                        <td className="px-1 py-1 text-right w-[70px]">
+                          {group.some(r => (r.item || r).hasCost) ? (
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={`font-bold flex items-center gap-0.5 text-[11px] ${isCanceled ? '' : 'text-red-600'}`}>
+                                <DollarSign className="w-3 h-3" />
+                                {group.reduce((sum, r) => sum + ((r.item || r).costAmount || 0), 0).toLocaleString()}
                               </span>
+                              <span className="text-[8px] text-slate-400 font-medium">(รวม {group.length} รายการ)</span>
                             </div>
                           ) : (
                             <span className="text-[10px] text-slate-300">-</span>
@@ -543,53 +574,55 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
                         </td>
                         <td className="px-1 py-1 text-center w-[60px]">
                           {report.actionReject || report.actionRejectSort ? (
-                            <span className={`inline-block px-1 py-0 rounded text-[9px] font-bold border ${isCanceled ? 'bg-slate-200' : 'bg-red-100 text-red-700 border-red-200'}`}>Reject</span>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${isCanceled ? 'bg-slate-200' : 'bg-red-100 text-red-700 border-red-200'}`}>Reject</span>
                           ) : report.actionScrap ? (
-                            <span className={`inline-block px-1 py-0 rounded text-[9px] font-bold border ${isCanceled ? 'bg-slate-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}>Scrap</span>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ${isCanceled ? 'bg-slate-200' : 'bg-orange-100 text-orange-700 border-orange-200'}`}>Scrap</span>
                           ) : (
                             <span className="text-[10px] text-slate-300">-</span>
                           )}
                         </td>
-                        <td className="px-1 py-1 text-center w-[60px]">
+                        <td className="px-1 py-1 text-center w-[75px]">
                           {correspondingReturn ? (
-                            <span className={`inline-block px-1 py-0 rounded text-[9px] font-bold border ${correspondingReturn.status === 'Received' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                              correspondingReturn.status === 'Graded' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                correspondingReturn.status === 'Completed' ? 'bg-green-100 text-green-700 border-green-200' :
-                                  'bg-yellow-100 text-yellow-700 border-yellow-200'
-                              }`}>
-                              {correspondingReturn.status}
-                            </span>
+                            <div className="flex flex-col items-center gap-1">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border shadow-sm ${correspondingReturn.status === 'Completed' ? 'bg-green-600 text-white border-green-700' :
+                                correspondingReturn.status.includes('Hub') ? 'bg-indigo-600 text-white border-indigo-700' :
+                                  'bg-amber-500 text-white border-amber-600'
+                                }`}>
+                                {correspondingReturn.status}
+                              </span>
+                              <span className="text-[8px] text-slate-400 font-medium">Synced</span>
+                            </div>
                           ) : (
                             <span className="text-[10px] text-slate-300">-</span>
                           )}
                         </td>
-                        <td className={`px-1 py-1 text-center sticky right-0 border-l w-[100px] ${isCanceled ? 'bg-slate-100' : 'bg-white'}`}>
-                          <div className="flex items-center justify-center gap-1">
-                            <button onClick={() => handleOpenPrint(report)} disabled={isCanceled} className="p-0.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="พิมพ์ใบส่งคืน (Print Return Note)">
-                              <Printer className="w-3 h-3" />
+                        <td className={`px-1 py-1 text-center sticky right-0 border-l w-[100px] ${isCanceled ? 'bg-slate-100 shadow-[-4px_0_10px_rgba(0,0,0,0.05)]' : 'bg-white shadow-[-4px_0_10px_rgba(0,0,0,0.05)]'}`}>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button onClick={() => handleOpenPrint(report)} disabled={isCanceled} className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-all disabled:opacity-30" title="พิมพ์ (Print)">
+                              <Printer className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => handleEditClick(report)} disabled={isCanceled} className="p-0.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="แก้ไข (Edit)">
-                              <Edit className="w-3 h-3" />
+                            <button onClick={() => handleEditClick(report)} disabled={isCanceled} className="p-1 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all disabled:opacity-30" title="แก้ไข (Edit)">
+                              <Edit className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => handleDeleteClick(report.id)} disabled={isCanceled} className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="ยกเลิก (Cancel)">
-                              <Trash2 className="w-3 h-3" />
+                            <button onClick={() => handleDeleteClick(report.id)} disabled={isCanceled} className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all disabled:opacity-30" title="ยกเลิก (Cancel)">
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => handleRowExportExcel(report)} disabled={isCanceled} className="p-0.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed" title="Export Form to Excel">
-                              <Download className="w-3 h-3" />
+                            <button onClick={() => handleRowExportExcel(report)} disabled={isCanceled} className="p-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-all disabled:opacity-30" title="Export Excel">
+                              <Download className="w-3.5 h-3.5" />
                             </button>
 
                             {isCanceled ? (
-                              <span className="inline-flex items-center gap-0.5 bg-slate-200 text-slate-500 px-1 py-0.5 rounded text-[8px] font-bold border border-slate-300">
-                                <CircleX className="w-2.5 h-2.5" />
+                              <span className="bg-slate-200 text-slate-500 p-1 rounded-lg">
+                                <CircleX className="w-3.5 h-3.5" />
                               </span>
                             ) : correspondingReturn ? (
-                              <span className="inline-flex items-center gap-0.5 bg-green-100 text-green-700 px-1 py-0.5 rounded text-[8px] font-bold border border-green-200" title="ส่งคืนแล้ว">
-                                <CircleCheck className="w-2.5 h-2.5" />
+                              <span className="bg-green-100 text-green-700 p-1 rounded-lg border border-green-200" title="ทำรายการแล้ว">
+                                <CircleCheck className="w-3.5 h-3.5" />
                               </span>
                             ) : (
                               (report.actionReject || report.actionScrap || report.actionRejectSort) && (
-                                <button onClick={() => handleCreateReturn(report)} className="inline-flex items-center gap-0.5 bg-orange-500 hover:bg-orange-600 text-white px-1 py-0 rounded shadow-sm transition-all transform hover:scale-105 text-[8px] font-bold" title="สร้างคำขอคืนสินค้าอัตโนมัติ">
-                                  ส่งคืน <ArrowRight className="w-2.5 h-2.5" />
+                                <button onClick={() => handleCreateReturn(report)} className="bg-orange-600 hover:bg-orange-700 text-white p-1 rounded-lg shadow-md transition-all transform hover:scale-110" title="สร้างคำขอคืนสินค้า">
+                                  <ArrowRight className="w-3.5 h-3.5" />
                                 </button>
                               )
                             )}

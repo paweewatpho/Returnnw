@@ -861,9 +861,9 @@ const NCRSystem: React.FC = () => {
                 </div>
 
                 {/* Section 3: Logistics & Cost (Moved from Items) */}
-                <div className="border-2 border-black mb-4 flex flex-col md:flex-row print-border-2 avoid-break">
+                <div className="border-2 border-black mb-4 flex flex-row print-border-2 avoid-break">
                     {/* Left: Route Selection */}
-                    <div className="w-full md:w-1/3 border-b-2 md:border-b-0 md:border-r-2 border-black p-2 print-border">
+                    <div className="w-1/3 border-r-2 border-black p-2 print-border">
                         <div className="font-bold mb-2 bg-slate-200 -mx-2 -mt-2 p-2 border-b-2 border-black print:bg-transparent print-border flex items-center gap-2">
                             <Truck className="w-4 h-4" /> เลือกเส้นทางส่งคืน (Select Route) *
                         </div>
@@ -887,7 +887,7 @@ const NCRSystem: React.FC = () => {
                     </div>
 
                     {/* Middle: Cost Tracking */}
-                    <div className="w-full md:w-1/3 border-b-2 md:border-b-0 md:border-r-2 border-black p-2 print-border">
+                    <div className="w-1/3 border-r-2 border-black p-2 print-border">
                         <div className="font-bold mb-2 bg-amber-50 -mx-2 -mt-2 p-2 border-b-2 border-black print:bg-transparent print-border flex items-center gap-2 text-amber-800">
                             <AlertTriangle className="w-4 h-4" /> การติดตามค่าใช้จ่าย (Cost Tracking)
                         </div>
@@ -931,7 +931,7 @@ const NCRSystem: React.FC = () => {
                     </div>
 
                     {/* Right: Field Settlement */}
-                    <div className="w-full md:w-1/3 p-2">
+                    <div className="w-1/3 p-2">
                         <div className="font-bold mb-2 bg-green-100 -mx-2 -mt-2 p-2 border-b-2 border-black print:bg-transparent print-border flex items-center gap-2 text-green-800">
                             <CheckCircle className="w-4 h-4" /> จบงานหน้างาน (Field Settlement)
                         </div>
@@ -988,60 +988,60 @@ const NCRSystem: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Signatures Row */}
-            < div className="flex border-2 border-black h-32 mb-4 print-border-2 avoid-break" >
-                <div className="w-1/4 border-r-2 border-black p-2 flex flex-col justify-between items-center print-border">
-                    <div className="text-xs font-bold text-center w-full">ผู้อนุมัติ (Approver)</div>
-                    <div className="text-center w-full">
-                        <input type="text" className="input-line text-center mb-1" placeholder="(ลงชื่อ)" value={formData.approver} onChange={e => setFormData({ ...formData, approver: e.target.value })} title="ลงชื่อผู้อนุมัติ" />
-                        <input type="text" className="input-line text-center text-xs mb-1" placeholder="ตำแหน่ง" value={formData.approverPosition} onChange={e => setFormData({ ...formData, approverPosition: e.target.value })} title="ตำแหน่ง" />
-                        <div className="flex justify-center items-center gap-1 text-xs">
-                            <span>วันที่</span>
-                            <input type="date" className="input-line w-24 text-center" value={formData.approverDate} onChange={e => setFormData({ ...formData, approverDate: e.target.value })} title="วันที่อนุมัติ" />
+                {/* Signatures Row */}
+                <div className="flex border-2 border-black h-32 mb-4 print-border-2 avoid-break">
+                    <div className="w-1/4 border-r-2 border-black p-2 flex flex-col justify-between items-center print-border">
+                        <div className="text-xs font-bold text-center w-full">ผู้อนุมัติ (Approver)</div>
+                        <div className="text-center w-full mt-auto">
+                            <input type="text" className="input-line text-center mb-1 bg-transparent" placeholder="(ลงชื่อ)" value={formData.approver} onChange={e => setFormData({ ...formData, approver: e.target.value })} title="ลงชื่อผู้อนุมัติ" />
+                            <input type="text" className="input-line text-center text-xs mb-1 bg-transparent" placeholder="ตำแหน่ง" value={formData.approverPosition} onChange={e => setFormData({ ...formData, approverPosition: e.target.value })} title="ตำแหน่ง" />
+                            <div className="flex justify-center items-center gap-1 text-[10px]">
+                                <span>วันที่</span>
+                                <input type="date" className="input-line w-24 text-center bg-transparent" value={formData.approverDate} onChange={e => setFormData({ ...formData, approverDate: e.target.value })} title="วันที่อนุมัติ" />
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="w-1/4 border-r-2 border-black p-2 flex flex-col justify-between items-center print-border">
-                    <div className="text-xs font-bold text-center w-full">ผู้รับผิดชอบ (Responsible)</div>
-                    <div className="text-center w-full">
-                        <input type="text" className="input-line text-center mb-1" placeholder="(ลงชื่อ)" value={formData.responsiblePerson} onChange={e => setFormData({ ...formData, responsiblePerson: e.target.value })} title="ลงชื่อผู้รับผิดชอบ" />
-                        <input type="text" className="input-line text-center text-xs mb-1" placeholder="ตำแหน่ง" value={formData.responsiblePosition} onChange={e => setFormData({ ...formData, responsiblePosition: e.target.value })} title="ตำแหน่ง" />
-                        <div className="flex justify-center items-center gap-1 text-xs">
-                            <span>วันที่</span>
-                            <input type="date" className="input-line w-24 text-center" title="วันที่รับผิดชอบ" />
+                    <div className="w-1/4 border-r-2 border-black p-2 flex flex-col justify-between items-center print-border">
+                        <div className="text-xs font-bold text-center w-full">ผู้รับผิดชอบ (Responsible)</div>
+                        <div className="text-center w-full mt-auto">
+                            <input type="text" className="input-line text-center mb-1 bg-transparent" placeholder="(ลงชื่อ)" value={formData.responsiblePerson} onChange={e => setFormData({ ...formData, responsiblePerson: e.target.value })} title="ลงชื่อผู้รับผิดชอบ" />
+                            <input type="text" className="input-line text-center text-xs mb-1 bg-transparent" placeholder="ตำแหน่ง" value={formData.responsiblePosition} onChange={e => setFormData({ ...formData, responsiblePosition: e.target.value })} title="ตำแหน่ง" />
+                            <div className="flex justify-center items-center gap-1 text-[10px]">
+                                <span>วันที่</span>
+                                <input type="date" className="input-line w-24 text-center bg-transparent" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} title="วันที่รับผิดชอบ" />
+                            </div>
                         </div>
                     </div>
+                    <div className="w-2/4 p-2 text-[10px] italic flex items-center justify-center text-center">
+                        หมายเหตุ : เมื่อทาง Supplier/Out source หรือหน่วยงานผู้รับผิดชอบปัญหา ได้รับเอกสารใบ NCR กรุณาระบุสาเหตุ-การป้องกัน และตอบกลับมายังแผนกประกันคุณภาพ ภายใน 1 สัปดาห์
+                    </div>
                 </div>
-                <div className="w-2/4 p-2 text-[10px] italic">
-                    หมายเหตุ : เมื่อทาง Supplier/Out source หรือหน่วยงานผู้รับผิดชอบปัญหา ได้รับเอกสารใบ NCR กรุณาระบุสาเหตุ-การป้องกัน และตอบกลับมายังแผนกประกันคุณภาพ ภายใน 1 สัปดาห์
-                </div>
-            </div >
 
-            {/* Tracking & Closure */}
-            <div className="border-2 border-black print-border-2 avoid-break">
-                <div className="bg-slate-200 print:bg-transparent border-b-2 border-black p-2 font-bold text-center print-border">การตรวจติดตามและการปิด NCR</div>
-                <div className="flex h-32 divide-x-2 divide-black">
-                    <div className="w-1/3 p-2 flex flex-col justify-center">
-                        <label className="flex gap-2 items-center mb-2"><input type="checkbox" checked={formData.qaAccept} onChange={() => setFormData({ ...formData, qaAccept: true, qaReject: false })} title="ยอมรับ" /> ยอมรับแนวทางการป้องกัน</label>
-                        <label className="flex gap-2 items-center mb-2"><input type="checkbox" checked={formData.qaReject} onChange={() => setFormData({ ...formData, qaAccept: false, qaReject: true })} title="ไม่ยอมรับ" /> ไม่ยอมรับแนวทางการป้องกัน</label>
-                        <input type="text" className="input-line text-xs" placeholder="ระบุเหตุผล (ถ้ามี)" value={formData.qaReason} onChange={e => setFormData({ ...formData, qaReason: e.target.value })} title="เหตุผล" />
-                    </div>
-                    <div className="w-1/3 p-2 flex flex-col justify-between items-center">
-                        <div className="text-xs font-bold text-center w-full">ผู้ตรวจติดตาม</div>
-                        <div className="text-center w-full mt-auto">
-                            <div className="border-b border-dotted border-black w-3/4 mx-auto mb-1 h-6"></div>
-                            <div className="text-xs font-bold">แผนกประกันคุณภาพ</div>
-                            <div className="text-[10px]">วันที่ ...../...../..........</div>
+                {/* Tracking & Closure */}
+                <div className="border-2 border-black mb-4 print-border-2 avoid-break">
+                    <div className="bg-slate-200 print:bg-transparent border-b-2 border-black p-2 font-bold text-center print-border">การตรวจติดตามและการปิด NCR</div>
+                    <div className="flex h-32 divide-x-2 divide-black">
+                        <div className="w-1/3 p-2 flex flex-col justify-center">
+                            <label className="flex gap-2 items-center mb-2 cursor-pointer"><input type="checkbox" checked={formData.qaAccept} onChange={() => setFormData({ ...formData, qaAccept: true, qaReject: false })} title="ยอมรับ" className="w-4 h-4" /> ยอมรับแนวทางการป้องกัน</label>
+                            <label className="flex gap-2 items-center mb-2 cursor-pointer"><input type="checkbox" checked={formData.qaReject} onChange={() => setFormData({ ...formData, qaAccept: false, qaReject: true })} title="ไม่ยอมรับ" className="w-4 h-4" /> ไม่ยอมรับแนวทางการป้องกัน</label>
+                            <input type="text" className="input-line text-xs bg-transparent" placeholder="ระบุเหตุผล (ถ้ามี)" value={formData.qaReason} onChange={e => setFormData({ ...formData, qaReason: e.target.value })} title="เหตุผล" />
                         </div>
-                    </div>
-                    <div className="w-1/3 p-2 flex flex-col justify-between items-center">
-                        <div className="text-xs font-bold text-center w-full">ผู้อนุมัติปิดการตรวจติดตาม</div>
-                        <div className="text-center w-full mt-auto">
-                            <div className="border-b border-dotted border-black w-3/4 mx-auto mb-1 h-6"></div>
-                            <div className="text-xs font-bold">กรรมการผู้จัดการ</div>
-                            <div className="text-[10px]">วันที่ ...../...../..........</div>
+                        <div className="w-1/3 p-2 flex flex-col justify-between items-center">
+                            <div className="text-xs font-bold text-center w-full">ผู้ตรวจติดตาม</div>
+                            <div className="text-center w-full mt-auto">
+                                <div className="border-b border-dotted border-black w-3/4 mx-auto mb-1 h-6"></div>
+                                <div className="text-xs font-bold">แผนกประกันคุณภาพ</div>
+                                <div className="text-[10px]">วันที่ ...../...../..........</div>
+                            </div>
+                        </div>
+                        <div className="w-1/3 p-2 flex flex-col justify-between items-center">
+                            <div className="text-xs font-bold text-center w-full">ผู้อนุมัติปิดการตรวจติดตาม</div>
+                            <div className="text-center w-full mt-auto">
+                                <div className="border-b border-dotted border-black w-3/4 mx-auto mb-1 h-6"></div>
+                                <div className="text-xs font-bold">กรรมการผู้จัดการ</div>
+                                <div className="text-[10px]">วันที่ ...../...../..........</div>
+                            </div>
                         </div>
                     </div>
                 </div>

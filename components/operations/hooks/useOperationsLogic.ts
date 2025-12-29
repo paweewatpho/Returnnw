@@ -380,18 +380,22 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
         try {
             let successCount = 0;
 
-            for (const item of itemsToProcess) {
-                let finalNcrNumber = item.ncrNumber;
-                // Only generate NCR Number if it is an NCR document
-                if (item.documentType === 'NCR' && !finalNcrNumber) {
-                    finalNcrNumber = await getNextNCRNumber();
-                }
+            // --- BATCH IDENTIFIER GENERATION ---
+            // Generate ONE shared number per batch if needed, instead of per-item
+            let sharedNcrNumber = '';
+            let sharedColNumber = '';
 
-                // Generate COL Number if Logicstics/Collection Request
-                let finalColNumber = item.collectionOrderId;
-                if (item.documentType === 'LOGISTICS' && !finalColNumber) {
-                    finalColNumber = await getNextCollectionNumber();
-                }
+            const needsNcr = itemsToProcess.some(i => i.documentType === 'NCR' && !i.ncrNumber);
+            const needsCol = itemsToProcess.some(i => i.documentType === 'LOGISTICS' && !i.collectionOrderId);
+
+            if (needsNcr) sharedNcrNumber = await getNextNCRNumber();
+            if (needsCol) sharedColNumber = await getNextCollectionNumber();
+            // ------------------------------------
+
+            for (const item of itemsToProcess) {
+                // Use imported/existing number if available, otherwise use the shared batch number
+                const finalNcrNumber = item.ncrNumber || (item.documentType === 'NCR' ? sharedNcrNumber : '');
+                const finalColNumber = item.collectionOrderId || (item.documentType === 'LOGISTICS' ? sharedColNumber : '');
 
                 const runningId = await getNextReturnNumber();
                 const record: ReturnRecord = {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Truck, Inbox, MapPin, CheckCircle, Undo as IconUndo } from 'lucide-react';
 import { useData } from '../../../DataContext';
-import { ReturnRecord } from '../../../types';
 import Swal from 'sweetalert2';
 
 export const Step3HubReceive: React.FC = () => {
@@ -71,16 +70,6 @@ export const Step3HubReceive: React.FC = () => {
     // Unique values for dropdowns
     const branches = React.useMemo(() => {
         const unique = new Set(requestedItems.map(item => item.branch).filter(Boolean));
-        return Array.from(unique).sort();
-    }, [requestedItems]);
-
-    const customers = React.useMemo(() => {
-        const unique = new Set(requestedItems.map(item => item.customerName).filter(Boolean));
-        return Array.from(unique).sort();
-    }, [requestedItems]);
-
-    const destinations = React.useMemo(() => {
-        const unique = new Set(requestedItems.map(item => item.destinationCustomer).filter(Boolean));
         return Array.from(unique).sort();
     }, [requestedItems]);
 
