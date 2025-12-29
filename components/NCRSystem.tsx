@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../DataContext';
 import { ReturnRecord, NCRRecord, NCRItem } from '../types';
 import { sendTelegramMessage } from '../utils/telegramService';
-import { Save, Printer, Image as ImageIcon, AlertTriangle, Plus, Trash2, X, Loader, CheckCircle, XCircle, HelpCircle, Download, Lock, Truck } from 'lucide-react';
+import { Save, Printer, Image as ImageIcon, AlertTriangle, Plus, Trash2, X, Loader, CheckCircle, XCircle, HelpCircle, Download, Lock, Truck, Package, Search } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { BRANCH_LIST, RETURN_ROUTES } from '../constants';
 import { RESPONSIBLE_MAPPING } from './operations/utils';
@@ -14,7 +14,7 @@ import { exportNCRToExcel } from './NCRExcelExport';
 
 
 const NCRSystem: React.FC = () => {
-    const { addNCRReport, getNextNCRNumber, addReturnRecord, ncrReports, systemConfig } = useData();
+    const { addNCRReport, getNextNCRNumber, addReturnRecord, ncrReports, systemConfig, items } = useData();
 
     // --- State: Main Form Data ---
     // Note: We keep global problem/action flags in formData for backward compatibility or summary views,
@@ -79,8 +79,6 @@ const NCRSystem: React.FC = () => {
         causeDetail: '', preventionDetail: '', preventionDueDate: ''
     });
 
-
-
     // --- State: UI Control ---
     const [isSaving, setIsSaving] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -143,8 +141,6 @@ const NCRSystem: React.FC = () => {
 
     const confirmDelete = (id: string) => { setAuthAction('DELETE'); setAuthTargetId(id); setShowAuthModal(true); };
 
-
-
     // --- Handlers for Problem/Action Selection (Main Form) ---
     const handleProblemSelection = (field: keyof ReturnRecord) => {
         setFormData(prev => ({ ...prev, [field]: !prev[field] }));
@@ -175,6 +171,21 @@ const NCRSystem: React.FC = () => {
     };
 
     // 4. Item Logic
+    const handleProductSearch = (query: string) => {
+        setNewItem(prev => ({ ...prev, productCode: query }));
+        if (!query) return;
+        const found = items.find(i => (i.productCode || '').toLowerCase() === query.toLowerCase() || (i.barcode || '').toLowerCase() === query.toLowerCase());
+        if (found) {
+            setNewItem(prev => ({
+                ...prev,
+                productName: found.productName,
+                unit: found.unit || prev.unit,
+                pricePerUnit: found.pricePerUnit || prev.pricePerUnit,
+                customerName: found.customerName || prev.customerName
+            }));
+        }
+    };
+
     const handleAddItem = (closeModal: boolean = true) => {
         if (!newItem.productCode || !newItem.branch) {
             Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'ระบุรหัสสินค้า และสาขา' });
@@ -219,20 +230,17 @@ const NCRSystem: React.FC = () => {
             causePackaging: false, causeTransport: false, causeOperation: false, causeEnv: false,
             causeDetail: '', preventionDetail: '', preventionDueDate: ''
         });
-
         if (closeModal) setShowItemModal(false);
-        else Swal.fire({ icon: 'success', title: 'เพิ่มรายการสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
     };
 
     // 5. Validation & Save
     const validateForm = () => {
-        const errors = [];
-        if (!formData.founder.trim()) errors.push("ผู้พบปัญหา");
-        // Check items
-        if (ncrItems.length === 0) errors.push("รายการสินค้า (กรุณากดปุ่ม '+ เพิ่มรายการ')");
-        // Cause
-        const isCauseChecked = formData.causePackaging || formData.causeTransport || formData.causeOperation || formData.causeEnv;
-        if (!isCauseChecked) errors.push("สาเหตุเกิดจาก (กรุณาเลือกอย่างน้อย 1 หัวข้อ)");
+        const errors: string[] = [];
+        // --- VALIDATION DISABLED (Allow sending Telegram even if incomplete) ---
+        // if (!formData.founder.trim()) errors.push("ผู้พบปัญหา");
+        // if (ncrItems.length === 0) errors.push("รายการสินค้า (กรุณากดปุ่ม '+ เพิ่มรายการ')");
+        // const isCauseChecked = formData.causePackaging || formData.causeTransport || formData.causeOperation || formData.causeEnv;
+        // if (!isCauseChecked) errors.push("สาเหตุเกิดจาก (กรุณาเลือกอย่างน้อย 1 หัวข้อ)");
         return errors;
     };
 
@@ -261,7 +269,7 @@ const NCRSystem: React.FC = () => {
                 // SYNC TO OPERATIONS HUB (ReturnRecord)
                 const returnRecord: ReturnRecord = {
                     id: `RT-${new Date().getFullYear()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                    refNo: item.refNo || '-',
+                    refNo: item.refNo || formData.poNo || '-',
                     date: formData.date,
                     dateRequested: formData.date,
                     productName: item.productName || 'Unknown',
@@ -290,7 +298,7 @@ const NCRSystem: React.FC = () => {
                     priceSell: item.priceSell || 0,
                     neoRefNo: item.neoRefNo || '-',
 
-                    // Flags (From Main Form)
+                    // Flags
                     problemDamaged: formData.problemDamaged,
                     problemDamagedInBox: formData.problemDamagedInBox,
                     problemLost: formData.problemLost,
@@ -312,7 +320,7 @@ const NCRSystem: React.FC = () => {
                     problemOtherText: formData.problemOtherText,
                     problemDetail: formData.problemDetail,
 
-                    // Actions (From Main Form)
+                    // Actions
                     actionReject: formData.actionReject,
                     actionRejectQty: formData.actionRejectQty,
                     actionRejectSort: formData.actionRejectSort,
@@ -335,13 +343,13 @@ const NCRSystem: React.FC = () => {
                     problemAnalysisSub: formData.problemAnalysisSub,
                     problemAnalysisCause: formData.problemAnalysisCause,
                     problemAnalysisDetail: formData.problemAnalysisDetail,
-                    images: formData.images, // From Main Form
+                    images: formData.images,
 
                     hasCost: formData.hasCost,
                     costAmount: formData.costAmount,
                     costResponsible: formData.costResponsible,
 
-                    // Inherit from Main Form
+                    // Details
                     causePackaging: formData.causePackaging,
                     causeTransport: formData.causeTransport,
                     causeOperation: formData.causeOperation,
@@ -371,9 +379,6 @@ const NCRSystem: React.FC = () => {
 
             // TELEGRAM NOTIFICATION
             if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId) {
-                // Send notification for each item (or a summary)
-                // Sending summary is better for multiple items
-                // TELEGRAM NOTIFICATION
                 const msgDate = new Date().toLocaleString('th-TH');
                 const founder = formData.founder || '-';
                 const branch = formData.branch || ncrItems[0]?.branch || '-';
@@ -381,12 +386,11 @@ const NCRSystem: React.FC = () => {
                 const destCustomer = ncrItems[0]?.destinationCustomer || '-';
                 const neoRef = ncrItems[0]?.neoRefNo || '-';
                 const refNo = ncrItems[0]?.refNo || '-';
-                const docNo = newNcrNo; // เลข R / NCR No
+                const docNo = newNcrNo;
                 const problemDetail = formData.problemDetail || '-';
                 const qty = ncrItems.reduce((acc, item) => acc + (item.quantity || 0), 0);
                 const problemSource = formData.problemSource || '-';
 
-                // Get Selected Problems (Process)
                 const problemProcess = [
                     formData.problemDamaged && 'ชำรุด', formData.problemDamagedInBox && 'ชำรุดในกล่อง', formData.problemLost && 'สูญหาย',
                     formData.problemMixed && 'สินค้าสลับ', formData.problemWrongInv && 'สินค้าไม่ตรง INV', formData.problemLate && 'ส่งช้า',
@@ -396,28 +400,25 @@ const NCRSystem: React.FC = () => {
                     formData.problemNoBarcode && 'บาร์โค๊ตไม่ขึ้น', formData.problemNotOrdered && 'ไม่ได้สั่งสินค้า', formData.problemOther && `อื่นๆ (${formData.problemOtherText})`
                 ].filter(Boolean).join(', ');
 
-                // Cost Tracking
                 const costInfo = formData.hasCost
                     ? `ใช่ (Amount: ${formData.costAmount} บาท, Resp: ${formData.costResponsible})`
                     : 'ไม่ระบุ';
 
-                // Field Settlement
                 const fieldSettlementInfo = formData.isFieldSettled
                     ? `จบงานหน้างาน (จ่าย: ${formData.fieldSettlementAmount} บาท, ผู้รับผิดชอบ: ${formData.fieldSettlementName} - ${formData.fieldSettlementPosition})`
                     : 'ไม่มี';
 
-                const detailedMessage = `🚨 <b>NCR Report (New)</b>
+                const detailedMessage = `🚨 <b>NCR Report (New) [NCR]</b>
 ----------------------------------
 <b>วันที่ :</b> ${msgDate}
 <b>สาขา :</b> ${branch}
 <b>ผู้พบปัญหา (Founder) :</b> ${founder}
-<b>ลูกค้า (Customer Name) :</b> ${customerName}
-<b>ลูกค้าปลายทาง (Dest. Customer) :</b> ${destCustomer}
+<b>ลูกค้า / ลูกค้าปลายทาง :</b> ${customerName} / ${destCustomer}
 <b>Neo Ref No. :</b> ${neoRef}
 <b>เลขที่บิล / Ref No. :</b> ${refNo}
-<b>เลขที่เอกสาร (NCR No) :</b> ${docNo}
+<b>เลขที่เอกสาร (เลข R) :</b> ${docNo}
 <b>รายละเอียดของปัญหา :</b> ${problemDetail}
-<b>จำนวนสินค้า :</b> ${qty} ${ncrItems[0]?.unit || 'ชิ้น'} (รวม ${ncrItems.length} รายการ)
+<b>จำนวนสินค้า :</b> ${qty} ${ncrItems[0]?.unit || 'ชิ้น'} ${ncrItems.length > 1 ? `(รวม ${ncrItems.length} รายการ)` : ''}
 <b>วิเคราะห์ปัญหาเกิดจาก :</b> ${problemSource}
 <b>พบปัญหาที่กระบวนการ :</b> ${problemProcess || '-'}
 <b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
@@ -508,7 +509,7 @@ const NCRSystem: React.FC = () => {
                     <div className="flex items-end gap-2">
                         <label className="font-bold w-24 shrink-0">ผู้พบปัญหา:</label>
                         <div className="w-full border-b border-dotted border-slate-400">
-                            <LineAutocomplete className="w-full" value={formData.founder} onChange={val => setFormData({ ...formData, founder: val })} options={uniqueFounders} />
+                            <LineAutocomplete className="w-full" value={formData.founder} onChange={val => setFormData({ ...formData, founder: val })} options={uniqueFounders} placeholder="ระบุผู้พบปัญหา..." />
                         </div>
                     </div>
                     <div className="flex items-end gap-2">
@@ -531,15 +532,15 @@ const NCRSystem: React.FC = () => {
                         <div className="grid grid-cols-12 gap-2 mb-2">
                             <div className="col-span-2">
                                 <label className="block font-bold mb-1">รหัสสินค้า</label>
-                                <input type="text" className="w-full p-1 border rounded" value={newItem.productCode} onChange={e => setNewItem({ ...newItem, productCode: e.target.value })} placeholder="Code" />
+                                <input type="text" className="w-full p-1 border rounded" value={newItem.productCode} onChange={e => setNewItem({ ...newItem, productCode: e.target.value })} placeholder="Code" title="Product Code" />
                             </div>
                             <div className="col-span-4">
                                 <label className="block font-bold mb-1">ชื่อสินค้า</label>
-                                <input type="text" className="w-full p-1 border rounded" value={newItem.productName} onChange={e => setNewItem({ ...newItem, productName: e.target.value })} placeholder="Name" />
+                                <input type="text" className="w-full p-1 border rounded" value={newItem.productName} onChange={e => setNewItem({ ...newItem, productName: e.target.value })} placeholder="Name" title="Product Name" />
                             </div>
                             <div className="col-span-3">
                                 <label className="block font-bold mb-1">ลูกค้า</label>
-                                <input type="text" className="w-full p-1 border rounded" value={newItem.customerName} onChange={e => setNewItem({ ...newItem, customerName: e.target.value })} placeholder="Customer" />
+                                <input type="text" className="w-full p-1 border rounded" value={newItem.customerName} onChange={e => setNewItem({ ...newItem, customerName: e.target.value })} placeholder="Customer" title="Customer Name" />
                             </div>
                             <div className="col-span-3">
                                 <label className="block font-bold mb-1">สาขา</label>
@@ -568,7 +569,7 @@ const NCRSystem: React.FC = () => {
                             </div>
                             <div className="col-span-1">
                                 <label className="block font-bold mb-1">จำนวน</label>
-                                <input type="number" className="w-full p-1 border rounded font-bold text-blue-600" value={newItem.quantity} onChange={e => setNewItem({ ...newItem, quantity: parseFloat(e.target.value) })} title="จำนวน" />
+                                <input type="number" className="w-full p-1 border rounded font-bold text-blue-600" value={newItem.quantity} onChange={e => setNewItem({ ...newItem, quantity: parseFloat(e.target.value) })} title="จำนวน" placeholder="0" />
                             </div>
                             <div className="col-span-1">
                                 <label className="block font-bold mb-1">หน่วย</label>
@@ -576,7 +577,7 @@ const NCRSystem: React.FC = () => {
                             </div>
                             <div className="col-span-1">
                                 <label className="block font-bold mb-1">ราคา/หน่วย</label>
-                                <input type="number" className="w-full p-1 border rounded" value={newItem.pricePerUnit} onChange={e => setNewItem({ ...newItem, pricePerUnit: parseFloat(e.target.value) })} title="ราคาต่อหน่วย" />
+                                <input type="number" className="w-full p-1 border rounded" value={newItem.pricePerUnit} onChange={e => setNewItem({ ...newItem, pricePerUnit: parseFloat(e.target.value) })} title="ราคาต่อหน่วย" placeholder="0.00" />
                             </div>
                             <div className="col-span-1 flex items-end">
                                 <button onClick={() => handleAddItem(false)} className="w-full bg-blue-600 text-white p-1 rounded font-bold hover:bg-blue-700 flex justify-center items-center shadow-sm" title="เพิ่ม"><Plus className="w-4 h-4" /></button>
@@ -640,7 +641,7 @@ const NCRSystem: React.FC = () => {
                             รูปภาพ / เอกสาร
                         </div>
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" disabled checked={false} title="ตามแนบ" /> <span className="text-xs">ตามแนบ</span>
+                            <input type="checkbox" disabled checked={false} title="ตามแนบ (As attached)" /> <span className="text-xs">ตามแนบ</span>
                         </div>
                     </div>
                     <div className="border-2 border-black p-2 min-h-[100px] print-border-2">
@@ -692,7 +693,7 @@ const NCRSystem: React.FC = () => {
                                         <div className="ml-6 mt-1 p-2 bg-slate-50 border rounded grid grid-cols-2 gap-2">
                                             <select className="border rounded p-1" value={formData.branch} onChange={e => setFormData({ ...formData, branch: e.target.value })} title="สาขา"><option value="">-- สาขา --</option>{['พิษณุโลก', 'กำแพงเพชร', 'แม่สอด', 'เชียงใหม่', 'EKP ลำปาง', 'นครสวรรค์', 'สาย 3', 'คลอง 13', 'ซีโน่', 'ประดู่'].map(b => <option key={b} value={b}>{b}</option>)}</select>
                                             <div className="flex flex-wrap gap-2">
-                                                {['เช็คเกอร์', 'พนักงานลงสินค้า', 'อื่นๆ'].map(c => <label key={c} className="flex gap-1"><input type="radio" name="whCause" checked={formData.problemAnalysisCause === c} onChange={() => setFormData({ ...formData, problemAnalysisCause: c })} /> {c}</label>)}
+                                                {['เช็คเกอร์', 'พนักงานลงสินค้า', 'อื่นๆ'].map(c => <label key={c} className="flex gap-1"><input type="radio" name="whCause" checked={formData.problemAnalysisCause === c} onChange={() => setFormData({ ...formData, problemAnalysisCause: c })} title={c} /> {c}</label>)}
                                             </div>
                                         </div>
                                     )}
@@ -704,7 +705,7 @@ const NCRSystem: React.FC = () => {
                                     </label>
                                     {formData.problemAnalysis === 'Transport' && (
                                         <div className="ml-6 mt-1 p-2 bg-slate-50 border rounded flex gap-4">
-                                            {['CompanyDriver', 'JointTransport', 'Other'].map(t => <label key={t} className="flex gap-1"><input type="radio" name="transType" checked={formData.problemAnalysisSub === t} onChange={() => setFormData({ ...formData, problemAnalysisSub: t })} /> {t}</label>)}
+                                            {['CompanyDriver', 'JointTransport', 'Other'].map(t => <label key={t} className="flex gap-1"><input type="radio" name="transType" checked={formData.problemAnalysisSub === t} onChange={() => setFormData({ ...formData, problemAnalysisSub: t })} title={t} /> {t}</label>)}
                                         </div>
                                     )}
                                 </div>
@@ -713,7 +714,7 @@ const NCRSystem: React.FC = () => {
                                     อื่นๆ (Other)
                                 </label>
                                 {formData.problemAnalysis === 'Other' && (
-                                    <input type="text" className="col-span-2 w-full p-2 ml-6 border border-slate-300 rounded text-xs" placeholder="ระบุรายละเอียด..." value={formData.problemAnalysisDetail || ''} onChange={e => setFormData({ ...formData, problemAnalysisDetail: e.target.value })} />
+                                    <input type="text" className="col-span-2 w-full p-2 ml-6 border border-slate-300 rounded text-xs" placeholder="ระบุรายละเอียด..." value={formData.problemAnalysisDetail || ''} onChange={e => setFormData({ ...formData, problemAnalysisDetail: e.target.value })} title="ระบุรายละเอียด" />
                                 )}
                             </div>
                             <textarea className="w-full p-2 border rounded text-xs bg-slate-50" rows={2} placeholder="รายละเอียดปัญหาเพิ่มเติม..." value={formData.problemDetail} onChange={e => setFormData({ ...formData, problemDetail: e.target.value })} title="รายละเอียดปัญหา"></textarea>
@@ -731,27 +732,27 @@ const NCRSystem: React.FC = () => {
                         </div>
                         <div className="p-2 grid grid-cols-2 gap-y-1 text-xs flex-1">
                             {/* ... รายการ Checkbox เดิม ... */}
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemDamaged} onChange={() => handleProblemSelection('problemDamaged')} /> ชำรุด</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemDamagedInBox} onChange={() => handleProblemSelection('problemDamagedInBox')} /> ชำรุดในกล่อง</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemLost} onChange={() => handleProblemSelection('problemLost')} /> สูญหาย</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemMixed} onChange={() => handleProblemSelection('problemMixed')} /> สินค้าสลับ</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemWrongInv} onChange={() => handleProblemSelection('problemWrongInv')} /> สินค้าไม่ตรง INV.</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemLate} onChange={() => handleProblemSelection('problemLate')} /> ส่งช้า</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemDuplicate} onChange={() => handleProblemSelection('problemDuplicate')} /> ส่งซ้ำ</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemWrong} onChange={() => handleProblemSelection('problemWrong')} /> ส่งผิด</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemIncomplete} onChange={() => handleProblemSelection('problemIncomplete')} /> ส่งของไม่ครบ</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemOver} onChange={() => handleProblemSelection('problemOver')} /> ส่งของเกิน</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemWrongInfo} onChange={() => handleProblemSelection('problemWrongInfo')} /> ข้อมูลผิด</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemShortExpiry} onChange={() => handleProblemSelection('problemShortExpiry')} /> สินค้าอายุสั้น</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemTransportDamage} onChange={() => handleProblemSelection('problemTransportDamage')} /> สินค้าเสียหายบนรถ</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemAccident} onChange={() => handleProblemSelection('problemAccident')} /> อุบัติเหตุ</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemPOExpired} onChange={() => handleProblemSelection('problemPOExpired')} /> PO. หมดอายุ</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemNoBarcode} onChange={() => handleProblemSelection('problemNoBarcode')} /> บาร์โค๊ตไม่ขึ้น</label>
-                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemNotOrdered} onChange={() => handleProblemSelection('problemNotOrdered')} /> ไม่ได้สั่งสินค้า</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemDamaged} onChange={() => handleProblemSelection('problemDamaged')} title="ชำรุด" /> ชำรุด</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemDamagedInBox} onChange={() => handleProblemSelection('problemDamagedInBox')} title="ชำรุดในกล่อง" /> ชำรุดในกล่อง</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemLost} onChange={() => handleProblemSelection('problemLost')} title="สูญหาย" /> สูญหาย</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemMixed} onChange={() => handleProblemSelection('problemMixed')} title="สินค้าสลับ" /> สินค้าสลับ</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemWrongInv} onChange={() => handleProblemSelection('problemWrongInv')} title="สินค้าไม่ตรง INV." /> สินค้าไม่ตรง INV.</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemLate} onChange={() => handleProblemSelection('problemLate')} title="ส่งช้า" /> ส่งช้า</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemDuplicate} onChange={() => handleProblemSelection('problemDuplicate')} title="ส่งซ้ำ" /> ส่งซ้ำ</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemWrong} onChange={() => handleProblemSelection('problemWrong')} title="ส่งผิด" /> ส่งผิด</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemIncomplete} onChange={() => handleProblemSelection('problemIncomplete')} title="ส่งของไม่ครบ" /> ส่งของไม่ครบ</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemOver} onChange={() => handleProblemSelection('problemOver')} title="ส่งของเกิน" /> ส่งของเกิน</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemWrongInfo} onChange={() => handleProblemSelection('problemWrongInfo')} title="ข้อมูลผิด" /> ข้อมูลผิด</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemShortExpiry} onChange={() => handleProblemSelection('problemShortExpiry')} title="สินค้าอายุสั้น" /> สินค้าอายุสั้น</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemTransportDamage} onChange={() => handleProblemSelection('problemTransportDamage')} title="สินค้าเสียหายบนรถ" /> สินค้าเสียหายบนรถ</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemAccident} onChange={() => handleProblemSelection('problemAccident')} title="อุบัติเหตุ" /> อุบัติเหตุ</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemPOExpired} onChange={() => handleProblemSelection('problemPOExpired')} title="PO. หมดอายุ" /> PO. หมดอายุ</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemNoBarcode} onChange={() => handleProblemSelection('problemNoBarcode')} title="บาร์โค๊ตไม่ขึ้น" /> บาร์โค๊ตไม่ขึ้น</label>
+                            <label className="flex gap-2 items-center cursor-pointer hover:bg-slate-50 rounded px-1"><input type="checkbox" checked={formData.problemNotOrdered} onChange={() => handleProblemSelection('problemNotOrdered')} title="ไม่ได้สั่งสินค้า" /> ไม่ได้สั่งสินค้า</label>
 
                             <div className="col-span-2 flex items-center gap-2 mt-1 px-1">
                                 <label className="flex gap-2 whitespace-nowrap cursor-pointer"><input type="checkbox" checked={formData.problemOther} onChange={() => handleProblemSelection('problemOther')} /> อื่นๆ</label>
-                                <input type="text" className="input-line text-xs flex-1" placeholder="ระบุปัญหาอื่นๆ" value={formData.problemOtherText} onChange={e => setFormData({ ...formData, problemOtherText: e.target.value })} />
+                                <input type="text" className="input-line text-xs flex-1" placeholder="ระบุปัญหาอื่นๆ" value={formData.problemOtherText} onChange={e => setFormData({ ...formData, problemOtherText: e.target.value })} title="ระบุปัญหาอื่นๆ" />
                             </div>
                         </div>
                     </div>
@@ -801,7 +802,7 @@ const NCRSystem: React.FC = () => {
                                 {formData.actionRework && (
                                     <div className="pl-6 flex items-center gap-2 animate-fade-in">
                                         <span className="whitespace-nowrap text-[10px]">วิธีแก้:</span>
-                                        <input type="text" className="input-line flex-1" value={formData.actionReworkMethod} onChange={e => setFormData({ ...formData, actionReworkMethod: e.target.value })} placeholder="ระบุวิธีการ..." />
+                                        <input type="text" className="input-line flex-1" value={formData.actionReworkMethod} onChange={e => setFormData({ ...formData, actionReworkMethod: e.target.value })} placeholder="ระบุวิธีการ..." title="วิธีแก้ไข" />
                                     </div>
                                 )}
                             </div>
@@ -821,7 +822,7 @@ const NCRSystem: React.FC = () => {
                                 {formData.actionSpecialAcceptance && (
                                     <div className="pl-6 flex items-center gap-2 animate-fade-in">
                                         <span className="whitespace-nowrap text-[10px]">เหตุผล:</span>
-                                        <input type="text" className="input-line flex-1" value={formData.actionSpecialAcceptanceReason} onChange={e => setFormData({ ...formData, actionSpecialAcceptanceReason: e.target.value })} placeholder="ระบุเหตุผล..." />
+                                        <input type="text" className="input-line flex-1" value={formData.actionSpecialAcceptanceReason} onChange={e => setFormData({ ...formData, actionSpecialAcceptanceReason: e.target.value })} placeholder="ระบุเหตุผล..." title="เหตุผล" />
                                     </div>
                                 )}
                             </div>
@@ -879,7 +880,7 @@ const NCRSystem: React.FC = () => {
                                     <span>อื่นๆ (Other)</span>
                                 </label>
                                 {formData.preliminaryRoute === 'Other' && (
-                                    <input type="text" className="w-full p-1 ml-6 border border-slate-300 rounded outline-none" placeholder="โปรดระบุ..." value={formData.preliminaryRouteOther} onChange={e => setFormData({ ...formData, preliminaryRoute: 'Other', preliminaryRouteOther: e.target.value })} />
+                                    <input type="text" className="w-full p-1 ml-6 border border-slate-300 rounded outline-none" placeholder="โปรดระบุ..." value={formData.preliminaryRouteOther} onChange={e => setFormData({ ...formData, preliminaryRoute: 'Other', preliminaryRouteOther: e.target.value })} title="ระบุเส้นทางอื่นๆ" />
                                 )}
                             </div>
                         </div>
@@ -958,7 +959,6 @@ const NCRSystem: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
                 {/* Section 4: Cause & Prevention */}
                 <div className="border-2 border-black mb-4 print-border-2 avoid-break">
                     <div className="bg-slate-200 print:bg-transparent border-b-2 border-black p-2 font-bold print-border">สาเหตุ-การป้องกัน (ผู้รับผิดชอบปัญหา)</div>
@@ -973,13 +973,13 @@ const NCRSystem: React.FC = () => {
                             </div>
                             <div className="text-xs">
                                 <div className="font-bold mb-1">รายละเอียดสาเหตุ :</div>
-                                <textarea className="w-full h-16 resize-none input-line bg-transparent" value={formData.causeDetail} onChange={e => setFormData({ ...formData, causeDetail: e.target.value })} title="รายละเอียดสาเหตุ"></textarea>
+                                <textarea className="w-full h-16 resize-none input-line bg-transparent" value={formData.causeDetail} onChange={e => setFormData({ ...formData, causeDetail: e.target.value })} title="รายละเอียดสาเหตุ" placeholder="ระบุรายละเอียดสาเหตุ..."></textarea>
                             </div>
                         </div>
                         <div>
                             <div className="text-xs h-full flex flex-col">
                                 <div className="font-bold mb-1">แนวทางป้องกัน :</div>
-                                <textarea className="w-full flex-1 resize-none input-line bg-transparent mb-2" value={formData.preventionDetail} onChange={e => setFormData({ ...formData, preventionDetail: e.target.value })} title="แนวทางป้องกัน"></textarea>
+                                <textarea className="w-full flex-1 resize-none input-line bg-transparent mb-2" value={formData.preventionDetail} onChange={e => setFormData({ ...formData, preventionDetail: e.target.value })} title="แนวทางป้องกัน" placeholder="ระบุแนวทางป้องกัน..."></textarea>
                                 <div className="flex items-end gap-2">
                                     <span className="font-bold">กำหนดการป้องกันแล้วเสร็จ</span>
                                     <input type="date" className="input-line w-32" value={formData.preventionDueDate} onChange={e => setFormData({ ...formData, preventionDueDate: e.target.value })} title="กำหนดป้องกันแล้วเสร็จ" />
@@ -988,69 +988,116 @@ const NCRSystem: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
-                {/* Signatures Row */}
-                <div className="flex border-2 border-black h-32 mb-4 print-border-2 avoid-break">
-                    <div className="w-1/4 border-r-2 border-black p-2 flex flex-col justify-between items-center print-border">
-                        <div className="text-xs font-bold text-center w-full">ผู้อนุมัติ (Approver)</div>
-                        <div className="text-center w-full">
-                            <input type="text" className="input-line text-center mb-1" placeholder="(ลงชื่อ)" value={formData.approver} onChange={e => setFormData({ ...formData, approver: e.target.value })} title="ลงชื่อผู้อนุมัติ" />
-                            <input type="text" className="input-line text-center text-xs mb-1" placeholder="ตำแหน่ง" value={formData.approverPosition} onChange={e => setFormData({ ...formData, approverPosition: e.target.value })} title="ตำแหน่ง" />
-                            <div className="flex justify-center items-center gap-1 text-xs">
-                                <span>วันที่</span>
-                                <input type="date" className="input-line w-24 text-center" value={formData.approverDate} onChange={e => setFormData({ ...formData, approverDate: e.target.value })} title="วันที่อนุมัติ" />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="w-1/4 border-r-2 border-black p-2 flex flex-col justify-between items-center print-border">
-                        <div className="text-xs font-bold text-center w-full">ผู้รับผิดชอบ (Responsible)</div>
-                        <div className="text-center w-full">
-                            <input type="text" className="input-line text-center mb-1" placeholder="(ลงชื่อ)" value={formData.responsiblePerson} onChange={e => setFormData({ ...formData, responsiblePerson: e.target.value })} title="ลงชื่อผู้รับผิดชอบ" />
-                            <input type="text" className="input-line text-center text-xs mb-1" placeholder="ตำแหน่ง" value={formData.responsiblePosition} onChange={e => setFormData({ ...formData, responsiblePosition: e.target.value })} title="ตำแหน่ง" />
-                            <div className="flex justify-center items-center gap-1 text-xs">
-                                <span>วันที่</span>
-                                <input type="date" className="input-line w-24 text-center" title="วันที่รับผิดชอบ" />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="w-2/4 p-2 text-[10px] italic">
-                        หมายเหตุ : เมื่อทาง Supplier/Out source หรือหน่วยงานผู้รับผิดชอบปัญหา ได้รับเอกสารใบ NCR กรุณาระบุสาเหตุ-การป้องกัน และตอบกลับมายังแผนกประกันคุณภาพ ภายใน 1 สัปดาห์
-                    </div>
-                </div>
-
-                {/* Tracking & Closure */}
-                <div className="border-2 border-black print-border-2 avoid-break">
-                    <div className="bg-slate-200 print:bg-transparent border-b-2 border-black p-2 font-bold text-center print-border">การตรวจติดตามและการปิด NCR</div>
-                    <div className="flex h-32 divide-x-2 divide-black">
-                        <div className="w-1/3 p-2 flex flex-col justify-center">
-                            <label className="flex gap-2 items-center mb-2"><input type="checkbox" checked={formData.qaAccept} onChange={() => setFormData({ ...formData, qaAccept: true, qaReject: false })} title="ยอมรับ" /> ยอมรับแนวทางการป้องกัน</label>
-                            <label className="flex gap-2 items-center mb-2"><input type="checkbox" checked={formData.qaReject} onChange={() => setFormData({ ...formData, qaAccept: false, qaReject: true })} title="ไม่ยอมรับ" /> ไม่ยอมรับแนวทางการป้องกัน</label>
-                            <input type="text" className="input-line text-xs" placeholder="ระบุเหตุผล (ถ้ามี)" value={formData.qaReason} onChange={e => setFormData({ ...formData, qaReason: e.target.value })} title="เหตุผล" />
-                        </div>
-                        <div className="w-1/3 p-2 flex flex-col justify-between items-center">
-                            <div className="text-xs font-bold text-center w-full">ผู้ตรวจติดตาม</div>
-                            <div className="text-center w-full mt-auto">
-                                <div className="border-b border-dotted border-black w-3/4 mx-auto mb-1 h-6"></div>
-                                <div className="text-xs font-bold">แผนกประกันคุณภาพ</div>
-                                <div className="text-[10px]">วันที่ ...../...../..........</div>
-                            </div>
-                        </div>
-                        <div className="w-1/3 p-2 flex flex-col justify-between items-center">
-                            <div className="text-xs font-bold text-center w-full">ผู้อนุมัติปิดการตรวจติดตาม</div>
-                            <div className="text-center w-full mt-auto">
-                                <div className="border-b border-dotted border-black w-3/4 mx-auto mb-1 h-6"></div>
-                                <div className="text-xs font-bold">กรรมการผู้จัดการ</div>
-                                <div className="text-[10px]">วันที่ ...../...../..........</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
 
-            {/* ITEM MODAL - Same as before but consistent style */}
+            {/* Signatures Row */}
+            < div className="flex border-2 border-black h-32 mb-4 print-border-2 avoid-break" >
+                <div className="w-1/4 border-r-2 border-black p-2 flex flex-col justify-between items-center print-border">
+                    <div className="text-xs font-bold text-center w-full">ผู้อนุมัติ (Approver)</div>
+                    <div className="text-center w-full">
+                        <input type="text" className="input-line text-center mb-1" placeholder="(ลงชื่อ)" value={formData.approver} onChange={e => setFormData({ ...formData, approver: e.target.value })} title="ลงชื่อผู้อนุมัติ" />
+                        <input type="text" className="input-line text-center text-xs mb-1" placeholder="ตำแหน่ง" value={formData.approverPosition} onChange={e => setFormData({ ...formData, approverPosition: e.target.value })} title="ตำแหน่ง" />
+                        <div className="flex justify-center items-center gap-1 text-xs">
+                            <span>วันที่</span>
+                            <input type="date" className="input-line w-24 text-center" value={formData.approverDate} onChange={e => setFormData({ ...formData, approverDate: e.target.value })} title="วันที่อนุมัติ" />
+                        </div>
+                    </div>
+                </div>
+                <div className="w-1/4 border-r-2 border-black p-2 flex flex-col justify-between items-center print-border">
+                    <div className="text-xs font-bold text-center w-full">ผู้รับผิดชอบ (Responsible)</div>
+                    <div className="text-center w-full">
+                        <input type="text" className="input-line text-center mb-1" placeholder="(ลงชื่อ)" value={formData.responsiblePerson} onChange={e => setFormData({ ...formData, responsiblePerson: e.target.value })} title="ลงชื่อผู้รับผิดชอบ" />
+                        <input type="text" className="input-line text-center text-xs mb-1" placeholder="ตำแหน่ง" value={formData.responsiblePosition} onChange={e => setFormData({ ...formData, responsiblePosition: e.target.value })} title="ตำแหน่ง" />
+                        <div className="flex justify-center items-center gap-1 text-xs">
+                            <span>วันที่</span>
+                            <input type="date" className="input-line w-24 text-center" title="วันที่รับผิดชอบ" />
+                        </div>
+                    </div>
+                </div>
+                <div className="w-2/4 p-2 text-[10px] italic">
+                    หมายเหตุ : เมื่อทาง Supplier/Out source หรือหน่วยงานผู้รับผิดชอบปัญหา ได้รับเอกสารใบ NCR กรุณาระบุสาเหตุ-การป้องกัน และตอบกลับมายังแผนกประกันคุณภาพ ภายใน 1 สัปดาห์
+                </div>
+            </div >
 
+            {/* Tracking & Closure */}
+            <div className="border-2 border-black print-border-2 avoid-break">
+                <div className="bg-slate-200 print:bg-transparent border-b-2 border-black p-2 font-bold text-center print-border">การตรวจติดตามและการปิด NCR</div>
+                <div className="flex h-32 divide-x-2 divide-black">
+                    <div className="w-1/3 p-2 flex flex-col justify-center">
+                        <label className="flex gap-2 items-center mb-2"><input type="checkbox" checked={formData.qaAccept} onChange={() => setFormData({ ...formData, qaAccept: true, qaReject: false })} title="ยอมรับ" /> ยอมรับแนวทางการป้องกัน</label>
+                        <label className="flex gap-2 items-center mb-2"><input type="checkbox" checked={formData.qaReject} onChange={() => setFormData({ ...formData, qaAccept: false, qaReject: true })} title="ไม่ยอมรับ" /> ไม่ยอมรับแนวทางการป้องกัน</label>
+                        <input type="text" className="input-line text-xs" placeholder="ระบุเหตุผล (ถ้ามี)" value={formData.qaReason} onChange={e => setFormData({ ...formData, qaReason: e.target.value })} title="เหตุผล" />
+                    </div>
+                    <div className="w-1/3 p-2 flex flex-col justify-between items-center">
+                        <div className="text-xs font-bold text-center w-full">ผู้ตรวจติดตาม</div>
+                        <div className="text-center w-full mt-auto">
+                            <div className="border-b border-dotted border-black w-3/4 mx-auto mb-1 h-6"></div>
+                            <div className="text-xs font-bold">แผนกประกันคุณภาพ</div>
+                            <div className="text-[10px]">วันที่ ...../...../..........</div>
+                        </div>
+                    </div>
+                    <div className="w-1/3 p-2 flex flex-col justify-between items-center">
+                        <div className="text-xs font-bold text-center w-full">ผู้อนุมัติปิดการตรวจติดตาม</div>
+                        <div className="text-center w-full mt-auto">
+                            <div className="border-b border-dotted border-black w-3/4 mx-auto mb-1 h-6"></div>
+                            <div className="text-xs font-bold">กรรมการผู้จัดการ</div>
+                            <div className="text-[10px]">วันที่ ...../...../..........</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
+            {/* ITEM MODAL */}
+            {
+                showItemModal && (
+                    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-fade-in-up">
+                            <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+                                <h3 className="font-bold text-lg"><Package className="inline-block w-5 h-5 mr-2 text-blue-600" /> เพิ่มรายการสินค้า (Add Item)</h3>
+                                <button onClick={() => setShowItemModal(false)} className="p-1 hover:bg-slate-100 rounded-full" title="Close"><X className="w-6 h-6 text-slate-500" /></button>
+                            </div>
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block font-bold mb-1">ค้นหาสินค้า / บาร์โค้ด</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            className="input-field flex-1"
+                                            placeholder="ยิงบาร์โค้ด หรือ พิมพ์ชื่อสินค้า..."
+                                            value={newItem.productCode}
+                                            onChange={e => handleProductSearch(e.target.value)}
+                                            autoFocus
+                                            title="รห้สสินค้า / บาร์โค้ด"
+                                        />
+                                        <button className="btn-secondary" title="Search"><Search className="w-4 h-4" /></button>
+                                    </div>
+                                </div>
+
+                                {/* Basic Item Details */}
+                                <div>
+                                    <label className="block font-bold mb-1">ชื่อสินค้า</label>
+                                    <input type="text" className="input-field bg-slate-50" value={newItem.productName} readOnly title="ชื่อสินค้า" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block font-bold mb-1">จำนวน</label>
+                                        <input type="number" className="input-field text-center font-bold text-blue-600" value={newItem.quantity} onChange={e => setNewItem({ ...newItem, quantity: Number(e.target.value) })} title="Quantity" placeholder="0" />
+                                    </div>
+                                    <div>
+                                        <label className="block font-bold mb-1">หน่วย</label>
+                                        <input type="text" className="input-field text-center" value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} title="Unit" placeholder="Unit" />
+                                    </div>
+                                </div>
+
+                                <div className="col-span-2 pt-4 border-t flex justify-end gap-3">
+                                    <button onClick={() => setShowItemModal(false)} className="btn-secondary" title="ยกเลิก">ยกเลิก</button>
+                                    <button onClick={handleAddItem} className="btn-primary" title="บันทึกรายการ">บันทึกรายการ</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Confirmation Modals */}
             {
@@ -1100,7 +1147,7 @@ const NCRSystem: React.FC = () => {
                 )
             }
 
-        </div >
+        </div>
     );
 };
 

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../../DataContext';
 import { ReturnRecord, ItemCondition, DispositionAction, TransportInfo } from '../../../types';
 import { getISODetails, RESPONSIBLE_MAPPING } from '../utils';
-import { sendTelegramMessage } from '../../../utils/telegramService';
+import { sendTelegramMessage, formatStatusUpdateMessage } from '../../../utils/telegramService';
 import Swal from 'sweetalert2';
 
 export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, onClearInitialData?: () => void) => {
@@ -563,20 +563,20 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                         ? `จบงานหน้างาน (จ่าย: ${item.fieldSettlementAmount} บาท, ผู้รับผิดชอบ: ${item.fieldSettlementName} - ${item.fieldSettlementPosition})`
                         : 'ไม่มี';
 
+                    const typeTag = isNCR ? 'NCR' : 'COL';
                     const headerTitle = isNCR ? '🚨 NCR Report (New)' : '📦 Collection Report (New)';
 
-                    const detailedMessage = `${headerTitle}
+                    const detailedMessage = `<b>${headerTitle} [${typeTag}]</b>
 ----------------------------------
 <b>วันที่ :</b> ${msgDate}
 <b>สาขา :</b> ${branch}
 <b>ผู้พบปัญหา (Founder) :</b> ${founder}
-<b>ลูกค้า (Customer Name) :</b> ${customerName}
-<b>ลูกค้าปลายทาง (Dest. Customer) :</b> ${destCustomer}
+<b>ลูกค้า / ลูกค้าปลายทาง :</b> ${customerName} / ${destCustomer}
 <b>Neo Ref No. :</b> ${neoRef}
 <b>เลขที่บิล / Ref No. :</b> ${refNo}
-<b>เลขที่เอกสาร (${isNCR ? 'NCR' : 'COL'}) :</b> ${docNo}
+<b>เลขที่เอกสาร (เลข R) :</b> ${docNo}
 <b>รายละเอียดของปัญหา :</b> ${problemDetail}
-<b>จำนวนสินค้า :</b> ${qty} ${firstItem.unit || 'ชิ้น'} (รวม ${itemsToProcess.length} รายการ)
+<b>จำนวนสินค้า :</b> ${qty} ${firstItem.unit || 'ชิ้น'} ${itemsToProcess.length > 1 ? `(รวม ${itemsToProcess.length} รายการ)` : ''}
 <b>วิเคราะห์ปัญหาเกิดจาก :</b> ${problemSource}
 <b>พบปัญหาที่กระบวนการ :</b> ${problemProcess || '-'}
 <b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
@@ -718,6 +718,13 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 condition: 'Good',
                 notes: (item.notes || '') + ' [Auto-Pass QC: Collection Item]'
             });
+
+            // TELEGRAM NOTIFICATION: Received at Hub (COL)
+            if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId) {
+                const message = formatStatusUpdateMessage('📍 รับสินค้าเข้า HUB', item, 1, { received: true });
+                sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, message);
+            }
+
             await Swal.fire({
                 icon: 'success',
                 title: 'รับสินค้าเรียบร้อย!',
@@ -728,6 +735,12 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
         } else {
             // Standard Flow -> Go to QC
             await updateReturnRecord(id, { status: 'ReceivedAtHub', dateReceived: today });
+
+            // TELEGRAM NOTIFICATION: Received at Hub (NCR)
+            if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId) {
+                const message = formatStatusUpdateMessage('📍 รับสินค้าเข้า HUB', item, 1, { received: true });
+                sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, message);
+            }
         }
     };
 
@@ -944,23 +957,15 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                 if (successCount > 0) {
                     // Send Notification
                     if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId && affectedItems.length > 0) {
-                        const ncrCount = affectedItems.filter(i => i.documentType === 'NCR' || !!i.ncrNumber).length;
-                        const colCount = affectedItems.length - ncrCount;
-
-                        let typeTag = '';
-                        if (ncrCount > 0 && colCount > 0) typeTag = `[NCR: ${ncrCount}, COL: ${colCount}]`;
-                        else if (ncrCount > 0) typeTag = `[NCR: ${ncrCount}]`;
-                        else typeTag = `[COL: ${colCount}]`;
-
-                        const head = affectedItems[0];
-                        const route = pendingLogisticsTx.updatePayload.dispositionRoute || '-';
                         const isDirect = pendingLogisticsTx.updatePayload.status === 'DirectReturn';
                         const typeLabel = isDirect ? '🚛 ส่งคืนตรง (Direct Return)' : '🚚 ส่งเข้า HUB (นครสวรรค์)';
-                        const plate = pendingLogisticsTx.updatePayload.transportPlate || '-';
-                        const driver = pendingLogisticsTx.updatePayload.transportDriver || '-';
+                        const head = affectedItems[0];
 
-                        const message = `<b>${typeLabel} ${typeTag}</b>\n----------------------------------\n📍 ต้นทาง: ${head.branch}\n🏁 ปลายทาง: ${route}\n📦 จำนวน: ${successCount} รายการ\n🚛 ทะเบียน: ${plate}\n👤 คนขับ: ${driver}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
-
+                        const message = formatStatusUpdateMessage(typeLabel, head, affectedItems.length, {
+                            plateNumber: pendingLogisticsTx.updatePayload.transportPlate,
+                            driverName: pendingLogisticsTx.updatePayload.transportDriver,
+                            destination: pendingLogisticsTx.updatePayload.dispositionRoute
+                        });
                         sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, message);
                     }
 

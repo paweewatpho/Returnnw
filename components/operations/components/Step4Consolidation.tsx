@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, PackageCheck, Calendar, RotateCcw, Share2, Truck, X, Layers, PlusSquare, MinusSquare } from 'lucide-react';
+import { LayoutGrid, PackageCheck, Calendar, RotateCcw, Share2, X, Layers, PlusSquare, MinusSquare } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import Swal from 'sweetalert2';
 import { useData } from '../../../DataContext';
@@ -28,7 +28,7 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
     const [tempRoute, setTempRoute] = React.useState<string>('');
 
     // Transport Info State (Hidden but kept for compatibility)
-    const [transportInfo, setTransportInfo] = React.useState<TransportInfo>({
+    const [transportInfo] = React.useState<TransportInfo>({
         driverName: '',
         plateNumber: '',
         transportCompany: 'รถบริษัท'
@@ -124,6 +124,10 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
             setTargetConsolidateIds([]);
             setSelectedIds([]);
             setTempRoute('');
+
+            if (onComplete) {
+                onComplete();
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -153,7 +157,7 @@ export const Step4Consolidation: React.FC<Step4ConsolidationProps> = ({ onComple
                     timer: 2000,
                     showConfirmButton: false
                 });
-            } catch (error) {
+            } catch {
                 Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถย้อนกลับได้', 'error');
             } finally {
                 setIsSubmitting(false);

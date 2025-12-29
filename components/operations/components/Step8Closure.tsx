@@ -4,7 +4,7 @@ import { FileText, MapPin, CheckCircle, RotateCcw, PlusSquare, MinusSquare, X, S
 import { useData } from '../../../DataContext';
 import { DispositionBadge } from './DispositionBadge';
 import { ReturnRecord } from '../../../types';
-import { sendTelegramMessage } from '../../../utils/telegramService';
+import { sendTelegramMessage, formatStatusUpdateMessage } from '../../../utils/telegramService';
 import Swal from 'sweetalert2';
 
 type FilterMode = 'ALL' | 'NCR' | 'COL';
@@ -122,11 +122,7 @@ export const Step8Closure: React.FC = () => {
                 if (systemConfig.telegram?.enabled && systemConfig.telegram.chatId) {
                     const item = items.find(i => i.id === id);
                     if (item) {
-                        const isNCR = item.documentType === 'NCR' || !!item.ncrNumber;
-                        const typeTag = isNCR ? '[NCR]' : '[Collection]';
-                        const typeLabel = `✅ ปิดงานสมบูรณ์ ${typeTag}`;
-                        const message = `<b>${typeLabel}</b>\n----------------------------------\n📍 สาขา: ${item.branch}\n📦 รายการ: ${item.productName}\n🔢 จำนวน: ${item.quantity} ${item.unit}\n📄 เลขที่: ${item.documentNo || item.refNo || '-'}\n----------------------------------\n📅 ${new Date().toLocaleString('th-TH')}`;
-
+                        const message = formatStatusUpdateMessage('✅ ปิดงานสมบูรณ์', item, 1, { closed: true });
                         sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, message);
                     }
                 }

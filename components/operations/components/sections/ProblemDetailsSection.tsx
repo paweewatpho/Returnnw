@@ -55,7 +55,10 @@ export const ProblemDetailsSection: React.FC<ProblemDetailsSectionProps> = ({
                                 { value: 'Customer', label: 'ลูกค้าต้นทาง (Source Customer)' },
                                 { value: 'DestinationCustomer', label: 'ลูกค้าปลายทาง (Destination Customer)' },
                                 { value: 'Accounting', label: 'บัญชี (Accounting)' },
-                                { value: 'Keying', label: 'พนักงานคีย์ข้อมูลผิด (Keying)' }
+                                { value: 'Keying', label: 'พนักงานคีย์ข้อมูลผิด (Keying)' },
+                                { value: 'Sales', label: 'ฝ่ายขาย (Sales)' },
+                                { value: 'Production', label: 'ฝ่ายผลิต/โรงงาน (Production)' },
+                                { value: 'Procurement', label: 'ฝ่ายจัดซื้อ (Procurement)' }
                             ].map((option) => (
                                 <label key={option.value} className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors">
                                     <input

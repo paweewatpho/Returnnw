@@ -294,7 +294,7 @@ export const Step3BranchReceive: React.FC<Step3BranchReceiveProps> = ({ onComple
 
                 setSelectedIds([]);
                 if (onComplete) {
-                    // onComplete();
+                    onComplete();
                 }
             } catch (error) {
                 console.error("Error receiving items:", error);

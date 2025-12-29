@@ -191,10 +191,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const targetProdLower = productKey.toLowerCase();
 
       // Find all existing records with this R No
-      const existingWithSameR = items.filter(existing => {
-        const existingDoc = (existing.documentNo || existing.refNo || '').trim().toLowerCase();
-        return existingDoc === targetDocLower;
-      });
+      // EXCLUSION: Do not apply lock rule if docNo is the generic placeholder "-"
+      const existingWithSameR = (targetDocLower === '-' || targetDocLower === '')
+        ? []
+        : items.filter(existing => {
+          const existingDoc = (existing.documentNo || existing.refNo || '').trim().toLowerCase();
+          return existingDoc === targetDocLower;
+        });
 
       if (existingWithSameR.length > 0) {
         // Rule A: Check if any existing item is already processed (Step 2+)

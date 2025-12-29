@@ -77,3 +77,67 @@ export const formatNCRMessage = (record: NCRRecord) => {
 📅 <i>${new Date().toLocaleString('th-TH')}</i>
   `.trim();
 };
+
+/**
+ * Formats a notification message for status updates (Trans-shipment, Hub Receive, Closure)
+ */
+export const formatStatusUpdateMessage = (label: string, record: ReturnRecord, count?: number, transportInfo?: Partial<ReturnRecord> & { destination?: string, received?: boolean, closed?: boolean, plateNumber?: string, driverName?: string }) => {
+    const isNCR = record.documentType === 'NCR' || !!record.ncrNumber;
+    const typeLabel = isNCR ? 'NCR' : 'COL';
+
+    // Format customer string
+    const customerInfo = `${record.customerName || '-'} / ${record.destinationCustomer || '-'}`;
+
+    // Process/Problem Info
+    const problemProcess = [
+        record.problemDamaged && 'ชำรุด', record.problemDamagedInBox && 'ชำรุดในกล่อง', record.problemLost && 'สูญหาย',
+        record.problemMixed && 'สินค้าสลับ', record.problemWrongInv && 'สินค้าไม่ตรง INV', record.problemLate && 'ส่งช้า',
+        record.problemDuplicate && 'ส่งซ้ำ', record.problemWrong && 'ส่งผิด', record.problemIncomplete && 'ส่งของไม่ครบ',
+        record.problemOver && 'ส่งของเกิน', record.problemWrongInfo && 'ข้อมูลผิด', record.problemShortExpiry && 'สินค้าอายุสั้น',
+        record.problemTransportDamage && 'สินค้าเสียหายบนรถ', record.problemAccident && 'อุบัติเหตุ', record.problemPOExpired && 'PO. หมดอายุ',
+        record.problemNoBarcode && 'บาร์โค๊ตไม่ขึ้น', record.problemNotOrdered && 'ไม่ได้สั่งสินค้า', record.problemOther && `อื่นๆ (${record.problemOtherText})`
+    ].filter(Boolean).join(', ') || '-';
+
+    const costInfo = record.hasCost
+        ? `ใช่ (${record.costAmount} บาท, ผู้รับผิดชอบ: ${record.costResponsible})`
+        : 'ไม่ระบุ';
+
+    const fieldSettlementInfo = record.isFieldSettled
+        ? `จบงานหน้างาน (ชดเชย: ${record.fieldSettlementAmount} บ. โดย: ${record.fieldSettlementName} [${record.fieldSettlementPosition}])`
+        : 'ไม่มี';
+
+    // Logistics specific part
+    let logisticsContext = '';
+    if (transportInfo) {
+        if (transportInfo.plateNumber || transportInfo.transportPlate) {
+            const plate = transportInfo.transportPlate || transportInfo.plateNumber || '-';
+            const driver = transportInfo.transportDriver || transportInfo.driverName || '-';
+            logisticsContext = `📍 ต้นทาง: ${record.branch}\n🏁 ปลายทาง: ${transportInfo.destination || '-'}\n🚛 ทะเบียน: ${plate}\n👤 คนขับ: ${driver}\n`;
+        } else if (transportInfo.received) {
+            logisticsContext = `📍 ต้นทาง: ${record.branch}\n📝 สถานะ: รับเข้าคลังเรียบร้อย\n`;
+        } else if (transportInfo.closed) {
+            logisticsContext = `📍 สาขา: ${record.branch}\n📦 รายการ: ${record.productName}\n🔢 จำนวน: ${record.quantity} ${record.unit}\n📄 เลขที่: ${record.documentNo || record.refNo || '-'}\n`;
+        }
+    }
+
+    return `
+<b>${label}</b>
+${logisticsContext}----------------------------------
+<b>เพิ่มเติม ${isNCR ? 'NCR' : 'COL'} :</b> [${typeLabel}]
+<b>วันที่ :</b> ${record.date || record.dateRequested || '-'}
+<b>สาขา :</b> ${record.branch || '-'}
+<b>ผู้พบปัญหา (Founder) :</b> ${record.founder || '-'}
+<b>ลูกค้า / ลูกค้าปลายทาง :</b> ${customerInfo}
+<b>Neo Ref No. :</b> ${record.neoRefNo || '-'}
+<b>เลขที่บิล / Ref No. :</b> ${record.refNo || '-'}
+<b>เลขที่เอกสาร (เลข R) :</b> ${record.documentNo || '-'}
+<b>รายละเอียดของปัญหา :</b> ${record.problemDetail || record.reason || '-'}
+<b>จำนวนสินค้า :</b> ${record.quantity} ${record.unit} ${count && count > 1 ? `(รวม ${count} รายการ)` : ''}
+<b>วิเคราะห์ปัญหาเกิดจาก :</b> ${record.problemSource || '-'}
+<b>พบปัญหาที่กระบวนการ :</b> ${problemProcess}
+<b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
+<b>Field Settlement :</b> ${fieldSettlementInfo}
+----------------------------------
+📅 <i>Updated: ${new Date().toLocaleString('th-TH')}</i>
+  `.trim();
+};
