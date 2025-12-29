@@ -406,10 +406,11 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                     collectionOrderId: finalColNumber,
                     amount: (item.quantity || 0) * (item.priceBill || 0),
                     reason: item.problemDetail || item.notes || 'แจ้งคืนสินค้า',
-                    status: item.isFieldSettled ? 'Settled_OnField' : 'Requested',
+                    status: item.isFieldSettled ? 'Settled_OnField' : (item.isRecordOnly ? 'Completed' : 'Requested'),
                     dateRequested: item.date || new Date().toISOString().split('T')[0],
-                    disposition: item.isFieldSettled ? 'RTV' : 'Pending', // Automatically RTV if settled
-                    condition: 'Unknown',
+                    dateCompleted: item.isRecordOnly ? new Date().toISOString().split('T')[0] : undefined,
+                    disposition: item.isFieldSettled ? 'RTV' : (item.isRecordOnly ? 'InternalUse' : 'Pending'), // InternalUse for record only
+                    condition: item.isRecordOnly ? 'New' : 'Unknown',
                     productName: item.productName || 'Unknown Product',
                     productCode: item.productCode || 'N/A',
                     customerName: item.customerName || 'Unknown Customer',
@@ -501,9 +502,9 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                             causeDetail: record.causeDetail,
                             preventionDetail: record.preventionDetail,
                             preventionDueDate: '', responsiblePerson: '', responsiblePosition: '',
-                            qaAccept: false, qaReject: false, qaReason: '',
+                            qaAccept: record.isRecordOnly || false, qaReject: false, qaReason: record.isRecordOnly ? 'บันทึกเป็นสถิติเท่านั้น' : '',
                             dueDate: '', approver: '', approverPosition: '', approverDate: '',
-                            status: 'Open'
+                            status: record.isRecordOnly ? 'Closed' : 'Open'
                         };
 
                         // Sanitize NCR Record as well
@@ -583,10 +584,10 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
 <b>จำนวนสินค้า :</b> ${qty} ${firstItem.unit || 'ชิ้น'} ${itemsToProcess.length > 1 ? `(รวม ${itemsToProcess.length} รายการ)` : ''}
 <b>วิเคราะห์ปัญหาเกิดจาก :</b> ${problemSource}
 <b>พบปัญหาที่กระบวนการ :</b> ${problemProcess || '-'}
-<b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
+${item.isRecordOnly ? '<b>🔹 บันทึกข้อมูลเพื่อเป็นสถิติเท่านั้น (Record Only)</b>\n' : ''}<b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
 <b>Field Settlement :</b> ${fieldSettlementInfo}
 ----------------------------------
-🔗 <i>Status: Requested</i>`;
+🔗 <i>Status: ${item.isRecordOnly ? 'Closed/Completed' : 'Requested'}</i>`;
 
                     await sendTelegramMessage(systemConfig.telegram.botToken, systemConfig.telegram.chatId, detailedMessage);
                 }

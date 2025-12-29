@@ -37,7 +37,8 @@ const NCRSystem: React.FC = () => {
 
         causePackaging: false, causeTransport: false, causeOperation: false, causeEnv: false, causeDetail: '', preventionDetail: '', preventionDueDate: '',
         dueDate: '', approver: '', approverPosition: '', approverDate: '', responsiblePerson: '', responsiblePosition: '',
-        qaAccept: false, qaReject: false, qaReason: ''
+        qaAccept: false, qaReject: false, qaReason: '',
+        isRecordOnly: false
     };
 
     const [formData, setFormData] = useState(initialFormData);
@@ -261,7 +262,10 @@ const NCRSystem: React.FC = () => {
                 id: `${newNcrNo}-${item.id}`,
                 ncrNo: newNcrNo,
                 item: item,
-                status: item.isFieldSettled ? 'Settled_OnField' : (formData.qaAccept ? 'Closed' : 'Open'),
+                status: item.isFieldSettled ? 'Settled_OnField' : (formData.isRecordOnly || formData.qaAccept ? 'Closed' : 'Open'),
+                qaAccept: formData.isRecordOnly || formData.qaAccept,
+                qaReason: formData.isRecordOnly ? 'บันทึกเป็นสถิติเท่านั้น' : formData.qaReason,
+                isRecordOnly: formData.isRecordOnly
             };
 
             const success = await addNCRReport(record);
@@ -283,14 +287,17 @@ const NCRSystem: React.FC = () => {
                     ncrNumber: newNcrNo,
                     documentType: 'NCR',
                     founder: formData.founder,
-                    status: formData.isFieldSettled ? 'Settled_OnField' : 'Requested',
+                    status: formData.isFieldSettled ? 'Settled_OnField' : (formData.isRecordOnly ? 'Completed' : 'Requested'),
+                    isRecordOnly: formData.isRecordOnly,
+                    dateCompleted: formData.isRecordOnly ? new Date().toISOString().split('T')[0] : undefined,
+                    disposition: formData.isRecordOnly ? 'InternalUse' : 'Pending',
+                    condition: formData.isRecordOnly ? 'New' : 'Unknown',
                     isFieldSettled: formData.isFieldSettled,
                     fieldSettlementAmount: formData.fieldSettlementAmount,
                     fieldSettlementEvidence: formData.fieldSettlementEvidence,
                     fieldSettlementName: formData.fieldSettlementName,
                     fieldSettlementPosition: formData.fieldSettlementPosition,
                     preliminaryRoute: formData.preliminaryRoute === 'Other' && formData.preliminaryRouteOther ? `Other: ${formData.preliminaryRouteOther}` : (formData.preliminaryRoute || 'Other'),
-                    disposition: 'Pending',
                     reason: `NCR: ${formData.problemDetail || '-'}`,
                     amount: item.priceBill || 0,
                     priceBill: item.priceBill || 0,
@@ -421,10 +428,10 @@ const NCRSystem: React.FC = () => {
 <b>จำนวนสินค้า :</b> ${qty} ${ncrItems[0]?.unit || 'ชิ้น'} ${ncrItems.length > 1 ? `(รวม ${ncrItems.length} รายการ)` : ''}
 <b>วิเคราะห์ปัญหาเกิดจาก :</b> ${problemSource}
 <b>พบปัญหาที่กระบวนการ :</b> ${problemProcess || '-'}
-<b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
+${formData.isRecordOnly ? '<b>🔹 บันทึกข้อมูลเพื่อเป็นสถิติเท่านั้น (Fast Track)</b>\n' : ''}<b>การติดตามค่าใช้จ่าย :</b> ${costInfo}
 <b>Field Settlement :</b> ${fieldSettlementInfo}
 ----------------------------------
-🔗 <i>Status: Open</i>`;
+🔗 <i>Status: ${formData.isRecordOnly ? 'Closed/Completed' : 'Open'}</i>`;
 
                 await sendTelegramMessage(
                     systemConfig.telegram.botToken,
@@ -644,9 +651,25 @@ const NCRSystem: React.FC = () => {
                             <input type="checkbox" disabled checked={false} title="ตามแนบ (As attached)" /> <span className="text-xs">ตามแนบ</span>
                         </div>
                     </div>
-                    <div className="border-2 border-black p-2 min-h-[100px] print-border-2">
+                    <div className="border-2 border-black p-2 min-h-[100px] print-border-2 relative">
                         <div className="font-bold mb-2">รายละเอียดของปัญหาที่พบ (ผู้พบปัญหา)</div>
                         <textarea className="w-full h-20 text-xs resize-none outline-none border-0 bg-transparent" placeholder="รายละเอียด..." value={formData.problemDetail} onChange={e => setFormData({ ...formData, problemDetail: e.target.value })} title="รายละเอียดปัญหา"></textarea>
+
+                        {/* Fast Track Section - Integrated directly in the form area for high visibility */}
+                        <div className="mt-2 no-print">
+                            <label className="flex items-center gap-3 p-2 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer hover:bg-amber-100 transition-all border-dashed">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.isRecordOnly || false}
+                                    onChange={() => setFormData({ ...formData, isRecordOnly: !formData.isRecordOnly })}
+                                    className="w-4 h-4 text-amber-600 focus:ring-amber-500 rounded border-amber-300"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-amber-800 text-[11px]">เปิดใช้งานระบบ &quot;Fast Track&quot; (Record Only)</span>
+                                    <span className="text-[9px] text-amber-600 leading-tight">สำหรับปัญหาที่ไม่มีการคืนสินค้าจริง (เช่น ส่งช้า) จบงานทันทีเมื่อบันทึก</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                 </div>
 

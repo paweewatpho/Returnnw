@@ -7,7 +7,7 @@ const WAREHOUSE_CAUSES = ['เช็คเกอร์', 'พนักงาน�
 
 interface ProblemDetailsSectionProps {
     formData: Partial<ReturnRecord>;
-    updateField: (field: keyof ReturnRecord, value: any) => void;
+    updateField: (field: keyof ReturnRecord, value: Partial<ReturnRecord>[keyof ReturnRecord]) => void;
     handleCheckboxToggle: (field: keyof ReturnRecord, resetFields?: (keyof ReturnRecord)[]) => void;
     handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     handleRemoveImage: (index: number) => void;
@@ -193,6 +193,21 @@ export const ProblemDetailsSection: React.FC<ProblemDetailsSectionProps> = ({
                             <input type="text" aria-label="ระบุปัญหาอื่นๆ" title="ระบุปัญหาอื่นๆ" className="border-b border-dotted border-slate-400 bg-transparent outline-none flex-1 text-slate-700" value={formData.problemOtherText || ''} onChange={e => updateField('problemOtherText', e.target.value)} />
                         </div>
                     </div>
+                    <div className="mb-4">
+                        <label className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer hover:bg-amber-100 transition-all border-dashed">
+                            <input
+                                type="checkbox"
+                                checked={formData.isRecordOnly || false}
+                                onChange={() => handleCheckboxToggle('isRecordOnly')}
+                                className="w-5 h-5 text-amber-600 focus:ring-amber-500 rounded border-amber-300"
+                            />
+                            <div className="flex flex-col">
+                                <span className="font-bold text-amber-800 text-sm">บันทึกข้อมูลเพื่อเป็นสถิติเท่านั้น (Record Only)</span>
+                                <span className="text-[10px] text-amber-600 leading-tight">กรณีความผิดพลาดด้านกระบวนการ/บริการ โดยไม่มีการส่งคืนสินค้าจริง (เช่น ส่งสินค้าล่าช้า)</span>
+                            </div>
+                        </label>
+                    </div>
+
                     <div>
                         <label className="font-bold underline text-sm text-slate-800">รายละเอียด:</label>
                         <textarea aria-label="รายละเอียดปัญหา" title="รายละเอียดปัญหา" value={formData.problemDetail || ''} onChange={e => updateField('problemDetail', e.target.value)} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm min-h-[80px]" placeholder="รายละเอียดเพิ่มเติม..."></textarea>

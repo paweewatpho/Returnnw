@@ -43,6 +43,7 @@ export interface NCRItem {
   fieldSettlementEvidence?: string;
   fieldSettlementName?: string;
   fieldSettlementPosition?: string;
+  isRecordOnly?: boolean; // New: For performance/process logging only (e.g. late delivery)
 
   // New: Matching ReturnRecord/NCRRecord flags for per-item tracking
   problemDamaged?: boolean;
@@ -169,6 +170,7 @@ export interface NCRRecord {
   qaAccept: boolean;
   qaReject: boolean;
   qaReason: string;
+  isRecordOnly?: boolean;
 
   status: 'Open' | 'Closed' | 'Canceled' | 'Settled_OnField'; // Add 'Canceled' for soft delete, 'Settled_OnField' for bypass
   images?: string[];
@@ -516,6 +518,7 @@ export interface ReturnRecord {
   fieldSettlementEvidence?: string; // URL/Base64
   fieldSettlementName?: string;
   fieldSettlementPosition?: string;
+  isRecordOnly?: boolean;
 }
 
 export interface SearchFilters {
