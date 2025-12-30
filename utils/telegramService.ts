@@ -83,7 +83,7 @@ export const formatNCRMessage = (record: NCRRecord) => {
  */
 export const formatStatusUpdateMessage = (label: string, record: ReturnRecord, count?: number, transportInfo?: Partial<ReturnRecord> & { destination?: string, received?: boolean, closed?: boolean, plateNumber?: string, driverName?: string }) => {
     const isNCR = record.documentType === 'NCR' || !!record.ncrNumber;
-    const typeLabel = isNCR ? 'NCR' : 'COL';
+
 
     // Format customer string
     const customerInfo = `${record.customerName || '-'} / ${record.destinationCustomer || '-'}`;
@@ -121,7 +121,7 @@ export const formatStatusUpdateMessage = (label: string, record: ReturnRecord, c
     }
 
     return `
-<b>${label} [${typeLabel}]</b>
+<b>${label} [${isNCR ? (record.ncrNumber || 'NCR') : (record.documentNo || 'COL')}]</b>
 ${logisticsContext}----------------------------------
 <b>เพิ่มเติม ${isNCR ? 'NCR' : 'COL'} :</b> ${isNCR ? (record.ncrNumber || '-') : (record.documentNo || '-')}
 <b>วันที่ :</b> ${record.date || record.dateRequested || '-'}
@@ -130,7 +130,7 @@ ${logisticsContext}----------------------------------
 <b>ลูกค้า / ลูกค้าปลายทาง :</b> ${customerInfo}
 <b>Neo Ref No. :</b> ${record.neoRefNo || '-'}
 <b>เลขที่บิล / Ref No. :</b> ${record.refNo || '-'}
-<b>เลขที่เอกสาร (เลข R) :</b> ${record.documentNo || '-'}
+<b>เลขที่เอกสาร (เลข R) :</b> ${isNCR ? '-' : (record.documentNo || '-')}
 <b>รายละเอียดของปัญหา :</b> ${record.problemDetail || record.reason || '-'}
 <b>จำนวนสินค้า :</b> ${record.quantity} ${record.unit} ${count && count > 1 ? `(รวม ${count} รายการ)` : ''}
 <b>วิเคราะห์ปัญหาเกิดจาก :</b> ${record.problemSource || '-'}

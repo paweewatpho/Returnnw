@@ -568,10 +568,10 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
                         ? `จบงานหน้างาน (จ่าย: ${item.fieldSettlementAmount} บาท, ผู้รับผิดชอบ: ${item.fieldSettlementName} - ${item.fieldSettlementPosition})`
                         : 'ไม่มี';
 
-                    const typeTag = isNCR ? 'NCR' : 'COL';
+
                     const headerTitle = isNCR ? '🚨 NCR Report (New)' : '📦 Collection Report (New)';
 
-                    const detailedMessage = `<b>${headerTitle} [${typeTag}]</b>
+                    const detailedMessage = `<b>${headerTitle} [${docNo}]</b>
 ----------------------------------
 <b>วันที่ :</b> ${msgDate}
 <b>สาขา :</b> ${branch}
@@ -579,7 +579,7 @@ export const useOperationsLogic = (initialData?: Partial<ReturnRecord> | null, o
 <b>ลูกค้า / ลูกค้าปลายทาง :</b> ${customerName} / ${destCustomer}
 <b>Neo Ref No. :</b> ${neoRef}
 <b>เลขที่บิล / Ref No. :</b> ${refNo}
-<b>เลขที่เอกสาร (เลข R) :</b> ${docNo}
+<b>เลขที่เอกสาร (เลข R) :</b> ${isNCR ? '-' : docNo}
 <b>รายละเอียดของปัญหา :</b> ${problemDetail}
 <b>จำนวนสินค้า :</b> ${qty} ${firstItem.unit || 'ชิ้น'} ${itemsToProcess.length > 1 ? `(รวม ${itemsToProcess.length} รายการ)` : ''}
 <b>วิเคราะห์ปัญหาเกิดจาก :</b> ${problemSource}
