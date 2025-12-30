@@ -120,14 +120,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = snapshot.val();
       // FIX: Add robust filtering for NCR reports as well
       const loadedReports = data
-        ? (Object.values(data) as unknown[])
-          .map((report: { id?: string; date?: string; status?: string;[key: string]: unknown }) => ({
-            ...report,
-            // Robust Defaults
-            date: report.date || new Date().toISOString().split('T')[0],
-            status: report.status || 'Open'
-          }))
+        ? (Object.entries(data) as [string, Record<string, unknown>][])
+          .map(([key, value]) => {
+            // 1. Ensure object structure
+            if (!value || typeof value !== 'object') return null;
+
+            // 2. Ensure ID exists (use Firebase Key if internal ID is missing)
+            const report = {
+              ...value,
+              id: (typeof value.id === 'string' && value.id) ? value.id : key
+            };
+
+            // 3. Apply Robust Defaults for other fields
+            const fullReport = report as Record<string, unknown>;
+            return {
+              ...fullReport,
+              date: (typeof fullReport.date === 'string' ? fullReport.date : undefined) || new Date().toISOString().split('T')[0],
+              status: (typeof fullReport.status === 'string' ? fullReport.status : undefined) || 'Open'
+            };
+          })
           .filter((report): report is NCRRecord => {
+            if (!report) return false; // Filter out nulls from non-object values
             const r = report as Record<string, unknown>;
 
             // DEBUG: Check for specific missing NCR
@@ -139,9 +152,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // Header checks - ID is MUST
             if (typeof r.id !== 'string') {
-              if (r.ncrNo === 'NCR-2025-0163') { // unlikely if id is missing
-                console.error("❌ CRTICAL: NCR-2025-0163 filtered due to missing ID.", r);
-              }
               console.warn("🛡️ Data Hardening: Filtering out invalid NCR (missing id).", report);
               return false;
             }
@@ -156,9 +166,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Item checks (handle both nested and potential flat structures for backward compat)
             const itemData = (r.item as Record<string, unknown>) || r;
             if (!itemData || typeof itemData !== 'object') {
-              if (r.ncrNo === 'NCR-2025-0163' || r.id === 'NCR-2025-0163') {
-                console.error("❌ CRTICAL: NCR-2025-0163 filtered due to invalid Item structure.", r);
-              }
               console.warn("🛡️ Data Hardening: Invalid NCR Item structure.", report);
               return false;
             }
@@ -372,6 +379,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addNCRReport = async (item: NCRRecord): Promise<boolean> => {
+    // 🛡️ Guard: Critical ID check
+    if (!item.id) {
+      console.error("❌ CRTICAL: Attempted to add NCR without ID.", item);
+      alert("System Error: NCR ID is missing. Cannot save data. Please contact support.");
+      return false;
+    }
+
     try {
       await set(ref(db, 'ncr_reports/' + item.id), item);
       return true;
@@ -381,13 +395,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         alert("Access Denied: Check Firebase Realtime Database Rules. Developer tip: Set rules to 'allow read, write: if true;' for testing.");
       } else {
         console.error("Error adding NCR report:", error);
-        alert("Failed to save NCR report.");
+        alert(`Failed to save NCR report (ID: ${item.id}). Check console for details.`);
       }
       return false;
     }
   };
 
   const updateNCRReport = async (id: string, data: Partial<NCRRecord>): Promise<boolean> => {
+    // 🛡️ Guard: Critical ID check
+    if (!id) {
+      console.error("❌ CRTICAL: Attempted to update NCR without ID provided.");
+      alert("System Error: Update ID is missing.");
+      return false;
+    }
     try {
       // 1. Get the current (old) record before update to find linked items
       const oldNCR = ncrReports.find(r => r.id === id);

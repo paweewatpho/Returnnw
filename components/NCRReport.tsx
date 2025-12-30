@@ -324,9 +324,11 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
   const handleSaveChanges = async () => {
     if (!ncrFormItem) return;
     if (confirm("คุณต้องการบันทึกการแก้ไขนี้ลงในระบบหรือไม่?")) {
-      await updateNCRReport(ncrFormItem.id, ncrFormItem);
-      setShowNCRFormModal(false);
-      setIsEditMode(false);
+      const success = await updateNCRReport(ncrFormItem.id, ncrFormItem);
+      if (success) {
+        setShowNCRFormModal(false);
+        setIsEditMode(false);
+      }
     }
   };
 
@@ -373,7 +375,6 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
           </h2>
           <p className="text-xs text-slate-500 mt-1">รายการสินค้าที่ไม่เป็นไปตามข้อกำหนด (Non-Conformance Report)</p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <div className="relative group">
             <Search className="absolute left-2 top-1.5 w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
@@ -405,45 +406,45 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
               title="วันที่สิ้นสุด"
             />
           </div>
+        </div>
 
-          <select value={filters.action} onChange={e => setFilters({ ...filters, action: e.target.value })} className="bg-slate-50 border border-slate-200 rounded-lg text-xs p-1 outline-none focus:ring-1 focus:ring-blue-500" aria-label="กรองการดำเนินการ" title="กรองการดำเนินการ">
-            <option value="All">ทุกการดำเนินการ</option>
-            <option value="Reject">Reject</option>
-            <option value="Scrap">Scrap</option>
-          </select>
-          <select value={filters.returnStatus} onChange={e => setFilters({ ...filters, returnStatus: e.target.value })} className="bg-slate-50 border border-slate-200 rounded-lg text-xs p-1 outline-none focus:ring-1 focus:ring-blue-500" aria-label="กรองสถานะการคืน" title="กรองสถานะการคืน">
-            <option value="All">ทุกสถานะคืน</option>
-            <option value="NotReturned">ยังไม่คืน</option>
-            <option value="Requested">รอรับเข้า</option>
-            <option value="PickupScheduled">รอรถรับ (Job Assigned)</option>
-            <option value="PickedUp">รับของแล้ว (Picked Up)</option>
-            <option value="InTransitHub">กำลังขนส่ง</option>
-            <option value="ReceivedAtHub">สินค้าถึง Hub (รอ QC)</option>
-            <option value="QCPassed">ผ่าน QC (รอเอกสาร)</option>
-            <option value="ReturnToSupplier">ส่งคืน/รอปิดงาน</option>
-            <option value="Completed">จบงาน</option>
-          </select>
-          <label className="flex items-center gap-1 text-xs text-slate-600 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer whitespace-nowrap">
-            <input type="checkbox" checked={filters.hasCost} onChange={e => setFilters({ ...filters, hasCost: e.target.checked })} />
-            มีค่าใช้จ่าย
-          </label>
+        <select value={filters.action} onChange={e => setFilters({ ...filters, action: e.target.value })} className="bg-slate-50 border border-slate-200 rounded-lg text-xs p-1 outline-none focus:ring-1 focus:ring-blue-500" aria-label="กรองการดำเนินการ" title="กรองการดำเนินการ">
+          <option value="All">ทุกการดำเนินการ</option>
+          <option value="Reject">Reject</option>
+          <option value="Scrap">Scrap</option>
+        </select>
+        <select value={filters.returnStatus} onChange={e => setFilters({ ...filters, returnStatus: e.target.value })} className="bg-slate-50 border border-slate-200 rounded-lg text-xs p-1 outline-none focus:ring-1 focus:ring-blue-500" aria-label="กรองสถานะการคืน" title="กรองสถานะการคืน">
+          <option value="All">ทุกสถานะคืน</option>
+          <option value="NotReturned">ยังไม่คืน</option>
+          <option value="Requested">รอรับเข้า</option>
+          <option value="PickupScheduled">รอรถรับ (Job Assigned)</option>
+          <option value="PickedUp">รับของแล้ว (Picked Up)</option>
+          <option value="InTransitHub">กำลังขนส่ง</option>
+          <option value="ReceivedAtHub">สินค้าถึง Hub (รอ QC)</option>
+          <option value="QCPassed">ผ่าน QC (รอเอกสาร)</option>
+          <option value="ReturnToSupplier">ส่งคืน/รอปิดงาน</option>
+          <option value="Completed">จบงาน</option>
+        </select>
+        <label className="flex items-center gap-1 text-xs text-slate-600 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer whitespace-nowrap">
+          <input type="checkbox" checked={filters.hasCost} onChange={e => setFilters({ ...filters, hasCost: e.target.checked })} />
+          มีค่าใช้จ่าย
+        </label>
 
-          <div className="flex gap-1 ml-auto">
-            <button
-              onClick={handleExportExcel}
-              className="bg-green-600 text-white font-bold px-3 py-1 rounded-lg flex items-center gap-1 hover:bg-green-700 transition-colors shadow-sm text-xs whitespace-nowrap"
-            >
-              <Download className="w-3 h-3" />
-              Excel
-            </button>
-            <button
-              onClick={() => setFilters({ query: '', action: 'All', returnStatus: 'All', hasCost: false, startDate: '', endDate: '', docType: 'All' })}
-              className="px-2 py-1 text-slate-600 hover:bg-slate-100 font-medium rounded-lg border border-slate-200"
-              title="ล้างตัวกรอง (Clear)"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          </div>
+        <div className="flex gap-1 ml-auto">
+          <button
+            onClick={handleExportExcel}
+            className="bg-green-600 text-white font-bold px-3 py-1 rounded-lg flex items-center gap-1 hover:bg-green-700 transition-colors shadow-sm text-xs whitespace-nowrap"
+          >
+            <Download className="w-3 h-3" />
+            Excel
+          </button>
+          <button
+            onClick={() => setFilters({ query: '', action: 'All', returnStatus: 'All', hasCost: false, startDate: '', endDate: '', docType: 'All' })}
+            className="px-2 py-1 text-slate-600 hover:bg-slate-100 font-medium rounded-lg border border-slate-200"
+            title="ล้างตัวกรอง (Clear)"
+          >
+            <RotateCcw className="w-3 h-3" />
+          </button>
         </div>
       </div>
 
@@ -1001,7 +1002,7 @@ const NCRReport: React.FC<NCRReportProps> = ({ onTransfer }) => {
           max-height: calc(100vh - 300px);
         }
       `}</style>
-    </div >
+    </div>
   );
 };
 

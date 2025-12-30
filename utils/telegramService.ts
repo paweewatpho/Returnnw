@@ -64,7 +64,7 @@ export const formatReturnRequestMessage = (record: ReturnRecord) => {
 export const formatNCRMessage = (record: NCRRecord) => {
     const item = record.item;
     return `
-⚠️ <b>มีแจ้งปัญหา NCR ใหม่!</b>
+⚠️ <b>มีแจ้งปัญหา NCR ใหม่! [NCR]</b>
 ----------------------------------
 <b>เลขที่ NCR:</b> ${record.ncrNo}
 <b>สินค้า:</b> ${item.productName}
@@ -121,9 +121,9 @@ export const formatStatusUpdateMessage = (label: string, record: ReturnRecord, c
     }
 
     return `
-<b>${label}</b>
+<b>${label} [${typeLabel}]</b>
 ${logisticsContext}----------------------------------
-<b>เพิ่มเติม ${isNCR ? 'NCR' : 'COL'} :</b> [${typeLabel}]
+<b>เพิ่มเติม ${isNCR ? 'NCR' : 'COL'} :</b> ${isNCR ? (record.ncrNumber || '-') : (record.documentNo || '-')}
 <b>วันที่ :</b> ${record.date || record.dateRequested || '-'}
 <b>สาขา :</b> ${record.branch || '-'}
 <b>ผู้พบปัญหา (Founder) :</b> ${record.founder || '-'}
