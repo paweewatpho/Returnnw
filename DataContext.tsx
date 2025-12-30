@@ -121,19 +121,44 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // FIX: Add robust filtering for NCR reports as well
       const loadedReports = data
         ? (Object.values(data) as unknown[])
+          .map((report: { id?: string; date?: string; status?: string;[key: string]: unknown }) => ({
+            ...report,
+            // Robust Defaults
+            date: report.date || new Date().toISOString().split('T')[0],
+            status: report.status || 'Open'
+          }))
           .filter((report): report is NCRRecord => {
             const r = report as Record<string, unknown>;
+
+            // DEBUG: Check for specific missing NCR
+            if (r.ncrNo === 'NCR-2025-0163' || r.id === 'NCR-2025-0163') {
+              console.log("🔍 Checking NCR-2025-0163 in DataContext filter:", r);
+            }
+
             if (!r || typeof r !== 'object') return false;
 
-            // Header checks
-            if (typeof r.id !== 'string' || typeof r.date !== 'string' || typeof r.status !== 'string') {
-              console.warn("🛡️ Data Hardening: Filtering out invalid NCR (missing header fields).", report);
+            // Header checks - ID is MUST
+            if (typeof r.id !== 'string') {
+              if (r.ncrNo === 'NCR-2025-0163') { // unlikely if id is missing
+                console.error("❌ CRTICAL: NCR-2025-0163 filtered due to missing ID.", r);
+              }
+              console.warn("🛡️ Data Hardening: Filtering out invalid NCR (missing id).", report);
+              return false;
+            }
+
+            // Date and Status are now defaulted above, so just check type safety
+            if (typeof r.date !== 'string' || typeof r.status !== 'string') {
+              // Should not happen due to defaults, but catch-all
+              console.warn("🛡️ Data Hardening: NCR date/status invalid type.", report);
               return false;
             }
 
             // Item checks (handle both nested and potential flat structures for backward compat)
             const itemData = (r.item as Record<string, unknown>) || r;
             if (!itemData || typeof itemData !== 'object') {
+              if (r.ncrNo === 'NCR-2025-0163' || r.id === 'NCR-2025-0163') {
+                console.error("❌ CRTICAL: NCR-2025-0163 filtered due to invalid Item structure.", r);
+              }
               console.warn("🛡️ Data Hardening: Invalid NCR Item structure.", report);
               return false;
             }
